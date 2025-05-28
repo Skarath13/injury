@@ -1,0 +1,32 @@
+User-agent: *
+Allow: /
+
+# Important pages for crawling
+Allow: /about
+Allow: /contact
+Allow: /privacy
+Allow: /terms
+
+# Sitemap location
+Sitemap: https://cainjurysettlement.com/sitemap.xml
+
+# Block common bot paths that aren't needed
+Disallow: /api/
+Disallow: /_next/
+Disallow: /admin/
+Disallow: /wp-admin/
+Disallow: /wp-login.php
+
+# Allow Google to index images and CSS/JS
+User-agent: Googlebot
+Allow: /*.css$
+Allow: /*.js$
+Allow: /*.png$
+Allow: /*.jpg$
+Allow: /*.jpeg$
+Allow: /*.gif$
+Allow: /*.webp$
+Allow: /*.svg$
+
+# Crawl delay to be respectful
+Crawl-delay: 1

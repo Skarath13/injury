@@ -1,15 +1,270 @@
 
 > injury@0.1.0 dev
-> next dev --port 3000
+> next dev
 
- ⨯ Failed to start server
-Error: listen EADDRINUSE: address already in use :::3000
-    at <unknown> (Error: listen EADDRINUSE: address already in use :::3000)
-    at new Promise (<anonymous>) {
-  code: 'EADDRINUSE',
-  errno: -48,
-  syscall: 'listen',
-  address: '::',
-  port: 3000
+   ▲ Next.js 15.3.2
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.1.33:3000
+
+ ✓ Starting...
+ ✓ Ready in 1348ms
+ ○ Compiling / ...
+ ✓ Compiled / in 818ms (887 modules)
+ ✓ Compiled in 61ms (388 modules)
+ GET / 200 in 1052ms
+ ⚠ Cross origin request detected from 192.168.1.33 to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+ ✓ Compiled in 218ms (887 modules)
+ ✓ Compiled in 226ms (919 modules)
+ GET / 200 in 156ms
+ ✓ Compiled in 169ms (919 modules)
+ GET / 200 in 46ms
+ ✓ Compiled in 123ms (919 modules)
+ GET / 200 in 35ms
+ GET / 200 in 113ms
+ GET / 200 in 65ms
+ GET / 200 in 74ms
+ ✓ Compiled in 198ms (919 modules)
+ GET / 200 in 22ms
+ ✓ Compiled in 133ms (919 modules)
+ GET / 200 in 31ms
+ ✓ Compiled in 126ms (919 modules)
+ GET / 200 in 30ms
+ GET / 200 in 96ms
+ ✓ Compiled in 122ms (404 modules)
+ GET / 200 in 9ms
+ ✓ Compiled in 263ms (909 modules)
+ GET / 200 in 40ms
+ ✓ Compiled in 135ms (905 modules)
+ GET / 200 in 40ms
+ ✓ Compiled in 127ms (905 modules)
+ GET / 200 in 21ms
+ ✓ Compiled in 191ms (915 modules)
+ GET / 200 in 32ms
+ ✓ Compiled in 154ms (915 modules)
+ GET / 200 in 26ms
+ ✓ Compiled in 123ms (915 modules)
+ GET / 200 in 21ms
+ ✓ Compiled in 136ms (915 modules)
+ GET / 200 in 29ms
+ ✓ Compiled in 119ms (915 modules)
+ GET / 200 in 19ms
+ ✓ Compiled in 153ms (915 modules)
+ GET / 200 in 31ms
+ ✓ Compiled in 134ms (915 modules)
+ GET / 200 in 22ms
+ ✓ Compiled in 145ms (915 modules)
+ GET / 200 in 20ms
+ GET / 200 in 113ms
+ ✓ Compiled in 171ms (915 modules)
+ GET / 200 in 21ms
+ GET / 200 in 7ms
+ ✓ Compiled in 186ms (915 modules)
+ GET / 200 in 22ms
+ GET / 200 in 6ms
+ ⨯ ./components/SettlementCalculator.tsx
+Error:   [31mx[0m Unexpected token `div`. Expected jsx identifier
+     ,-[[36;1;4m/Users/dylan/Desktop/injury/injury/components/SettlementCalculator.tsx[0m:237:1]
+ [2m234[0m |   }
+ [2m235[0m | 
+ [2m236[0m |   return (
+ [2m237[0m |     <div className="space-y-6">
+     : [35;1m     ^^^[0m
+ [2m238[0m |       {/* Header Content - Only show on first step */}
+ [2m239[0m |       {currentStep === 1 && (
+ [2m240[0m |         <div className="text-center space-y-6">
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./components/SettlementCalculator.tsx
+./app/page.tsx
+ ⨯ ./components/SettlementCalculator.tsx
+Error:   [31mx[0m Unexpected token `div`. Expected jsx identifier
+     ,-[[36;1;4m/Users/dylan/Desktop/injury/injury/components/SettlementCalculator.tsx[0m:237:1]
+ [2m234[0m |   }
+ [2m235[0m | 
+ [2m236[0m |   return (
+ [2m237[0m |     <div className="space-y-6">
+     : [35;1m     ^^^[0m
+ [2m238[0m |       {/* Header Content - Only show on first step */}
+ [2m239[0m |       {currentStep === 1 && (
+ [2m240[0m |         <div className="text-center space-y-6">
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./components/SettlementCalculator.tsx
+./app/page.tsx
+ GET / 500 in 784ms
+ GET / 500 in 764ms
+ GET / 500 in 4ms
+ GET / 500 in 5ms
+ GET / 500 in 3ms
+ GET / 500 in 6ms
+ GET / 500 in 7ms
+ GET / 500 in 4ms
+ ○ Compiling /_error ...
+ ✓ Compiled /_not-found in 362ms (1239 modules)
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET /_next/static/webpack/af9a994ecb7aa464.webpack.hot-update.json 404 in 501ms
+ GET /_next/static/webpack/af9a994ecb7aa464.webpack.hot-update.json 404 in 389ms
+ GET / 200 in 148ms
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET /_next/static/webpack/af9a994ecb7aa464.webpack.hot-update.json 404 in 14ms
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET / 200 in 26ms
+ GET / 200 in 23ms
+ ✓ Compiled in 145ms (1253 modules)
+ GET / 200 in 34ms
+ GET / 200 in 9ms
+ GET / 200 in 99ms
+ GET / 200 in 74ms
+ ✓ Compiled in 386ms (1251 modules)
+ GET / 200 in 41ms
+ ✓ Compiled in 143ms (1251 modules)
+ GET / 200 in 21ms
+ GET / 200 in 85ms
+ ✓ Compiled in 160ms (1237 modules)
+ ✓ Compiled in 98ms (1237 modules)
+ ✓ Compiled in 96ms (1237 modules)
+ ✓ Compiled in 96ms (1237 modules)
+ ✓ Compiled in 104ms (1237 modules)
+ ✓ Compiled in 96ms (1237 modules)
+ ✓ Compiled in 107ms (1237 modules)
+ ✓ Compiled in 97ms (1237 modules)
+ ✓ Compiled in 375ms (1251 modules)
+ GET / 200 in 40ms
+ ✓ Compiled in 143ms (1251 modules)
+ GET / 200 in 32ms
+ ✓ Compiled in 141ms (1251 modules)
+ GET / 200 in 30ms
+ ✓ Compiled in 137ms (1251 modules)
+ GET / 200 in 21ms
+ ✓ Compiled in 164ms (1251 modules)
+ GET / 200 in 24ms
+ ✓ Compiled in 323ms (1251 modules)
+ GET / 200 in 40ms
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET / 200 in 75ms
+ ✓ Compiled in 199ms (1251 modules)
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET / 200 in 70ms
+ GET / 200 in 75ms
+ ✓ Compiled in 138ms (650 modules)
+ GET / 200 in 13ms
+ GET / 200 in 11ms
+ GET / 200 in 28ms
+ ✓ Compiled in 232ms (1237 modules)
+ GET / 200 in 32ms
+ ✓ Compiled in 147ms (1249 modules)
+ GET / 200 in 19ms
+ ✓ Compiled in 139ms (1249 modules)
+ GET / 200 in 20ms
+ ✓ Compiled in 142ms (1249 modules)
+ GET / 200 in 26ms
+ ✓ Compiled in 160ms (1249 modules)
+ GET / 200 in 25ms
+ ✓ Compiled in 142ms (1249 modules)
+ GET / 200 in 20ms
+ GET / 200 in 106ms
+ ✓ Compiled in 212ms (1249 modules)
+ GET / 200 in 34ms
+ ✓ Compiled in 205ms (1249 modules)
+ GET / 200 in 20ms
+ ✓ Compiled in 127ms (1249 modules)
+ GET / 200 in 19ms
+ ⨯ ./components/SettlementCalculator.tsx
+Error:   [31mx[0m Unexpected token `div`. Expected jsx identifier
+     ,-[[36;1;4m/Users/dylan/Desktop/injury/injury/components/SettlementCalculator.tsx[0m:255:1]
+ [2m252[0m |   }
+ [2m253[0m | 
+ [2m254[0m |   return (
+ [2m255[0m |     <div className="space-y-6">
+     : [35;1m     ^^^[0m
+ [2m256[0m |       {/* Header Content - Only show on first step */}
+ [2m257[0m |       {currentStep === 1 && (
+ [2m258[0m |         <div className="text-center space-y-6">
+     `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./components/SettlementCalculator.tsx
+./app/page.tsx
+ GET / 500 in 7ms
+ GET / 500 in 4ms
+ ✓ Compiled /_not-found in 301ms (1239 modules)
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET /_next/static/webpack/af9a994ecb7aa464.webpack.hot-update.json 404 in 341ms
+ GET / 200 in 63ms
+ ✓ Compiled in 149ms (1253 modules)
+ GET / 200 in 24ms
+ ✓ Compiled in 155ms (1253 modules)
+ GET / 200 in 32ms
+ ✓ Compiled in 243ms (1249 modules)
+ GET / 200 in 45ms
+ ✓ Compiled in 150ms (1249 modules)
+ GET / 200 in 32ms
+ GET / 200 in 104ms
+ GET / 200 in 71ms
+ ✓ Compiled in 224ms (1249 modules)
+ GET / 200 in 36ms
+ GET / 200 in 12ms
+ GET / 200 in 86ms
+ ✓ Compiled in 146ms (1249 modules)
+ GET / 200 in 20ms
+ GET / 200 in 7ms
+ ✓ Compiled in 163ms (1249 modules)
+ GET / 200 in 24ms
+ GET / 200 in 12ms
+ ✓ Compiled in 137ms (1249 modules)
+ GET / 200 in 18ms
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ⨯ ReferenceError: React is not defined
+    at eval (components/SettlementCalculator.tsx:290:17)
+    at Array.map (<anonymous>)
+    at SettlementCalculator (components/SettlementCalculator.tsx:287:19)
+  288 |               const Icon = step.icon;
+  289 |               return (
+> 290 |                 <React.Fragment key={step.id}>
+      |                 ^
+  291 |                   <div className={`flex items-center justify-center w-10 h-10 md:w-12 md:h-12 rounded-full transition-all duration-200 ${
+  292 |                     currentStep >= step.id 
+  293 |                       ? 'bg-amber-500 text-white shadow-md'  {
+  digest: '4063862759'
 }
-[?25h
+ GET / 500 in 76ms
+ GET / 200 in 7ms
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ⨯ ReferenceError: React is not defined
+    at eval (components/SettlementCalculator.tsx:290:17)
+    at Array.map (<anonymous>)
+    at SettlementCalculator (components/SettlementCalculator.tsx:287:19)
+  288 |               const Icon = step.icon;
+  289 |               return (
+> 290 |                 <React.Fragment key={step.id}>
+      |                 ^
+  291 |                   <div className={`flex items-center justify-center w-10 h-10 md:w-12 md:h-12 rounded-full transition-all duration-200 ${
+  292 |                     currentStep >= step.id 
+  293 |                       ? 'bg-amber-500 text-white shadow-md'  {
+  digest: '4063862759'
+}
+ GET / 500 in 34ms
+ ✓ Compiled in 142ms (1249 modules)
+ GET / 200 in 1ms
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ GET / 200 in 59ms
+ GET / 200 in 59ms
+ ✓ Compiled /api/calculate in 234ms (1254 modules)
+ POST /api/calculate 200 in 293ms
+ ✓ Compiled in 145ms (1268 modules)
+ GET / 200 in 33ms
+ GET / 200 in 10ms
+ POST /api/calculate 200 in 16ms
+ POST /api/calculate 200 in 6ms

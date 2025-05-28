@@ -1,5 +1,7 @@
+import { NextRequest, NextResponse } from 'next/server';
 import { InjuryCalculatorData, SettlementResult } from '@/types/calculator';
 
+// Move the medical cost estimation function here (server-side only)
 function estimateMedicalCosts(treatment: InjuryCalculatorData['treatment']): number {
   let estimated = 0;
   
@@ -57,7 +59,8 @@ function estimateMedicalCosts(treatment: InjuryCalculatorData['treatment']): num
   return estimated;
 }
 
-export function calculateSettlement(data: InjuryCalculatorData): SettlementResult {
+// Server-side only calculation function
+function calculateSettlement(data: InjuryCalculatorData): SettlementResult {
   let baseValue = 0;
   let multiplier = 1;
   const factors: SettlementResult['factors'] = [];
@@ -453,4 +456,67 @@ function generateExplanation(
   }
   
   return explanation;
+}
+
+// Rate limiting variables (simple in-memory store)
+const requestCounts = new Map<string, { count: number; resetTime: number }>();
+const RATE_LIMIT = 10; // 10 requests per minute
+const RATE_WINDOW = 60 * 1000; // 1 minute in milliseconds
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const userRequests = requestCounts.get(ip);
+  
+  if (!userRequests || now > userRequests.resetTime) {
+    // First request or window has expired
+    requestCounts.set(ip, { count: 1, resetTime: now + RATE_WINDOW });
+    return true;
+  }
+  
+  if (userRequests.count >= RATE_LIMIT) {
+    return false; // Rate limit exceeded
+  }
+  
+  userRequests.count++;
+  return true;
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    // Get client IP for rate limiting
+    const forwarded = request.headers.get('x-forwarded-for');
+    const ip = forwarded ? forwarded.split(',')[0] : request.headers.get('x-real-ip') || 'unknown';
+    
+    // Check rate limit
+    if (!checkRateLimit(ip)) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please wait before calculating again.' },
+        { status: 429 }
+      );
+    }
+    
+    // Parse and validate request body
+    const data: InjuryCalculatorData = await request.json();
+    
+    // Basic validation
+    if (!data || typeof data !== 'object') {
+      return NextResponse.json(
+        { error: 'Invalid request data' },
+        { status: 400 }
+      );
+    }
+    
+    // Perform calculation on server
+    const result = calculateSettlement(data);
+    
+    // Return results
+    return NextResponse.json(result);
+    
+  } catch (error) {
+    console.error('Settlement calculation error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
 }

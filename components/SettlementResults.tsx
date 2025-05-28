@@ -85,18 +85,18 @@ export default function SettlementResults({ results, medicalCosts, hasAttorney, 
             </div>
           </div>
           
-          <div className="grid grid-cols-3 gap-4 text-center">
-            <div>
-              <p className="text-sm text-slate-600 mb-1">Conservative</p>
-              <p className="text-2xl font-bold text-slate-900">{formatCurrency(results.lowEstimate)}</p>
+          <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center">
+            <div className="px-2">
+              <p className="text-xs sm:text-sm text-slate-600 mb-1 sm:mb-2">Conservative</p>
+              <p className="text-lg sm:text-2xl font-bold text-slate-900 leading-tight">{formatCurrency(results.lowEstimate)}</p>
             </div>
-            <div className="border-l border-r border-green-300">
-              <p className="text-sm text-slate-600 mb-1">Most Likely</p>
-              <p className="text-3xl font-bold text-green-600">{formatCurrency(results.midEstimate)}</p>
+            <div className="border-l border-r border-green-300 px-2">
+              <p className="text-xs sm:text-sm text-slate-600 mb-1 sm:mb-2">Most Likely</p>
+              <p className="text-xl sm:text-3xl font-bold text-green-600 leading-tight">{formatCurrency(results.midEstimate)}</p>
             </div>
-            <div>
-              <p className="text-sm text-slate-600 mb-1">Best Case</p>
-              <p className="text-2xl font-bold text-slate-900">{formatCurrency(results.highEstimate)}</p>
+            <div className="px-2">
+              <p className="text-xs sm:text-sm text-slate-600 mb-1 sm:mb-2">Best Case</p>
+              <p className="text-lg sm:text-2xl font-bold text-slate-900 leading-tight">{formatCurrency(results.highEstimate)}</p>
             </div>
           </div>
           
@@ -326,31 +326,33 @@ export default function SettlementResults({ results, medicalCosts, hasAttorney, 
         </div>
         
         {/* Actions */}
-        <div className="flex justify-between items-center pt-4">
+        <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 sm:gap-2 pt-4">
           <button
             onClick={onBack}
-            className="flex items-center px-4 py-2 bg-slate-200 text-slate-700 rounded-lg font-medium hover:bg-slate-300 transition-colors cursor-pointer"
+            className="flex items-center justify-center px-4 py-3 sm:py-2 bg-slate-200 text-slate-700 rounded-lg font-medium hover:bg-slate-300 transition-colors cursor-pointer text-sm sm:text-base"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back to Calculator
           </button>
           
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             {onEdit && (
               <button
                 onClick={onEdit}
-                className="flex items-center px-4 py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-colors cursor-pointer"
+                className="flex items-center justify-center px-4 py-3 sm:py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-colors cursor-pointer text-sm sm:text-base"
               >
                 <Edit3 className="w-4 h-4 mr-2" />
-                Edit Inputs
+                <span className="hidden sm:inline">Edit Inputs</span>
+                <span className="sm:hidden">Edit</span>
               </button>
             )}
             <button
               onClick={() => window.print()}
-              className="flex items-center px-4 py-2 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition-colors cursor-pointer"
+              className="flex items-center justify-center px-4 py-3 sm:py-2 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition-colors cursor-pointer text-sm sm:text-base"
             >
               <Printer className="w-4 h-4 mr-2" />
-              Print Results
+              <span className="hidden sm:inline">Print Results</span>
+              <span className="sm:hidden">Print</span>
             </button>
           </div>
         </div>
