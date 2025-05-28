@@ -1,6 +1,6 @@
-# Cloudflare Workers Deployment Guide
+# Cloudflare Deployment Guide
 
-This guide explains how to deploy the California Auto Injury Settlement Calculator to Cloudflare Workers.
+This guide explains how to deploy the California Auto Injury Settlement Calculator to Cloudflare (Pages or Workers).
 
 ## Prerequisites
 
@@ -35,9 +35,18 @@ set CLOUDFLARE_API_TOKEN=your-token-here
 
 ### 3. Deploy the Application
 
+#### Option A: Cloudflare Pages (Recommended)
+1. Connect your GitHub repository to Cloudflare Pages
+2. Set the following build settings:
+   - **Build command**: `npx @cloudflare/next-on-pages@1`
+   - **Build output directory**: `.vercel/output/static`
+   - **Root directory**: `/` (or your project path)
+3. Deploy
+
+#### Option B: Cloudflare Workers (Manual)
 ```bash
-# Build for Cloudflare (if not already done)
-npx @cloudflare/next-on-pages@1
+# Build for Cloudflare
+npm run build:cloudflare
 
 # Deploy to Cloudflare Workers
 npx wrangler deploy
