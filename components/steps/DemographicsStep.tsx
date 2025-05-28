@@ -82,7 +82,8 @@ export default function DemographicsStep({ register, setValue, watch, errors }: 
           <select
             {...register('demographics.annualIncome', { 
               required: 'Income is required',
-              validate: value => value !== '' || 'Please select an income range'
+              validate: value => value > 0 || 'Please select an income range',
+              valueAsNumber: true
             })}
             className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
           >

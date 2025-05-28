@@ -268,3 +268,126 @@ Import trace for requested module:
  GET / 200 in 10ms
  POST /api/calculate 200 in 16ms
  POST /api/calculate 200 in 6ms
+ ✓ Compiled in 137ms (650 modules)
+ GET / 200 in 14ms
+ GET / 200 in 60ms
+ ✓ Compiled in 159ms (1236 modules)
+ GET / 200 in 67ms
+ ✓ Compiled in 88ms (650 modules)
+ GET / 200 in 8ms
+ GET / 200 in 49ms
+ ✓ Compiled in 91ms (1236 modules)
+ GET / 200 in 30ms
+ ✓ Compiled in 167ms (1250 modules)
+ GET / 200 in 20ms
+ ✓ Compiled /_not-found in 246ms (1240 modules)
+ GET /_next/static/css/app/layout.css?v=1748462483856 404 in 287ms
+ GET /_next/static/css/app/layout.css?v=1748462483856 404 in 11ms
+ ✓ Compiled in 213ms (1254 modules)
+ GET / 200 in 24ms
+ ⨯ Error: Cannot find module './447.js'
+Require stack:
+- /Users/dylan/Desktop/injury/injury/.next/server/webpack-runtime.js
+- /Users/dylan/Desktop/injury/injury/.next/server/app/page.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/server/require.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/server/load-components.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/build/utils.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/build/swc/options.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/build/swc/index.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/build/analysis/parse-module.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/build/analysis/get-page-static-info.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/server/lib/router-server.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/server/lib/start-server.js
+    at __webpack_require__.f.require (.next/server/webpack-runtime.js:198:28)
+    at <unknown> (.next/server/webpack-runtime.js:111:40)
+    at Array.reduce (<anonymous>)
+    at __webpack_require__.e (.next/server/webpack-runtime.js:110:67)
+    at Array.map (<anonymous>)
+    at __webpack_require__.X (.next/server/webpack-runtime.js:162:22)
+    at <unknown> (.next/server/app/_not-found/page.js:1:7137)
+    at Object.<anonymous> (.next/server/app/_not-found/page.js:1:7182) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array]
+}
+ GET /_next/static/css/app/layout.css?v=1748462505574 500 in 26ms
+ ⨯ Error: Cannot find module './447.js'
+Require stack:
+- /Users/dylan/Desktop/injury/injury/.next/server/webpack-runtime.js
+- /Users/dylan/Desktop/injury/injury/.next/server/app/page.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/server/require.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/server/load-components.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/build/utils.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/build/swc/options.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/build/swc/index.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/build/analysis/parse-module.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/build/analysis/get-page-static-info.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/server/lib/router-server.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/server/lib/start-server.js
+    at __webpack_require__.f.require (.next/server/webpack-runtime.js:198:28)
+    at <unknown> (.next/server/webpack-runtime.js:111:40)
+    at Array.reduce (<anonymous>)
+    at __webpack_require__.e (.next/server/webpack-runtime.js:110:67)
+    at Array.map (<anonymous>)
+    at __webpack_require__.X (.next/server/webpack-runtime.js:162:22)
+    at <unknown> (.next/server/app/_not-found/page.js:1:7137)
+    at Object.<anonymous> (.next/server/app/_not-found/page.js:1:7182) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array]
+}
+ GET /_next/static/css/app/layout.css?v=1748462505574 500 in 11ms
+ ✓ Compiled in 140ms (1254 modules)
+ GET / 200 in 21ms
+ ⨯ Error: Cannot find module './447.js'
+Require stack:
+- /Users/dylan/Desktop/injury/injury/.next/server/webpack-runtime.js
+- /Users/dylan/Desktop/injury/injury/.next/server/app/page.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/server/require.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/server/load-components.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/build/utils.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/build/swc/options.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/build/swc/index.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/build/analysis/parse-module.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/build/analysis/get-page-static-info.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/server/lib/router-server.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/server/lib/start-server.js
+    at __webpack_require__.f.require (.next/server/webpack-runtime.js:198:28)
+    at <unknown> (.next/server/webpack-runtime.js:111:40)
+    at Array.reduce (<anonymous>)
+    at __webpack_require__.e (.next/server/webpack-runtime.js:110:67)
+    at Array.map (<anonymous>)
+    at __webpack_require__.X (.next/server/webpack-runtime.js:162:22)
+    at <unknown> (.next/server/app/_not-found/page.js:1:7137)
+    at Object.<anonymous> (.next/server/app/_not-found/page.js:1:7182) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array]
+}
+ GET /_next/static/css/app/layout.css?v=1748462533400 500 in 12ms
+ ⨯ Error: Cannot find module './447.js'
+Require stack:
+- /Users/dylan/Desktop/injury/injury/.next/server/webpack-runtime.js
+- /Users/dylan/Desktop/injury/injury/.next/server/app/page.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/server/require.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/server/load-components.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/build/utils.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/build/swc/options.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/build/swc/index.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/build/analysis/parse-module.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/build/analysis/get-page-static-info.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/server/lib/router-server.js
+- /Users/dylan/Desktop/injury/injury/node_modules/next/dist/server/lib/start-server.js
+    at __webpack_require__.f.require (.next/server/webpack-runtime.js:198:28)
+    at <unknown> (.next/server/webpack-runtime.js:111:40)
+    at Array.reduce (<anonymous>)
+    at __webpack_require__.e (.next/server/webpack-runtime.js:110:67)
+    at Array.map (<anonymous>)
+    at __webpack_require__.X (.next/server/webpack-runtime.js:162:22)
+    at <unknown> (.next/server/app/_not-found/page.js:1:7137)
+    at Object.<anonymous> (.next/server/app/_not-found/page.js:1:7182) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array]
+}
+ GET /_next/static/css/app/layout.css?v=1748462533400 500 in 12ms

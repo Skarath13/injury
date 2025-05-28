@@ -3,6 +3,13 @@
 import { useState, useEffect } from 'react'
 import { Cookie, X } from 'lucide-react'
 
+// TypeScript declaration for gtag
+declare global {
+  interface Window {
+    gtag?: (...args: any[]) => void;
+  }
+}
+
 export default function CookieConsent() {
   const [showBanner, setShowBanner] = useState(false)
   const [isEUorCA, setIsEUorCA] = useState(false)

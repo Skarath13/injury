@@ -80,7 +80,7 @@ export default function SettlementCalculator({ showIntroContent = true }: Props)
       demographics: {
         age: 35,
         occupation: '',
-        annualIncome: '',
+        annualIncome: 0,
       },
       accidentDetails: {
         dateOfAccident: '',
