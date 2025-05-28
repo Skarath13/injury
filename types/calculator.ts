@@ -38,10 +38,15 @@ export interface InjuryCalculatorData {
     ctScans: number;
     painManagementVisits: number;
     orthopedicConsults: number;
-    injections: number;
-    injectionType?: 'tpi' | 'facet' | 'esi' | 'rfa' | 'mixed';
+    tpiInjections: number;
+    facetInjections: number;
+    mbbInjections: number;
+    esiInjections: number;
+    rfaInjections: number;
+    prpInjections: number;
     surgeryRecommended: boolean;
     surgeryCompleted: boolean;
+    surgeryType?: 'minor' | 'moderate' | 'major';
     totalMedicalCosts: number;
     useEstimatedCosts: boolean;
     ongoingTreatment: boolean;

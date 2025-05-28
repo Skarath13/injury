@@ -3,6 +3,7 @@
 import { UseFormRegister, UseFormWatch, FieldErrors } from 'react-hook-form';
 import { InjuryCalculatorData } from '@/types/calculator';
 import { Calendar, Car, AlertTriangle, Zap, AlertCircle } from 'lucide-react';
+import InfoIcon from '@/components/InfoIcon';
 
 interface Props {
   register: UseFormRegister<InjuryCalculatorData>;
@@ -18,13 +19,14 @@ export default function AccidentStep({ register, watch, errors }: Props) {
       <div>
         <h2 className="text-2xl font-bold text-slate-900 mb-2">Accident Details</h2>
         <p className="text-slate-600">Information about the accident and fault determination.</p>
+        <p className="text-sm text-slate-500 mt-2">Fields marked with <span className="text-red-500">*</span> are required</p>
       </div>
 
       <div className="space-y-4">
         <div>
           <label className="flex items-center text-sm font-medium text-slate-700 mb-2">
             <Calendar className="w-4 h-4 mr-2 text-slate-400" />
-            Date of Accident
+            Date of Accident <span className="text-red-500">*</span>
           </label>
           <div className="relative">
             <input
@@ -39,15 +41,13 @@ export default function AccidentStep({ register, watch, errors }: Props) {
           {errors.accidentDetails?.dateOfAccident && (
             <p className="mt-1 text-sm text-red-600">{errors.accidentDetails.dateOfAccident.message}</p>
           )}
-          <p className="mt-1 text-xs text-slate-500">
-            Click the field to open a calendar picker • Recent accidents typically have ongoing treatment
-          </p>
         </div>
 
         <div>
           <label className="text-sm font-medium text-slate-700 mb-3 block">
             <Car className="w-4 h-4 inline mr-2 text-slate-400" />
             How much were YOU at fault?
+            <InfoIcon content="In California, your fault percentage directly reduces your settlement. For example, if you're 30% at fault and damages are $100,000, you can only recover $70,000." />
           </label>
           
           <div className="bg-gradient-to-r from-green-50 to-red-50 rounded-lg p-5">
@@ -96,18 +96,13 @@ export default function AccidentStep({ register, watch, errors }: Props) {
             <p className="mt-2 text-sm text-red-600">{errors.accidentDetails.faultPercentage.message}</p>
           )}
           
-          <div className="mt-3 bg-blue-50 border border-blue-200 rounded p-3">
-            <p className="text-xs text-blue-800">
-              <AlertCircle className="w-3 h-3 inline mr-1" />
-              <strong>Example:</strong> If you're 30% at fault and damages are $100,000, you can only recover $70,000
-            </p>
-          </div>
         </div>
 
         <div>
           <label className="flex items-center text-sm font-medium text-slate-700 mb-2">
             <Zap className="w-4 h-4 mr-2 text-slate-400" />
-            Impact Severity
+            Impact Severity <span className="text-red-500">*</span>
+            <InfoIcon content="Low impact collisions often result in lower settlements due to causation disputes. Higher severity impacts typically correlate with more serious injuries and higher settlements." />
           </label>
           <select
             {...register('accidentDetails.impactSeverity', { 
@@ -124,15 +119,13 @@ export default function AccidentStep({ register, watch, errors }: Props) {
           {errors.accidentDetails?.impactSeverity && (
             <p className="mt-1 text-sm text-red-600">{errors.accidentDetails.impactSeverity.message}</p>
           )}
-          <p className="mt-1 text-xs text-slate-500">
-            Low impact collisions often result in lower settlements due to causation disputes
-          </p>
         </div>
 
         <div>
           <label className="flex items-center text-sm font-medium text-slate-700 mb-2">
             <AlertTriangle className="w-4 h-4 mr-2 text-slate-400" />
-            Prior Accidents (Last 5 Years)
+            Prior Accidents (Last 5 Years) <span className="text-red-500">*</span>
+            <InfoIcon content="Prior accidents can affect credibility and reduce settlement values. Insurers may argue that your injuries were pre-existing from previous accidents." />
           </label>
           <select
             {...register('accidentDetails.priorAccidents', { 
@@ -150,18 +143,9 @@ export default function AccidentStep({ register, watch, errors }: Props) {
           {errors.accidentDetails?.priorAccidents && (
             <p className="mt-1 text-sm text-red-600">{errors.accidentDetails.priorAccidents.message}</p>
           )}
-          <p className="mt-1 text-xs text-slate-500">
-            Prior accidents can affect credibility and reduce settlement values
-          </p>
         </div>
       </div>
 
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-        <p className="text-sm text-amber-800">
-          <strong>Reality Check:</strong> If you&apos;re more than 25% at fault, your settlement will be 
-          significantly reduced. Multiple prior accidents often lead insurers to argue pre-existing conditions.
-        </p>
-      </div>
     </div>
   );
 }

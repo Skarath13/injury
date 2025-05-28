@@ -3,31 +3,55 @@ import { InjuryCalculatorData, SettlementResult } from '@/types/calculator';
 function estimateMedicalCosts(treatment: InjuryCalculatorData['treatment']): number {
   let estimated = 0;
   
+  // Convert string values to numbers to prevent concatenation issues
+  const emergencyRoomVisits = Number(treatment.emergencyRoomVisits) || 0;
+  const urgentCareVisits = Number(treatment.urgentCareVisits) || 0;
+  const chiropracticSessions = Number(treatment.chiropracticSessions) || 0;
+  const physicalTherapySessions = Number(treatment.physicalTherapySessions) || 0;
+  const xrays = Number(treatment.xrays) || 0;
+  const mris = Number(treatment.mris) || 0;
+  const ctScans = Number(treatment.ctScans) || 0;
+  const painManagementVisits = Number(treatment.painManagementVisits) || 0;
+  const orthopedicConsults = Number(treatment.orthopedicConsults) || 0;
+  const tpiInjections = Number(treatment.tpiInjections) || 0;
+  const facetInjections = Number(treatment.facetInjections) || 0;
+  const mbbInjections = Number(treatment.mbbInjections) || 0;
+  const esiInjections = Number(treatment.esiInjections) || 0;
+  const rfaInjections = Number(treatment.rfaInjections) || 0;
+  const prpInjections = Number(treatment.prpInjections) || 0;
+  
   // ER visits: $3,000-$8,000 (use lower end for estimates)
-  estimated += treatment.emergencyRoomVisits * 3000;
+  estimated += emergencyRoomVisits * 3000;
   
   // Urgent care: $500-$1,000 (use lower end)
-  estimated += treatment.urgentCareVisits * 500;
+  estimated += urgentCareVisits * 500;
   
   // Chiro/PT sessions: $100-$200 (use lower end)
-  estimated += (treatment.chiropracticSessions + treatment.physicalTherapySessions) * 100;
+  estimated += (chiropracticSessions + physicalTherapySessions) * 100;
   
   // Imaging
-  estimated += treatment.xrays * 500;
-  estimated += treatment.mris * 2000;
-  estimated += treatment.ctScans * 1500;
+  estimated += xrays * 500;
+  estimated += mris * 2000;
+  estimated += ctScans * 3500; // Updated to reflect $1,000-$6,000 range
   
   // Specialist visits
-  estimated += treatment.painManagementVisits * 750;
-  estimated += treatment.orthopedicConsults * 750;
+  estimated += painManagementVisits * 750;
+  estimated += orthopedicConsults * 750;
   
-  // Injections
-  if (treatment.injections > 0) {
-    const injectionCost = treatment.injectionType === 'tpi' ? 2500 :
-                         treatment.injectionType === 'facet' ? 5000 :
-                         treatment.injectionType === 'esi' ? 7500 :
-                         treatment.injectionType === 'rfa' ? 15000 : 5000;
-    estimated += treatment.injections * injectionCost;
+  // Injections - now individual types
+  estimated += tpiInjections * 2500;
+  estimated += facetInjections * 5000;
+  estimated += mbbInjections * 5000; // Same as facet
+  estimated += esiInjections * 7500;
+  estimated += rfaInjections * 15000;
+  estimated += prpInjections * 2000; // Mid-range of $1,000-$3,000
+  
+  // Surgery costs if selected
+  if (treatment.surgeryRecommended && treatment.surgeryType) {
+    const surgeryCost = treatment.surgeryType === 'minor' ? 40000 :
+                       treatment.surgeryType === 'moderate' ? 75000 :
+                       treatment.surgeryType === 'major' ? 125000 : 0;
+    estimated += surgeryCost;
   }
   
   return estimated;
@@ -64,6 +88,38 @@ export function calculateSettlement(data: InjuryCalculatorData): SettlementResul
   }
   
   baseValue = medicalCosts * medicalMultiplier;
+  
+  // Add base pain & suffering value
+  let painAndSufferingBase = 500; // Minimum pain & suffering
+  
+  // Add pain & suffering based on treatment
+  const treatment = data.treatment;
+  painAndSufferingBase += (treatment.emergencyRoomVisits * 500); // Up to 500 GDs for ER
+  painAndSufferingBase += (treatment.urgentCareVisits * 200); // Up to 200 for urgent care
+  painAndSufferingBase += ((treatment.chiropracticSessions + treatment.physicalTherapySessions) * 50);
+  painAndSufferingBase += (treatment.painManagementVisits * 200);
+  painAndSufferingBase += (treatment.orthopedicConsults * 200);
+  
+  // Injection pain & suffering - minor vs major types
+  painAndSufferingBase += (treatment.tpiInjections * 1000); // Minor injection type
+  painAndSufferingBase += (treatment.prpInjections * 1000); // Minor injection type
+  painAndSufferingBase += (treatment.facetInjections * 4000); // Major injection type
+  painAndSufferingBase += (treatment.mbbInjections * 4000); // Major injection type  
+  painAndSufferingBase += (treatment.esiInjections * 5000); // Major injection type
+  painAndSufferingBase += (treatment.rfaInjections * 5000); // Major injection type
+  
+  // Imaging pain & suffering (indicates injury severity)
+  painAndSufferingBase += (treatment.xrays * 100);
+  painAndSufferingBase += (treatment.mris * 300);
+  painAndSufferingBase += (treatment.ctScans * 400);
+  
+  // Treatment duration bonus
+  if (treatment.ongoingTreatment) {
+    painAndSufferingBase *= 1.25;
+    factors.push({ factor: 'Ongoing Treatment', impact: 'positive', weight: 0.3 });
+  }
+  
+  baseValue += painAndSufferingBase;
   
   // Add value for specific injuries
   if (data.injuries.tbi) {
@@ -102,36 +158,49 @@ export function calculateSettlement(data: InjuryCalculatorData): SettlementResul
   }
   
   // Injections value (updated realistic values)
-  if (data.treatment.injections > 0) {
-    let perInjectionValue = 5000; // Default average
-    let injectionTypeName = 'Injections';
+  const totalInjections = data.treatment.tpiInjections + data.treatment.facetInjections + 
+                         data.treatment.mbbInjections + data.treatment.esiInjections + 
+                         data.treatment.rfaInjections + data.treatment.prpInjections;
+  
+  if (totalInjections > 0) {
+    let injectionValue = 0;
     
-    switch (data.treatment.injectionType) {
-      case 'tpi':
-        perInjectionValue = 2500;
-        injectionTypeName = 'Trigger Point Injections';
-        break;
-      case 'facet':
-        perInjectionValue = 5000;
-        injectionTypeName = 'Facet Joint Injections';
-        break;
-      case 'esi':
-        perInjectionValue = 7500;
-        injectionTypeName = 'Epidural Steroid Injections';
-        break;
-      case 'rfa':
-        perInjectionValue = 15000;
-        injectionTypeName = 'RF Ablation';
-        break;
+    if (data.treatment.tpiInjections > 0) {
+      injectionValue += data.treatment.tpiInjections * 2500;
+      factors.push({ factor: `${data.treatment.tpiInjections} Trigger Point Injections`, impact: 'positive', weight: 0.4 });
     }
     
-    const injectionValue = data.treatment.injections * perInjectionValue;
+    if (data.treatment.facetInjections > 0) {
+      injectionValue += data.treatment.facetInjections * 5000;
+      factors.push({ factor: `${data.treatment.facetInjections} Facet Joint Injections`, impact: 'positive', weight: 0.5 });
+    }
+    
+    if (data.treatment.mbbInjections > 0) {
+      injectionValue += data.treatment.mbbInjections * 5000;
+      factors.push({ factor: `${data.treatment.mbbInjections} Medial Branch Blocks`, impact: 'positive', weight: 0.5 });
+    }
+    
+    if (data.treatment.esiInjections > 0) {
+      injectionValue += data.treatment.esiInjections * 7500;
+      factors.push({ factor: `${data.treatment.esiInjections} Epidural Steroid Injections`, impact: 'positive', weight: 0.6 });
+    }
+    
+    if (data.treatment.rfaInjections > 0) {
+      injectionValue += data.treatment.rfaInjections * 15000;
+      factors.push({ factor: `${data.treatment.rfaInjections} RF Ablation Procedures`, impact: 'positive', weight: 0.7 });
+    }
+    
+    if (data.treatment.prpInjections > 0) {
+      injectionValue += data.treatment.prpInjections * 2000;
+      factors.push({ factor: `${data.treatment.prpInjections} PRP Injections`, impact: 'positive', weight: 0.4 });
+    }
+    
     baseValue += injectionValue;
-    factors.push({ factor: `${data.treatment.injections} ${injectionTypeName}`, impact: 'positive', weight: 0.5 });
   }
   
   // Lost wages
-  const dailyWage = data.demographics.annualIncome / 250; // Assuming 250 work days
+  const annualIncome = Number(data.demographics.annualIncome) || 0;
+  const dailyWage = annualIncome / 250; // Assuming 250 work days
   const lostWages = data.impact.missedWorkDays * dailyWage;
   baseValue += lostWages;
   if (lostWages > 5000) {
@@ -193,7 +262,7 @@ export function calculateSettlement(data: InjuryCalculatorData): SettlementResul
   
   // Impact severity modifier
   if (data.accidentDetails.impactSeverity) {
-    if (data.accidentDetails.impactSeverity === 'minor') {
+    if (data.accidentDetails.impactSeverity === 'low') {
       multiplier *= 0.8;
       factors.push({ factor: 'Minor Impact Collision', impact: 'negative', weight: -0.3 });
     } else if (data.accidentDetails.impactSeverity === 'severe') {

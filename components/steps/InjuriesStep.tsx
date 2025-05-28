@@ -2,6 +2,7 @@ import { UseFormRegister, Control, UseFormWatch, FieldErrors } from 'react-hook-
 import { Controller } from 'react-hook-form';
 import { InjuryCalculatorData, COMMON_INJURIES, COMMON_FRACTURES, PRE_EXISTING_CONDITIONS } from '@/types/calculator';
 import { Stethoscope, Brain, Bone, AlertCircle } from 'lucide-react';
+import InfoIcon from '@/components/InfoIcon';
 
 interface Props {
   register: UseFormRegister<InjuryCalculatorData>;
@@ -18,6 +19,7 @@ export default function InjuriesStep({ register, control, watch, errors }: Props
       <div>
         <h2 className="text-2xl font-bold text-slate-900 mb-2">Injury Details</h2>
         <p className="text-slate-600">Select all injuries diagnosed by medical professionals.</p>
+        <p className="text-sm text-slate-500 mt-2">Fields marked with <span className="text-red-500">*</span> are required</p>
       </div>
 
       <div className="space-y-6">
@@ -25,7 +27,8 @@ export default function InjuriesStep({ register, control, watch, errors }: Props
         <div>
           <label className="flex items-center text-sm font-medium text-slate-700 mb-2">
             <Stethoscope className="w-4 h-4 mr-2 text-slate-400" />
-            Primary Injury (Most Significant)
+            Primary Injury (Most Significant) <span className="text-red-500">*</span>
+            <InfoIcon content="Soft tissue injuries (whiplash, strains) rarely exceed $25,000. Fractures and herniations can reach $50,000-$150,000. Surgery cases may exceed $200,000." />
           </label>
           <select
             {...register('injuries.primaryInjury', { required: 'Please select primary injury' })}
@@ -166,6 +169,7 @@ export default function InjuriesStep({ register, control, watch, errors }: Props
           <label className="flex items-center text-sm font-medium text-slate-700 mb-2">
             <AlertCircle className="w-4 h-4 mr-2 text-slate-400" />
             Pre-existing Conditions
+            <InfoIcon content="Pre-existing conditions typically reduce settlement values by 20-50%" />
           </label>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {PRE_EXISTING_CONDITIONS.map(condition => (
@@ -180,18 +184,9 @@ export default function InjuriesStep({ register, control, watch, errors }: Props
               </label>
             ))}
           </div>
-          <p className="mt-2 text-xs text-slate-500">
-            Pre-existing conditions typically reduce settlement values by 20-50%
-          </p>
         </div>
       </div>
 
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-        <p className="text-sm text-amber-800">
-          <strong>Reality Check:</strong> Soft tissue injuries (whiplash, strains) rarely exceed $25,000. 
-          Fractures and herniations can reach $50,000-$150,000. Surgery cases may exceed $200,000.
-        </p>
-      </div>
     </div>
   );
 }

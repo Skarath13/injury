@@ -6,6 +6,7 @@ import {
   Stethoscope, Hospital, Scan, Pill, Syringe, 
   DollarSign, Activity, Heart
 } from 'lucide-react';
+import InfoIcon from '@/components/InfoIcon';
 
 interface Props {
   register: UseFormRegister<InjuryCalculatorData>;
@@ -21,6 +22,9 @@ export default function TreatmentStep({ register, watch, errors }: Props) {
       <div>
         <h2 className="text-2xl font-bold text-slate-900 mb-2">Medical Treatment</h2>
         <p className="text-slate-600">Document all medical care received or recommended.</p>
+        <p className="text-sm text-slate-500 mt-2">
+          If you just had the accident and haven't received treatment yet, you can skip this section.
+        </p>
       </div>
 
       <div className="space-y-6">
@@ -29,6 +33,7 @@ export default function TreatmentStep({ register, watch, errors }: Props) {
           <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center">
             <Hospital className="w-4 h-4 mr-2 text-red-600" />
             Emergency & Urgent Care
+            <InfoIcon content="ER visits: $3,000-$10,000 each. Urgent Care visits: $500-$1,000 each." />
           </h3>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -61,6 +66,7 @@ export default function TreatmentStep({ register, watch, errors }: Props) {
           <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center">
             <Activity className="w-4 h-4 mr-2 text-blue-600" />
             Therapy & Rehabilitation
+            <InfoIcon content="Chiropractic/Physical Therapy: $100-$200 per session" />
           </h3>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -93,6 +99,7 @@ export default function TreatmentStep({ register, watch, errors }: Props) {
           <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center">
             <Scan className="w-4 h-4 mr-2 text-purple-600" />
             Diagnostic Imaging
+            <InfoIcon content="X-rays: $500-$1,500. MRI: $1,500-$3,000. CT Scan: $1,000-$6,000." />
           </h3>
           <div className="grid grid-cols-3 gap-4">
             <div>
@@ -136,6 +143,7 @@ export default function TreatmentStep({ register, watch, errors }: Props) {
           <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center">
             <Stethoscope className="w-4 h-4 mr-2 text-green-600" />
             Specialist Treatment
+            <InfoIcon content="Specialist visits: $500-$1,500 each" />
           </h3>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -161,43 +169,88 @@ export default function TreatmentStep({ register, watch, errors }: Props) {
               />
             </div>
           </div>
-          <div className="mt-4 space-y-3">
-            <div>
-              <label className="text-sm font-medium text-slate-700 mb-1 block">
-                <Syringe className="w-4 h-4 inline mr-1 text-green-600" />
-                Number of Injections
-              </label>
-              <input
-                type="number"
-                {...register('treatment.injections', { min: 0 })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                placeholder="0"
-              />
-            </div>
-            {watch('treatment.injections') > 0 && (
+          <div className="mt-4">
+            <h4 className="text-sm font-medium text-slate-700 mb-3 flex items-center">
+              <Syringe className="w-4 h-4 mr-2 text-green-600" />
+              Injections Received
+              <InfoIcon content="TPIs: $1,500-$3,500. Facet/MBB: $3,000-$7,000. ESIs: $5,000-$10,000. RFA: $10,000-$20,000. PRP: $1,000-$3,000." />
+            </h4>
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-slate-700 mb-1 block">
-                  Primary Injection Type
+                  Trigger Point Injections (TPIs)
                 </label>
-                <select
-                  {...register('treatment.injectionType')}
+                <input
+                  type="number"
+                  {...register('treatment.tpiInjections', { min: 0 })}
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                >
-                  <option value="">Select type...</option>
-                  <option value="tpi">Trigger Point Injections (TPIs) - $1,500-$3,500</option>
-                  <option value="facet">Facet Joint Injections - $3,000-$7,000</option>
-                  <option value="esi">Epidural Steroid Injections (ESIs) - $5,000-$10,000</option>
-                  <option value="rfa">Radiofrequency Ablation (RFA) - $10,000-$20,000</option>
-                  <option value="mixed">Mixed Types (Varies)</option>
-                </select>
+                  placeholder="0"
+                />
               </div>
-            )}
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-1 block">
+                  Facet Joint Injections
+                </label>
+                <input
+                  type="number"
+                  {...register('treatment.facetInjections', { min: 0 })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-1 block">
+                  Epidural Steroid Injections (ESIs)
+                </label>
+                <input
+                  type="number"
+                  {...register('treatment.esiInjections', { min: 0 })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-1 block">
+                  Radiofrequency Ablation (RFA)
+                </label>
+                <input
+                  type="number"
+                  {...register('treatment.rfaInjections', { min: 0 })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-1 block">
+                  Medial Branch Blocks (MBB)
+                </label>
+                <input
+                  type="number"
+                  {...register('treatment.mbbInjections', { min: 0 })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  placeholder="0"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-slate-700 mb-1 block">
+                  Platelet Rich Plasma (PRP)
+                </label>
+                <input
+                  type="number"
+                  {...register('treatment.prpInjections', { min: 0 })}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  placeholder="0"
+                />
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Surgery */}
         <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-          <h3 className="text-sm font-semibold text-slate-700 mb-3">Surgery</h3>
+          <h3 className="text-sm font-semibold text-slate-700 mb-3">Surgery
+            <InfoIcon content="Surgery: $30,000-$150,000+. Settlement value is based on total treatment, not just costs." />
+          </h3>
           <div className="space-y-3">
             <label className="flex items-center space-x-2 cursor-pointer">
               <input
@@ -209,14 +262,31 @@ export default function TreatmentStep({ register, watch, errors }: Props) {
             </label>
             
             {surgeryRecommended && (
-              <label className="flex items-center space-x-2 cursor-pointer ml-6">
-                <input
-                  type="checkbox"
-                  {...register('treatment.surgeryCompleted')}
-                  className="w-4 h-4 text-orange-600 border-slate-300 rounded focus:ring-orange-500"
-                />
-                <span className="text-sm text-slate-700">Surgery Completed</span>
-              </label>
+              <>
+                <label className="flex items-center space-x-2 cursor-pointer ml-6">
+                  <input
+                    type="checkbox"
+                    {...register('treatment.surgeryCompleted')}
+                    className="w-4 h-4 text-orange-600 border-slate-300 rounded focus:ring-orange-500"
+                  />
+                  <span className="text-sm text-slate-700">Surgery Completed</span>
+                </label>
+                
+                <div className="ml-6 mt-3">
+                  <label className="text-sm font-medium text-slate-700 mb-1 block">
+                    Surgery Type/Cost Range
+                  </label>
+                  <select
+                    {...register('treatment.surgeryType')}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  >
+                    <option value="">Select surgery type...</option>
+                    <option value="minor">Minor Surgery ($30,000 - $50,000) - Arthroscopy, carpal tunnel, etc.</option>
+                    <option value="moderate">Moderate Surgery ($50,000 - $100,000) - Disc surgery, joint repair, etc.</option>
+                    <option value="major">Major Surgery ($100,000 - $150,000+) - Spinal fusion, joint replacement, etc.</option>
+                  </select>
+                </div>
+              </>
             )}
           </div>
         </div>
@@ -226,6 +296,7 @@ export default function TreatmentStep({ register, watch, errors }: Props) {
           <label className="flex items-center text-sm font-medium text-slate-700 mb-2">
             <DollarSign className="w-4 h-4 mr-2 text-slate-400" />
             Total Medical Bills (To Date)
+            <InfoIcon content="Include all medical bills, even if paid by insurance" />
           </label>
           
           <div className="mb-3">
@@ -258,9 +329,6 @@ export default function TreatmentStep({ register, watch, errors }: Props) {
               {errors.treatment?.totalMedicalCosts && (
                 <p className="mt-1 text-sm text-red-600">{errors.treatment.totalMedicalCosts.message}</p>
               )}
-              <p className="mt-1 text-xs text-slate-500">
-                Include all medical bills, even if paid by insurance
-              </p>
             </>
           ) : (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -271,8 +339,8 @@ export default function TreatmentStep({ register, watch, errors }: Props) {
                 <li>• ER visits: $3,000-$8,000 each</li>
                 <li>• Urgent Care visits: $500-$1,000 each</li>
                 <li>• Chiro/PT sessions: $100-$200 each</li>
-                <li>• Imaging (X-ray/MRI/CT): $500-$2,500 each</li>
-                <li>• Specialist visits: $500-$1,000 each</li>
+                <li>• Imaging (X-ray/MRI/CT): $500-$6,000 each</li>
+                <li>• Specialist visits: $500-$1,500 each</li>
                 <li>• Injections: Based on type selected</li>
               </ul>
             </div>
@@ -294,13 +362,6 @@ export default function TreatmentStep({ register, watch, errors }: Props) {
         </div>
       </div>
 
-      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-        <p className="text-sm text-amber-800">
-          <strong>Treatment Cost Guide:</strong> ER visits: $3,000-$10,000 each. 
-          Chiro/PT: $100-$200 per session. MRI: $1,500-$3,000. 
-          Surgery: $30,000-$150,000+. Remember: Settlement value is based on total treatment, not just costs.
-        </p>
-      </div>
     </div>
   );
 }

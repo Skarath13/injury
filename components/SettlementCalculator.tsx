@@ -38,22 +38,29 @@ function estimateMedicalCosts(treatment: InjuryCalculatorData['treatment']): num
   // Chiro/PT sessions: $100-$200 (use lower end)
   estimated += (treatment.chiropracticSessions + treatment.physicalTherapySessions) * 100;
   
-  // Imaging
+  // Imaging - updated CT scan to use higher estimate
   estimated += treatment.xrays * 500;
   estimated += treatment.mris * 2000;
-  estimated += treatment.ctScans * 1500;
+  estimated += treatment.ctScans * 3000; // Updated to mid-range of $1,000-$6,000
   
-  // Specialist visits
-  estimated += treatment.painManagementVisits * 750;
-  estimated += treatment.orthopedicConsults * 750;
+  // Specialist visits - updated to mid-range
+  estimated += treatment.painManagementVisits * 1000;
+  estimated += treatment.orthopedicConsults * 1000;
   
-  // Injections
-  if (treatment.injections > 0) {
-    const injectionCost = treatment.injectionType === 'tpi' ? 2500 :
-                         treatment.injectionType === 'facet' ? 5000 :
-                         treatment.injectionType === 'esi' ? 7500 :
-                         treatment.injectionType === 'rfa' ? 15000 : 5000;
-    estimated += treatment.injections * injectionCost;
+  // Injections - now handle individual types
+  estimated += treatment.tpiInjections * 2500;
+  estimated += treatment.facetInjections * 5000;
+  estimated += treatment.mbbInjections * 5000; // Same as facet
+  estimated += treatment.esiInjections * 7500;
+  estimated += treatment.rfaInjections * 15000;
+  estimated += treatment.prpInjections * 2000; // Mid-range of $1,000-$3,000
+  
+  // Surgery costs based on type
+  if (treatment.surgeryRecommended && treatment.surgeryType) {
+    const surgeryCost = treatment.surgeryType === 'minor' ? 40000 :
+                       treatment.surgeryType === 'moderate' ? 75000 :
+                       treatment.surgeryType === 'major' ? 125000 : 0;
+    estimated += surgeryCost;
   }
   
   return estimated;
@@ -63,13 +70,14 @@ export default function SettlementCalculator() {
   const [currentStep, setCurrentStep] = useState(1);
   const [showResults, setShowResults] = useState(false);
   const [results, setResults] = useState<SettlementResult | null>(null);
+  const [showValidationError, setShowValidationError] = useState(false);
   
-  const { register, handleSubmit, control, watch, setValue, formState: { errors } } = useForm<InjuryCalculatorData>({
+  const { register, handleSubmit, control, watch, setValue, trigger, formState: { errors } } = useForm<InjuryCalculatorData>({
     defaultValues: {
       demographics: {
         age: 35,
         occupation: '',
-        annualIncome: 50000,
+        annualIncome: '',
       },
       accidentDetails: {
         dateOfAccident: '',
@@ -101,10 +109,15 @@ export default function SettlementCalculator() {
         ctScans: 0,
         painManagementVisits: 0,
         orthopedicConsults: 0,
-        injections: 0,
-        injectionType: undefined,
+        tpiInjections: 0,
+        facetInjections: 0,
+        mbbInjections: 0,
+        esiInjections: 0,
+        rfaInjections: 0,
+        prpInjections: 0,
         surgeryRecommended: false,
         surgeryCompleted: false,
+        surgeryType: undefined,
         totalMedicalCosts: 0,
         useEstimatedCosts: false,
         ongoingTreatment: false,
@@ -129,7 +142,52 @@ export default function SettlementCalculator() {
     setShowResults(true);
   };
 
-  const nextStep = () => {
+  const watchData = watch();
+  
+  const validateCurrentStep = async () => {
+    // Trigger validation for current step
+    const isValid = await trigger();
+    
+    // Additional custom validation for specific steps
+    switch (currentStep) {
+      case 1: // Demographics - all fields required
+        return isValid && 
+               watchData.demographics?.age > 0 &&
+               watchData.demographics?.occupation?.trim() !== '' && 
+               watchData.demographics?.annualIncome > 0;
+      
+      case 2: // Accident Details - date and severity required
+        return isValid && 
+               watchData.accidentDetails?.dateOfAccident !== '' && 
+               watchData.accidentDetails?.impactSeverity !== '' &&
+               watchData.accidentDetails?.priorAccidents !== undefined;
+      
+      case 3: // Injuries - primary injury required
+        return isValid && watchData.injuries?.primaryInjury !== '';
+      
+      case 4: // Treatment - optional (they may have just had accident)
+        return true;
+      
+      case 5: // Impact - optional but recommended
+        return true; // Allow navigation even if empty
+      
+      case 6: // Insurance - optional
+        return true;
+      
+      default:
+        return true;
+    }
+  };
+
+  const nextStep = async () => {
+    const isValid = await validateCurrentStep();
+    
+    if (!isValid) {
+      setShowValidationError(true);
+      setTimeout(() => setShowValidationError(false), 3000);
+      return;
+    }
+    
     if (currentStep < STEPS.length) {
       setCurrentStep(currentStep + 1);
     }
@@ -150,6 +208,7 @@ export default function SettlementCalculator() {
       <SettlementResults 
         results={results} 
         medicalCosts={results.medicalCosts}
+        hasAttorney={watch('insurance.hasAttorney') || false}
         onBack={() => {
           setShowResults(false);
           setCurrentStep(1);
@@ -254,6 +313,16 @@ export default function SettlementCalculator() {
             </button>
           )}
         </div>
+        
+        {/* Validation Error Message */}
+        {showValidationError && (
+          <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center">
+            <AlertCircle className="w-5 h-5 text-red-600 mr-2 flex-shrink-0" />
+            <p className="text-sm text-red-700">
+              Please fill in all required fields before continuing.
+            </p>
+          </div>
+        )}
       </form>
     </div>
   );

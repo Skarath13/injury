@@ -1,6 +1,7 @@
 import { UseFormRegister, UseFormWatch, FieldErrors } from 'react-hook-form';
 import { InjuryCalculatorData } from '@/types/calculator';
 import { Shield, DollarSign, Scale, AlertCircle } from 'lucide-react';
+import InfoIcon from '@/components/InfoIcon';
 
 interface Props {
   register: UseFormRegister<InjuryCalculatorData>;
@@ -16,7 +17,9 @@ export default function InsuranceStep({ register, watch, errors }: Props) {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-slate-900 mb-2">Insurance & Legal</h2>
-        <p className="text-slate-600">Policy limits and legal representation affect your net recovery.</p>
+        <p className="text-slate-600">Policy limits and legal representation affect your net recovery.
+          <InfoIcon content="Settlement Timeline: 3-6 months for simple soft tissue cases with attorney, 6-12 months for moderate injuries, 12-24 months for serious injuries, 2-4 years for trial cases. Your net recovery will be reduced by attorney fees, medical liens, and case costs." />
+        </p>
       </div>
 
       <div className="space-y-6">
@@ -25,6 +28,7 @@ export default function InsuranceStep({ register, watch, errors }: Props) {
           <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center">
             <Shield className="w-4 h-4 mr-2 text-blue-600" />
             Insurance Policy Limits
+            <InfoIcon content="California minimum liability is only $15,000 per person. Many drivers carry only minimum coverage, which severely limits potential recovery." />
           </h3>
           
           <label className="flex items-center space-x-2 cursor-pointer mb-3">
@@ -43,6 +47,7 @@ export default function InsuranceStep({ register, watch, errors }: Props) {
               <label className="flex items-center text-sm font-medium text-slate-700 mb-2">
                 <DollarSign className="w-4 h-4 mr-2 text-slate-400" />
                 Policy Limits (Per Person)
+                <InfoIcon content="You cannot recover more than the policy limits unless the at-fault party has significant assets" />
               </label>
               <select
                 {...register('insurance.policyLimits')}
@@ -58,18 +63,9 @@ export default function InsuranceStep({ register, watch, errors }: Props) {
                 <option value="500000">$500,000</option>
                 <option value="1000000">$1,000,000+</option>
               </select>
-              <p className="mt-2 text-xs text-slate-500">
-                You cannot recover more than the policy limits unless the at-fault party has significant assets
-              </p>
             </div>
           )}
           
-          <div className="mt-3 p-3 bg-blue-100 rounded">
-            <p className="text-xs text-blue-800">
-              <strong>Note:</strong> California minimum liability is only $15,000 per person. 
-              Many drivers carry only minimum coverage, which severely limits potential recovery.
-            </p>
-          </div>
         </div>
 
         {/* Attorney Representation */}
@@ -77,6 +73,7 @@ export default function InsuranceStep({ register, watch, errors }: Props) {
           <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center">
             <Scale className="w-4 h-4 mr-2 text-purple-600" />
             Legal Representation
+            <InfoIcon content="Attorney Benefits: Can increase settlement 2-3x, handle negotiations. Attorney Costs: 33-40% of settlement plus expenses ($5,000-$20,000 for litigation). Self-Representation: Keep 100% but typically receive lower offers. Medical liens may claim reimbursement from settlement." />
           </h3>
           
           <label className="flex items-center space-x-2 cursor-pointer mb-3">
@@ -94,6 +91,7 @@ export default function InsuranceStep({ register, watch, errors }: Props) {
             <div>
               <label className="text-sm font-medium text-slate-700 mb-2 block">
                 Attorney Contingency Fee
+                <InfoIcon content="Attorney fees are deducted from your gross settlement" />
               </label>
               <select
                 {...register('insurance.attorneyContingency')}
@@ -105,62 +103,15 @@ export default function InsuranceStep({ register, watch, errors }: Props) {
                 <option value="40">40% (If lawsuit filed)</option>
                 <option value="45">45% (If case goes to trial)</option>
               </select>
-              <p className="mt-2 text-xs text-slate-500">
-                Attorney fees are deducted from your gross settlement
-              </p>
             </div>
           )}
         </div>
 
         {/* Important Considerations */}
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-          <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center">
-            <AlertCircle className="w-4 h-4 mr-2 text-amber-600" />
-            Important Considerations
-          </h3>
-          <ul className="space-y-2 text-sm text-amber-800">
-            <li className="flex items-start">
-              <span className="font-medium mr-1">•</span>
-              <span><strong>Attorney Benefits:</strong> Can often increase settlement 2-3x, handle all negotiations, 
-              protect your rights, deal with liens</span>
-            </li>
-            <li className="flex items-start">
-              <span className="font-medium mr-1">•</span>
-              <span><strong>Attorney Costs:</strong> 33-40% of settlement, plus case expenses 
-              (which can be $5,000-$20,000 for litigation)</span>
-            </li>
-            <li className="flex items-start">
-              <span className="font-medium mr-1">•</span>
-              <span><strong>Self-Representation:</strong> Keep 100% of settlement but typically receive 
-              lower offers and must handle all paperwork</span>
-            </li>
-            <li className="flex items-start">
-              <span className="font-medium mr-1">•</span>
-              <span><strong>Medical Liens:</strong> Your health insurance may claim reimbursement 
-              from your settlement</span>
-            </li>
-          </ul>
-        </div>
 
         {/* Settlement Timeline */}
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <h3 className="text-sm font-semibold text-slate-700 mb-2">Typical Settlement Timeline</h3>
-          <ul className="space-y-1 text-sm text-green-800">
-            <li>• <strong>3-6 months:</strong> Simple soft tissue cases with attorney</li>
-            <li>• <strong>6-12 months:</strong> Moderate injuries with ongoing treatment</li>
-            <li>• <strong>12-24 months:</strong> Serious injuries or disputed liability</li>
-            <li>• <strong>2-4 years:</strong> Cases that go to trial</li>
-          </ul>
-        </div>
       </div>
 
-      <div className="bg-slate-100 border border-slate-300 rounded-lg p-4">
-        <p className="text-sm text-slate-700">
-          <strong>Final Note:</strong> This calculator provides gross settlement estimates. 
-          Your net recovery will be reduced by attorney fees, medical liens, and case costs. 
-          Always get multiple opinions before settling your case.
-        </p>
-      </div>
     </div>
   );
 }
