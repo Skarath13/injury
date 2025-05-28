@@ -1,0 +1,9 @@
+{
+  "name": "california-injury-calculator",
+  "compatibility_date": "2023-05-18",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "./.vercel/output/static/_worker.js",
+  "site": {
+    "bucket": "./.vercel/output/static"
+  }
+}

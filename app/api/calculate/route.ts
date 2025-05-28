@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { InjuryCalculatorData, SettlementResult } from '@/types/calculator';
 
+export const runtime = 'edge';
+
 // Move the medical cost estimation function here (server-side only)
 function estimateMedicalCosts(treatment: InjuryCalculatorData['treatment']): number {
   let estimated = 0;
@@ -320,14 +322,14 @@ function calculateSettlement(data: InjuryCalculatorData): SettlementResult {
     factors.push({ factor: 'Advanced Age (Fragile/Eggshell)', impact: 'positive', weight: 0.2 });
   }
   
-  // Pre-existing conditions reduction
+  // Pre-existing conditions - Eggshell doctrine enhancement
   if (data.injuries.preExistingConditions.length > 0) {
-    const reduction = Math.min(0.5, data.injuries.preExistingConditions.length * 0.15);
-    multiplier *= (1 - reduction);
+    const enhancement = Math.min(0.15, data.injuries.preExistingConditions.length * 0.05);
+    multiplier *= (1 + enhancement);
     factors.push({ 
-      factor: `${data.injuries.preExistingConditions.length} Pre-existing Conditions`, 
-      impact: 'negative', 
-      weight: -reduction 
+      factor: `${data.injuries.preExistingConditions.length} Pre-existing Conditions (Eggshell Plaintiff)`, 
+      impact: 'positive', 
+      weight: enhancement 
     });
   }
   
@@ -433,7 +435,7 @@ function generateExplanation(
   }
   
   if (data.injuries.preExistingConditions.length > 0) {
-    explanation += 'Pre-existing conditions will likely be used to argue for a reduction. ';
+    explanation += 'Pre-existing conditions invoke the eggshell plaintiff doctrine - the defendant takes you as they find you. ';
   }
   
   if (data.accidentDetails.faultPercentage > 25) {
@@ -458,26 +460,11 @@ function generateExplanation(
   return explanation;
 }
 
-// Rate limiting variables (simple in-memory store)
-const requestCounts = new Map<string, { count: number; resetTime: number }>();
-const RATE_LIMIT = 10; // 10 requests per minute
-const RATE_WINDOW = 60 * 1000; // 1 minute in milliseconds
-
+// Rate limiting disabled for Edge Runtime
+// In production, use Cloudflare's rate limiting features
 function checkRateLimit(ip: string): boolean {
-  const now = Date.now();
-  const userRequests = requestCounts.get(ip);
-  
-  if (!userRequests || now > userRequests.resetTime) {
-    // First request or window has expired
-    requestCounts.set(ip, { count: 1, resetTime: now + RATE_WINDOW });
-    return true;
-  }
-  
-  if (userRequests.count >= RATE_LIMIT) {
-    return false; // Rate limit exceeded
-  }
-  
-  userRequests.count++;
+  // Edge Runtime doesn't support persistent in-memory stores
+  // Cloudflare Workers provides its own rate limiting
   return true;
 }
 
