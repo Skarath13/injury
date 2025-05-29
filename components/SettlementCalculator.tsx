@@ -80,7 +80,7 @@ export default function SettlementCalculator({ showIntroContent = true }: Props)
       demographics: {
         age: 35,
         occupation: '',
-        annualIncome: 0,
+        annualIncome: '',
       },
       accidentDetails: {
         dateOfAccident: '',
@@ -144,7 +144,11 @@ export default function SettlementCalculator({ showIntroContent = true }: Props)
     setCalculationError(null);
     
     try {
-      const response = await fetch('/api/calculate', {
+      // Use Cloudflare Worker endpoint
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
+      const endpoint = apiUrl ? `${apiUrl}/api/calculate` : '/api/calculate';
+      
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -182,7 +186,8 @@ export default function SettlementCalculator({ showIntroContent = true }: Props)
         return isValid && 
                watchData.demographics?.age > 0 &&
                watchData.demographics?.occupation?.trim() !== '' && 
-               watchData.demographics?.annualIncome > 0;
+               watchData.demographics?.annualIncome !== '' &&
+               Number(watchData.demographics?.annualIncome) > 0;
       
       case 2: // Accident Details - date and severity required
         return isValid && 

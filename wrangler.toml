@@ -1,0 +1,57 @@
+name = "california-injury-calculator"
+main = "functions/api/calculate.ts"
+compatibility_date = "2024-01-01"
+
+# Account and deployment details
+# workers_dev = true  # Set to false if using custom domain
+# route = "example.com/api/*"  # If using custom domain
+
+# Build configuration for Next.js
+[build]
+command = "npm run build"
+
+# Environment variables (add production values in Cloudflare dashboard)
+[vars]
+NODE_ENV = "production"
+
+# Define different environments
+[env.production]
+name = "california-injury-calculator-prod"
+# vars = { }  # Production-specific variables
+
+[env.staging]
+name = "california-injury-calculator-staging"
+# vars = { }  # Staging-specific variables
+
+# Development server configuration
+[dev]
+port = 8787
+local_protocol = "http"
+
+# Compatibility flags
+compatibility_flags = ["nodejs_compat"]
+
+# Rate limiting rules (configure in Cloudflare dashboard)
+# [[rules]]
+# type = "RateLimit"
+# match = "/api/calculate"
+# threshold = 10
+# period = 60
+
+# CORS configuration is handled in the worker code
+
+# Optional: D1 Database binding if needed in future
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "injury-calculator"
+# database_id = "your-database-id"
+
+# Optional: KV namespace for caching if needed
+# [[kv_namespaces]]
+# binding = "CACHE"
+# id = "your-kv-namespace-id"
+
+# Optional: Durable Objects if needed for state management
+# [[durable_objects.bindings]]
+# name = "COUNTER"
+# class_name = "Counter"
