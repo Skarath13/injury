@@ -9,10 +9,10 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Privacy Policy | CA Auto Injury Calculator Data Protection',
     description: 'Privacy policy for California auto injury settlement calculator. Learn how we protect your data and comply with privacy laws.',
-    url: 'https://cainjurysettlement.com/privacy',
+    url: 'https://californiasettlementcalculator.com/privacy',
   },
   alternates: {
-    canonical: 'https://cainjurysettlement.com/privacy',
+    canonical: 'https://californiasettlementcalculator.com/privacy',
   },
 }
 

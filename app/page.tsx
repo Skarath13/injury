@@ -7,7 +7,7 @@ const structuredData = {
   "@type": "WebApplication",
   "name": "California Auto Injury Settlement Calculator",
   "description": "Free California auto injury settlement calculator providing realistic estimates based on insurance industry data",
-  "url": "https://cainjurysettlement.com",
+  "url": "https://californiasettlementcalculator.com",
   "applicationCategory": "LegalService",
   "operatingSystem": "Web Browser",
   "offers": {
@@ -18,7 +18,7 @@ const structuredData = {
   "creator": {
     "@type": "Organization",
     "name": "CA Injury Settlement Calculator",
-    "url": "https://cainjurysettlement.com"
+    "url": "https://californiasettlementcalculator.com"
   },
   "mainEntity": {
     "@type": "Calculator",

@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://cainjurysettlement.com',
+    url: 'https://californiasettlementcalculator.com',
     siteName: 'California Auto Injury Settlement Calculator',
     title: 'California Auto Injury Settlement Calculator - Free Realistic Estimates',
     description: 'Free California auto injury settlement calculator based on real insurance data. Get realistic settlement estimates for car accident injuries.',
@@ -47,10 +47,10 @@ export const metadata: Metadata = {
     creator: '@CAInjuryCalc',
   },
   alternates: {
-    canonical: 'https://cainjurysettlement.com',
+    canonical: 'https://californiasettlementcalculator.com',
   },
   category: 'Legal Services',
-  metadataBase: new URL('https://cainjurysettlement.com'),
+  metadataBase: new URL('https://californiasettlementcalculator.com'),
   icons: {
     icon: '/favicon.ico',
     apple: '/apple-touch-icon.png',

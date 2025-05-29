@@ -10,10 +10,10 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Contact Us | CA Auto Injury Settlement Calculator Support',
     description: 'Contact our California auto injury settlement calculator team. Get help with settlement estimates and calculator questions.',
-    url: 'https://cainjurysettlement.com/contact',
+    url: 'https://californiasettlementcalculator.com/contact',
   },
   alternates: {
-    canonical: 'https://cainjurysettlement.com/contact',
+    canonical: 'https://californiasettlementcalculator.com/contact',
   },
 }
 

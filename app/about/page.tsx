@@ -10,10 +10,10 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'About Our CA Auto Injury Calculator | Realistic Settlement Estimates',
     description: 'Learn how our California auto injury settlement calculator works. Based on real insurance data, not inflated promises.',
-    url: 'https://cainjurysettlement.com/about',
+    url: 'https://californiasettlementcalculator.com/about',
   },
   alternates: {
-    canonical: 'https://cainjurysettlement.com/about',
+    canonical: 'https://californiasettlementcalculator.com/about',
   },
 }
 

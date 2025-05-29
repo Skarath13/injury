@@ -9,10 +9,10 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Terms & Conditions | CA Auto Injury Calculator Legal Terms',
     description: 'Terms of use and legal disclaimers for our California auto injury settlement calculator service.',
-    url: 'https://cainjurysettlement.com/terms',
+    url: 'https://californiasettlementcalculator.com/terms',
   },
   alternates: {
-    canonical: 'https://cainjurysettlement.com/terms',
+    canonical: 'https://californiasettlementcalculator.com/terms',
   },
 }
 

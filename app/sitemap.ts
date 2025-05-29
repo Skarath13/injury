@@ -1,38 +1,41 @@
 import { MetadataRoute } from 'next'
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://cainjurysettlement.com'
+  // Use environment variable or detect the current domain
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://californiasettlementcalculator.com'
   
-  return [
+  // Specific last modified dates for better SEO (Google uses this if consistent)
+  // Use the actual deployment date for accurate lastModified
+  const lastModified = new Date('2025-05-28T00:00:00.000Z')
+  
+  // Define all pages that should be included in sitemap
+  const pages = [
     {
       url: baseUrl,
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 1,
+      lastModified: lastModified,
     },
     {
       url: `${baseUrl}/about`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.8,
+      lastModified: lastModified,
     },
     {
       url: `${baseUrl}/contact`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly', 
-      priority: 0.7,
+      lastModified: lastModified,
     },
     {
       url: `${baseUrl}/privacy`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.6,
+      lastModified: lastModified,
     },
     {
       url: `${baseUrl}/terms`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.6,
+      lastModified: lastModified,
     },
   ]
+
+  // Filter out any pages that shouldn't be indexed
+  // Only include pages that return 200 status and are not noindex
+  return pages.filter(page => {
+    // Add any filtering logic here if needed
+    return true
+  })
 }
