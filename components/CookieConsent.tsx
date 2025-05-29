@@ -15,12 +15,17 @@ export default function CookieConsent() {
   const [isEUorCA, setIsEUorCA] = useState(false)
 
   useEffect(() => {
-    // Check if user has already consented
-    const consent = localStorage.getItem('cookieConsent')
-    if (consent) return
+    // Prevent hydration mismatch by delaying until client-side
+    const timeout = setTimeout(() => {
+      // Check if user has already consented
+      const consent = localStorage.getItem('cookieConsent')
+      if (consent) return
 
-    // Check if user is from EU or California
-    checkUserLocation()
+      // Check if user is from EU or California
+      checkUserLocation()
+    }, 100)
+
+    return () => clearTimeout(timeout)
   }, [])
 
   const checkUserLocation = async () => {

@@ -62,7 +62,17 @@ npm run build
 
 # Run linting
 npm run lint
+
+# Deploy to Cloudflare Workers (PREFERRED - NOT Pages)
+wrangler deploy
 ```
+
+## Deployment Preferences
+
+**IMPORTANT**: This project should ONLY be deployed to Cloudflare Workers, NOT Cloudflare Pages. 
+- Use `wrangler deploy` for deployment
+- Cloudflare Workers provides better performance and edge computing capabilities
+- Pages deployment should be avoided unless specifically requested
 
 ## Common Issues & Solutions
 

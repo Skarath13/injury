@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "california-injury-calculator": {
+      "url": "https://california-injury-mcp.drburton369.workers.dev/mcp",
+      "description": "California auto injury settlement calculator - calculates potential settlements, estimates medical costs, and analyzes injury cases"
+    }
+  }
+}

@@ -79,6 +79,24 @@ export default function RootLayout({
       <body className="antialiased">
         {children}
         <CookieConsent />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              // Service worker registration with error handling
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js')
+                    .then(function(registration) {
+                      console.log('SW registered: ', registration);
+                    })
+                    .catch(function(registrationError) {
+                      console.warn('SW registration failed: ', registrationError);
+                    });
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );

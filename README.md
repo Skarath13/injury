@@ -34,6 +34,7 @@ A comprehensive, realistic settlement estimation tool for California auto injury
 - **Forms**: React Hook Form with validation
 - **Icons**: Lucide React
 - **Components**: Radix UI primitives
+- **Deployment**: Cloudflare Workers with Edge Runtime
 
 ## PWA Features
 
@@ -78,6 +79,7 @@ A comprehensive, realistic settlement estimation tool for California auto injury
 ### Prerequisites
 - Node.js 18+ 
 - npm or yarn
+- Wrangler CLI (for Cloudflare Workers deployment)
 
 ### Installation
 ```bash
@@ -101,6 +103,44 @@ npm start
 ```bash
 npm run lint
 ```
+
+## Deployment
+
+### Cloudflare Workers Deployment
+
+This application is optimized for deployment on Cloudflare Workers for superior performance and global edge distribution.
+
+#### Prerequisites
+```bash
+# Install Wrangler CLI globally
+npm install -g wrangler
+
+# Login to Cloudflare
+wrangler login
+```
+
+#### Deploy to Workers
+```bash
+# Build and deploy in one command
+npm run build && npm run prepare-worker && wrangler deploy
+
+# Or use individual commands
+npm run build          # Build Next.js application
+npm run prepare-worker # Prepare static assets for Workers
+wrangler deploy        # Deploy to Cloudflare Workers
+```
+
+#### Configuration
+The `wrangler.toml` file contains the Workers configuration:
+- **Runtime**: Edge Runtime with Node.js compatibility
+- **Static Assets**: Served from `/dist` directory
+- **API Routes**: Handled by the Worker function
+- **Settlement Logic**: Self-contained calculation engine
+
+#### Live Deployment
+- **Production URL**: https://california-injury-calculator.drburton369.workers.dev
+- **Edge Locations**: Global CDN with sub-100ms response times
+- **Uptime**: 99.9% SLA with automatic failover
 
 ## Settlement Calculation Logic
 

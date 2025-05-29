@@ -353,7 +353,7 @@ export default function TermsAndConditions() {
                 For questions about these Terms and Conditions:
               </p>
               <div className="space-y-2 text-slate-700">
-                <p><strong>Email:</strong> legal@cainjurysettlement.com</p>
+                <p><strong>Email:</strong> shufflin_00@me.com</p>
                 <p><strong>Subject Line:</strong> "Terms of Service Inquiry"</p>
                 <p><strong>Response Time:</strong> 5-7 business days</p>
                 <p><strong>Address:</strong> California, USA</p>
@@ -361,7 +361,7 @@ export default function TermsAndConditions() {
               
               <div className="mt-4 pt-4 border-t border-slate-200">
                 <p className="text-sm text-slate-600">
-                  For privacy-related inquiries, please contact privacy@cainjurysettlement.com. For general support, visit our <a href="/contact" className="text-blue-600 hover:text-blue-700 underline">Contact page</a>.
+                  For privacy-related inquiries, please contact shufflin_00@me.com. For general support, visit our <a href="/contact" className="text-blue-600 hover:text-blue-700 underline">Contact page</a>.
                 </p>
               </div>
             </div>

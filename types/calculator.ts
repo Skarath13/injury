@@ -2,7 +2,7 @@ export interface InjuryCalculatorData {
   demographics: {
     age: number;
     occupation: string;
-    annualIncome: number;
+    annualIncome: number | string;
   };
   
   accidentDetails: {

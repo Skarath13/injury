@@ -1,7 +1,6 @@
 import SettlementCalculator from '@/components/SettlementCalculator';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import Script from 'next/script';
 
 const structuredData = {
   "@context": "https://schema.org",
@@ -90,17 +89,17 @@ const faqData = {
 export default function Home() {
   return (
     <>
-      <Script
+      <script
         id="structured-data"
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
-      <Script
+      <script
         id="breadcrumb-data"
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbData) }}
       />
-      <Script
+      <script
         id="faq-data"
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqData) }}

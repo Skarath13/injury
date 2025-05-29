@@ -36,8 +36,8 @@ export default function Contact() {
             <p className="text-slate-600 mb-4">
               For general inquiries and calculator feedback:
             </p>
-            <a href="mailto:support@cainjurysettlement.com" className="text-blue-600 hover:text-blue-700 font-medium">
-              support@cainjurysettlement.com
+            <a href="mailto:shufflin_00@me.com" className="text-blue-600 hover:text-blue-700 font-medium">
+              shufflin_00@me.com
             </a>
           </div>
           
@@ -95,7 +95,7 @@ export default function Contact() {
                   <h3 className="font-semibold text-slate-800">Privacy Concerns</h3>
                 </div>
                 <p className="text-slate-600">
-                  Email: <a href="mailto:privacy@cainjurysettlement.com" className="text-blue-600 hover:text-blue-700">privacy@cainjurysettlement.com</a>
+                  Email: <a href="mailto:shufflin_00@me.com" className="text-blue-600 hover:text-blue-700">shufflin_00@me.com</a>
                 </p>
               </div>
               
@@ -105,7 +105,7 @@ export default function Contact() {
                   <h3 className="font-semibold text-slate-800">Legal & Terms</h3>
                 </div>
                 <p className="text-slate-600">
-                  Email: <a href="mailto:legal@cainjurysettlement.com" className="text-blue-600 hover:text-blue-700">legal@cainjurysettlement.com</a>
+                  Email: <a href="mailto:shufflin_00@me.com" className="text-blue-600 hover:text-blue-700">shufflin_00@me.com</a>
                 </p>
               </div>
             </div>

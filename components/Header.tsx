@@ -34,6 +34,7 @@ export default function Header() {
               height={96}
               className="w-24 h-24 object-contain group-hover:scale-110 transition-transform duration-300"
               priority
+              unoptimized
             />
             
             <div className="text-left">

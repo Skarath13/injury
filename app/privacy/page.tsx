@@ -162,7 +162,7 @@ export default function PrivacyPolicy() {
 
             <h3 className="text-lg font-semibold text-slate-700 mb-3">6.2 How to Exercise Your Rights</h3>
             <ul className="list-disc pl-6 text-slate-600 space-y-2">
-              <li>Email us at privacy@cainjurysettlement.com with your request</li>
+              <li>Email us at shufflin_00@me.com with your request</li>
               <li>Include "Privacy Rights Request" in the subject line</li>
               <li>Provide enough information to verify your identity</li>
               <li>Specify which rights you want to exercise</li>
@@ -221,7 +221,7 @@ export default function PrivacyPolicy() {
             </table>
             
             <p className="text-slate-600 mb-3">
-              <strong>Do Not Sell My Personal Information:</strong> We do not sell personal information. However, you can opt-out of any future sales by emailing privacy@cainjurysettlement.com.
+              <strong>Do Not Sell My Personal Information:</strong> We do not sell personal information. However, you can opt-out of any future sales by emailing shufflin_00@me.com.
             </p>
           </section>
 
@@ -250,7 +250,7 @@ export default function PrivacyPolicy() {
           <section>
             <h2 className="text-2xl font-semibold text-slate-800 mb-4">9. Children's Privacy</h2>
             <p className="text-slate-600">
-              Our service is not intended for children under 18. We do not knowingly collect personal information from children. If you are a parent and believe your child has provided us with personal information, please contact us immediately at privacy@cainjurysettlement.com.
+              Our service is not intended for children under 18. We do not knowingly collect personal information from children. If you are a parent and believe your child has provided us with personal information, please contact us immediately at shufflin_00@me.com.
             </p>
           </section>
 
@@ -269,7 +269,7 @@ export default function PrivacyPolicy() {
                 For privacy-related inquiries, requests, or complaints:
               </p>
               <div className="space-y-2 text-slate-700">
-                <p><strong>Email:</strong> privacy@cainjurysettlement.com</p>
+                <p><strong>Email:</strong> shufflin_00@me.com</p>
                 <p><strong>Response Time:</strong> Within 30 days</p>
                 <p><strong>Address:</strong> California, USA</p>
               </div>
