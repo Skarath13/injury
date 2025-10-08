@@ -50,8 +50,8 @@ function estimateMedicalCosts(treatment: InjuryCalculatorData['treatment']): num
   estimated += rfaInjections * 15000;
   estimated += prpInjections * 2000; // Mid-range of $1,000-$3,000
   
-  // Surgery costs if selected
-  if (treatment.surgeryRecommended && treatment.surgeryType) {
+  // Surgery costs if selected (recommended OR completed)
+  if ((treatment.surgeryRecommended || treatment.surgeryCompleted) && treatment.surgeryType) {
     const surgeryCost = treatment.surgeryType === 'minor' ? 40000 :
                        treatment.surgeryType === 'moderate' ? 75000 :
                        treatment.surgeryType === 'major' ? 125000 : 0;
