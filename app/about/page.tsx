@@ -46,7 +46,7 @@ export default function About() {
                 <h3 className="text-lg font-semibold text-slate-800">Configured Estimate Logic</h3>
               </div>
               <p className="text-slate-600">
-                The estimate is driven by configured factors for body-map severity, treatment progression, medical specials, impact severity, county venue context, age, and comparative fault.
+                The estimate is driven by configured factors for body-map severity, treatment progression, medical specials, wage-loss context when selected, life-impact signals, impact severity, county venue context, age, and comparative fault.
               </p>
             </div>
             
@@ -66,7 +66,7 @@ export default function About() {
                 <h3 className="text-lg font-semibold text-slate-800">Claim Factors</h3>
               </div>
               <p className="text-slate-600">
-                The calculator includes California comparative fault, liens and fees where entered, and county venue context.
+                The calculator includes California comparative fault, attorney-fee context when an attorney is involved, and county venue context.
               </p>
             </div>
             
@@ -109,7 +109,7 @@ export default function About() {
             </li>
             <li className="flex items-start">
               <span className="text-blue-600 mr-2">•</span>
-              <span>Context fields such as work disruption and known insurance information, without using them as value caps</span>
+              <span>Context fields such as work disruption, attorney status, and daily-life impact without asking for policy limits or prior accidents</span>
             </li>
           </ul>
         </section>

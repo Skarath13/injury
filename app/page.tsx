@@ -67,7 +67,7 @@ const faqData = {
       "name": "What factors affect auto injury settlement amounts in California?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Key factors include body-map injury severity, vehicle impact severity, medical treatment progression, age, accident county venue context, pain and suffering, fault percentage, and whether you have legal representation. The estimate no longer uses wage loss or policy limits as value caps."
+        "text": "Key factors include body-map injury severity, vehicle impact severity, medical treatment progression, age, accident county venue context, life-impact signals, estimated wage loss when selected, pain and suffering, fault percentage, and whether you have legal representation. The estimate does not use policy limits or prior accidents as value caps."
       }
     },
     {

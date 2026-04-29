@@ -1,14 +1,16 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { FieldErrors, UseFormRegister, UseFormSetValue, UseFormWatch } from 'react-hook-form';
-import { AlertTriangle, Briefcase, DollarSign, Heart, Scale, Shield, User, type LucideIcon } from 'lucide-react';
+import { AlertTriangle, Briefcase, DollarSign, Gauge, Heart, Scale, User, type LucideIcon } from 'lucide-react';
+import { dateInputValueForAge, dateOfBirthIsInAllowedRange } from '@/lib/demographics';
 import { cn } from '@/lib/utils';
 import { InjuryCalculatorData } from '@/types/calculator';
 import InfoIcon from '@/components/InfoIcon';
-import { FieldError } from '@/components/ui/field';
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
+import { Slider } from '@/components/ui/slider';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 interface Props {
@@ -19,11 +21,11 @@ interface Props {
 }
 
 const yesNoToggleItemClass = cn(
-  'h-10 w-full rounded-lg border border-transparent px-3 text-sm font-semibold text-slate-600 shadow-none',
+  'h-11 w-full rounded-lg border border-transparent px-3 text-sm font-semibold text-muted-foreground shadow-none',
   'transition-[background-color,color,box-shadow,border-color] duration-150',
-  'hover:bg-white hover:text-slate-950 focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2',
-  'data-[state=on]:border-slate-950 data-[state=on]:bg-slate-950 data-[state=on]:text-white',
-  'data-[state=on]:shadow-[0_2px_8px_rgba(15,23,42,0.18)] data-[state=on]:hover:bg-slate-950'
+  'hover:bg-background hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+  'data-[state=on]:border-primary data-[state=on]:bg-primary data-[state=on]:text-primary-foreground',
+  'data-[state=on]:shadow-[0_2px_8px_rgba(15,23,42,0.18)] data-[state=on]:hover:bg-primary'
 );
 
 function YesNoToggle({
@@ -48,18 +50,10 @@ function YesNoToggle({
       aria-label={ariaLabel}
       className="grid w-full grid-cols-2 gap-1 rounded-[10px] border border-slate-200 bg-slate-100/80 p-1 shadow-inner sm:w-56"
     >
-      <ToggleGroupItem
-        value="yes"
-        aria-label={`${ariaLabel}: yes`}
-        className={yesNoToggleItemClass}
-      >
+      <ToggleGroupItem value="yes" aria-label={`${ariaLabel}: yes`} className={yesNoToggleItemClass}>
         Yes
       </ToggleGroupItem>
-      <ToggleGroupItem
-        value="no"
-        aria-label={`${ariaLabel}: no`}
-        className={yesNoToggleItemClass}
-      >
+      <ToggleGroupItem value="no" aria-label={`${ariaLabel}: no`} className={yesNoToggleItemClass}>
         No
       </ToggleGroupItem>
     </ToggleGroup>
@@ -89,9 +83,7 @@ function SectionPanel({
         </span>
         <div className="min-w-0">
           <h3 className="text-sm font-semibold text-slate-950">{title}</h3>
-          {description && (
-            <p className="mt-1 text-sm leading-5 text-slate-600">{description}</p>
-          )}
+          {description && <p className="mt-1 text-sm leading-5 text-slate-600">{description}</p>}
         </div>
       </div>
       {children}
@@ -136,28 +128,33 @@ function ToggleQuestion({
 }
 
 export default function WorkLifeStep({ register, watch, setValue, errors }: Props) {
-  const missedWorkDays = Number(watch('impact.missedWorkDays') || 0);
-  const hasWageLoss = missedWorkDays > 0;
+  const legacyMissedWorkDays = Number(watch('impact.missedWorkDays') || 0);
+  const watchedHasWageLoss = Boolean(watch('impact.hasWageLoss'));
+  const hasWageLoss = watchedHasWageLoss || legacyMissedWorkDays > 0;
   const emotionalDistress = Boolean(watch('impact.emotionalDistress'));
   const lossOfConsortium = Boolean(watch('impact.lossOfConsortium'));
   const permanentImpairment = Boolean(watch('impact.permanentImpairment'));
-  const policyLimitsKnown = Boolean(watch('insurance.policyLimitsKnown'));
   const hasAttorney = Boolean(watch('insurance.hasAttorney'));
   const faultPercentage = Number(watch('accidentDetails.faultPercentage') || 0);
-  const [wageLossOpen, setWageLossOpen] = useState(hasWageLoss);
+  const dateInputMin = dateInputValueForAge(100);
+  const dateInputMax = dateInputValueForAge(18);
 
   useEffect(() => {
-    if (hasWageLoss) {
-      setWageLossOpen(true);
+    if (!watchedHasWageLoss && legacyMissedWorkDays > 0) {
+      setValue('impact.hasWageLoss', true, {
+        shouldDirty: false,
+        shouldTouch: false,
+        shouldValidate: false
+      });
     }
-  }, [hasWageLoss]);
+  }, [legacyMissedWorkDays, setValue, watchedHasWageLoss]);
 
   const setBooleanValue = (
     field:
+      | 'impact.hasWageLoss'
       | 'impact.emotionalDistress'
       | 'impact.lossOfConsortium'
       | 'impact.permanentImpairment'
-      | 'insurance.policyLimitsKnown'
       | 'insurance.hasAttorney',
     value: boolean
   ) => {
@@ -169,108 +166,112 @@ export default function WorkLifeStep({ register, watch, setValue, errors }: Prop
   };
 
   const handleWageLossChange = (enabled: boolean) => {
-    setWageLossOpen(enabled);
-    setValue('impact.missedWorkDays', enabled ? Math.max(missedWorkDays, 1) : 0, {
+    setBooleanValue('impact.hasWageLoss', enabled);
+    setValue('impact.missedWorkDays', 0, {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: false
+    });
+  };
+
+  const handlePermanentImpairmentChange = (enabled: boolean) => {
+    setBooleanValue('impact.permanentImpairment', enabled);
+    setValue('impact.impairmentRating', undefined, {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: false
+    });
+  };
+
+  const handleAttorneyChange = (enabled: boolean) => {
+    setBooleanValue('insurance.hasAttorney', enabled);
+    setValue('insurance.attorneyContingency', undefined, {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: false
+    });
+  };
+
+  const handleFaultChange = (value: number[]) => {
+    const nextFaultPercentage = Math.min(100, Math.max(0, value[0] ?? 0));
+    setValue('accidentDetails.faultPercentage', nextFaultPercentage, {
       shouldDirty: true,
       shouldTouch: true,
       shouldValidate: true
     });
   };
 
-  const handlePermanentImpairmentChange = (enabled: boolean) => {
-    setBooleanValue('impact.permanentImpairment', enabled);
-    if (!enabled) {
-      setValue('impact.impairmentRating', undefined, {
-        shouldDirty: true,
-        shouldTouch: true,
-        shouldValidate: true
-      });
-    }
-  };
-
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-2">
         <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Work and daily life</h2>
         <p className="max-w-2xl text-sm leading-6 text-slate-600">
-          Add the practical details that can sharpen the range. If you are unsure, leave optional items blank and continue.
+          Add the practical details that can sharpen the range. If something does not apply, choose no and continue.
         </p>
       </div>
 
       <SectionPanel
         title="Basic profile"
-        description="A few personal details help keep the estimate grounded."
+        description="Date of birth keeps the estimate grounded without asking for a prefilled age."
         icon={User}
         iconClassName="bg-slate-100 text-slate-700"
       >
-        <label className="block">
-          <span className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-800">
-            Age
-            <InfoIcon content="Age can affect recovery assumptions and future care estimates. Use your current age or leave the default if you prefer." />
-          </span>
-          <Input
-            type="number"
-            {...register('demographics.age', {
-              min: { value: 18, message: 'Must be at least 18' },
-              max: { value: 100, message: 'Must be 100 or less' },
-              valueAsNumber: true
-            })}
-            aria-invalid={Boolean(errors.demographics?.age)}
-            min="18"
-            max="100"
-          />
-          {errors.demographics?.age && (
-            <FieldError className="mt-2">{errors.demographics.age.message}</FieldError>
-          )}
-        </label>
+        <FieldGroup>
+          <Field data-invalid={Boolean(errors.demographics?.dateOfBirth)}>
+            <FieldLabel htmlFor="date-of-birth">
+              Date of birth
+              <InfoIcon content="Age can affect recovery assumptions and future care estimates." />
+            </FieldLabel>
+            <Input
+              id="date-of-birth"
+              type="date"
+              min={dateInputMin}
+              max={dateInputMax}
+              {...register('demographics.dateOfBirth', {
+                required: 'Date of birth is required',
+                validate: (value) => (
+                  dateOfBirthIsInAllowedRange(value) ||
+                  'Enter a date of birth for someone age 18 to 100'
+                )
+              })}
+              aria-invalid={Boolean(errors.demographics?.dateOfBirth)}
+              className="h-11"
+            />
+            <FieldError>{errors.demographics?.dateOfBirth?.message}</FieldError>
+          </Field>
+        </FieldGroup>
       </SectionPanel>
 
       <SectionPanel
         title="Wage loss"
-        description="Include missed shifts, reduced hours, or expected future time away from work."
+        description="Wage loss is estimated from occupation, income range, and the injury/treatment profile."
         icon={Briefcase}
         iconClassName="bg-emerald-100 text-emerald-700"
       >
-        <div className="space-y-4">
+        <FieldGroup>
           <ToggleQuestion
             title="Did the injury cause wage loss?"
-            description="Choose yes if accident-related treatment or symptoms kept you from working."
+            description="Choose yes if accident-related treatment or symptoms affected earnings."
             icon={DollarSign}
-            value={wageLossOpen}
+            value={hasWageLoss}
             onChange={handleWageLossChange}
             ariaLabel="Wage loss"
-            info="Lost wages are estimated from missed work days and the income range you choose."
+            info="The estimate uses occupation, income range, injury severity, and treatment progression instead of asking for missed days."
           />
 
-          {wageLossOpen && (
-            <div className="grid gap-4 rounded-lg border border-emerald-200 bg-emerald-50/80 p-4 lg:grid-cols-3">
-              <label className="block">
-                <span className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-800">
-                  Work days missed
-                  <InfoIcon content="Include partial days and expected future missed days if they are reasonably connected to the accident." />
-                </span>
-                <Input
-                  type="number"
-                  {...register('impact.missedWorkDays', {
-                    min: { value: 0, message: 'Invalid number' },
-                    valueAsNumber: true
-                  })}
-                  aria-invalid={Boolean(errors.impact?.missedWorkDays)}
-                  placeholder="0"
-                  min="0"
-                />
-                {errors.impact?.missedWorkDays && (
-                  <FieldError className="mt-2">{errors.impact.missedWorkDays.message}</FieldError>
-                )}
-              </label>
-
-              <label className="block">
-                <span className="mb-2 block text-sm font-semibold text-slate-800">Occupation</span>
+          {hasWageLoss && (
+            <div className="grid gap-4 rounded-lg border border-emerald-200 bg-emerald-50/80 p-4 md:grid-cols-2">
+              <Field data-invalid={Boolean(errors.demographics?.occupation)}>
+                <FieldLabel htmlFor="occupation">Occupation</FieldLabel>
                 <NativeSelect
-                  {...register('demographics.occupation')}
+                  id="occupation"
+                  {...register('demographics.occupation', {
+                    validate: (value) => !hasWageLoss || Boolean(value) || 'Select an occupation'
+                  })}
+                  aria-invalid={Boolean(errors.demographics?.occupation)}
                   className="w-full"
                 >
-                  <option value="">Select if you know it...</option>
+                  <option value="">Select occupation...</option>
                   <option value="Professional/Office Worker">Professional/Office Worker</option>
                   <option value="Healthcare Worker">Healthcare Worker</option>
                   <option value="Education/Teacher">Education/Teacher</option>
@@ -281,15 +282,20 @@ export default function WorkLifeStep({ register, watch, setValue, errors }: Prop
                   <option value="Retired">Retired</option>
                   <option value="Other">Other</option>
                 </NativeSelect>
-              </label>
+                <FieldError>{errors.demographics?.occupation?.message}</FieldError>
+              </Field>
 
-              <label className="block">
-                <span className="mb-2 block text-sm font-semibold text-slate-800">Income range</span>
+              <Field data-invalid={Boolean(errors.demographics?.annualIncome)}>
+                <FieldLabel htmlFor="annual-income">Income range</FieldLabel>
                 <NativeSelect
-                  {...register('demographics.annualIncome')}
+                  id="annual-income"
+                  {...register('demographics.annualIncome', {
+                    validate: (value) => !hasWageLoss || Number(value) > 0 || 'Select an income range'
+                  })}
+                  aria-invalid={Boolean(errors.demographics?.annualIncome)}
                   className="w-full"
                 >
-                  <option value="">Skip / not sure</option>
+                  <option value="">Select income range...</option>
                   <option value="20000">Under $25,000</option>
                   <option value="37500">$25,000 - $50,000</option>
                   <option value="62500">$50,000 - $75,000</option>
@@ -298,19 +304,20 @@ export default function WorkLifeStep({ register, watch, setValue, errors }: Prop
                   <option value="175000">$150,000 - $200,000</option>
                   <option value="250000">Over $200,000</option>
                 </NativeSelect>
-              </label>
+                <FieldError>{errors.demographics?.annualIncome?.message}</FieldError>
+              </Field>
             </div>
           )}
-        </div>
+        </FieldGroup>
       </SectionPanel>
 
       <SectionPanel
-        title="Life impact signals"
-        description="These items help describe how the injury changed ordinary routines."
+        title="Life impact"
+        description="These signals are weighted against the injury and treatment details already selected."
         icon={Heart}
         iconClassName="bg-rose-100 text-rose-700"
       >
-        <div className="space-y-3">
+        <div className="flex flex-col gap-3">
           <ToggleQuestion
             title="Emotional distress"
             description="Anxiety, sleep disruption, depression, PTSD symptoms, or similar distress."
@@ -337,135 +344,66 @@ export default function WorkLifeStep({ register, watch, setValue, errors }: Prop
             onChange={handlePermanentImpairmentChange}
             ariaLabel="Permanent impairment"
           />
-
-          {permanentImpairment && (
-            <label className="block rounded-lg border border-amber-200 bg-amber-50/80 p-4">
-              <span className="mb-1 block text-sm font-medium text-slate-700">Impairment rating, if known</span>
-              <Input
-                type="number"
-                {...register('impact.impairmentRating', {
-                  min: { value: 0, message: 'Invalid rating' },
-                  max: { value: 100, message: 'Invalid rating' },
-                  valueAsNumber: true
-                })}
-                placeholder="e.g., 15"
-              />
-            </label>
-          )}
         </div>
       </SectionPanel>
 
       <SectionPanel
-        title="Claim context"
-        description="Fault and prior accidents can shift how an estimate is interpreted."
-        icon={AlertTriangle}
+        title="Liability"
+        description="California comparative fault can reduce an estimate by the reported fault share."
+        icon={Gauge}
         iconClassName="bg-amber-100 text-amber-700"
       >
-        <div className="space-y-4">
-          <div>
-            <label className="mb-3 block text-sm font-semibold text-slate-800">
-              Your estimated fault: <span className="text-slate-950">{faultPercentage}%</span>
-              <InfoIcon content="California comparative fault can reduce an estimate by the reported fault share." />
-            </label>
-            <input
-              type="range"
-              {...register('accidentDetails.faultPercentage', {
-                min: 0,
-                max: 100,
-                valueAsNumber: true
-              })}
-              min="0"
-              max="100"
-              step="5"
-              className="w-full"
-            />
-            <div className="mt-2 flex justify-between text-xs text-slate-500">
-              <span>0%</span>
-              <span>50%</span>
-              <span>100%</span>
+        <FieldGroup>
+          <Field>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <FieldLabel htmlFor="fault-percentage">Your estimated fault</FieldLabel>
+                <InfoIcon content="Use your best estimate of your share of fault. A 20% fault share means the estimate is reduced by 20%." />
+              </div>
+              <span className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-semibold text-slate-950">
+                {faultPercentage}%
+              </span>
             </div>
-          </div>
-
-          <label className="block">
-            <span className="mb-2 block text-sm font-semibold text-slate-800">Prior accidents in the last 5 years</span>
-            <NativeSelect
-              {...register('accidentDetails.priorAccidents', { valueAsNumber: true })}
-              className="w-full"
-            >
-              <option value="0">None / not sure</option>
-              <option value="1">1 accident</option>
-              <option value="2">2 accidents</option>
-              <option value="3">3 accidents</option>
-              <option value="4">4+ accidents</option>
-            </NativeSelect>
-          </label>
-        </div>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-5">
+              <Slider
+                id="fault-percentage"
+                value={[faultPercentage]}
+                min={0}
+                max={100}
+                step={5}
+                onValueChange={handleFaultChange}
+                aria-label="Your estimated fault percentage"
+                className="py-3 [&_[data-slot=slider-thumb]]:size-5 [&_[data-slot=slider-thumb]]:border-2 [&_[data-slot=slider-track]]:h-2"
+              />
+              <div className="mt-3 grid grid-cols-3 text-xs font-medium text-slate-500">
+                <span>0%</span>
+                <span className="text-center">50%</span>
+                <span className="text-right">100%</span>
+              </div>
+            </div>
+            <FieldDescription>
+              Set this to 0% if you do not believe you were at fault.
+            </FieldDescription>
+          </Field>
+        </FieldGroup>
       </SectionPanel>
 
       <SectionPanel
-        title="Insurance and attorney details"
-        description="Policy limits and attorney fee assumptions affect how the estimate is presented."
-        icon={Shield}
+        title="Attorney"
+        description="This only changes attorney-fee context in the final explanation."
+        icon={Scale}
         iconClassName="bg-sky-100 text-sky-700"
         className="border-sky-200 bg-sky-50/70"
       >
-        <div className="space-y-4">
-          <ToggleQuestion
-            title="Do you know the policy limit?"
-            description="Choose yes if you know the at-fault party's bodily injury limit per person."
-            icon={Shield}
-            value={policyLimitsKnown}
-            onChange={(value) => setBooleanValue('insurance.policyLimitsKnown', value)}
-            ariaLabel="Policy limits known"
-            info="California minimum liability is low, and known policy limits can cap the estimate."
-          />
-
-          {policyLimitsKnown && (
-            <label className="block rounded-lg border border-sky-200 bg-white/80 p-4">
-              <span className="mb-2 block text-sm font-medium text-slate-700">Policy limit per person</span>
-              <NativeSelect
-                {...register('insurance.policyLimits', { valueAsNumber: true })}
-                className="w-full"
-              >
-                <option value="">Select policy limits...</option>
-                <option value="15000">$15,000 (California minimum)</option>
-                <option value="25000">$25,000</option>
-                <option value="30000">$30,000</option>
-                <option value="50000">$50,000</option>
-                <option value="100000">$100,000</option>
-                <option value="250000">$250,000</option>
-                <option value="500000">$500,000</option>
-                <option value="1000000">$1,000,000+</option>
-              </NativeSelect>
-            </label>
-          )}
-
-          <ToggleQuestion
-            title="Attorney involved?"
-            description="Choose yes if you already have, or expect to hire, an attorney for this claim."
-            icon={Scale}
-            value={hasAttorney}
-            onChange={(value) => setBooleanValue('insurance.hasAttorney', value)}
-            ariaLabel="Attorney involved"
-            info="Attorney involvement, fees, liens, and costs can affect net recovery."
-          />
-
-          {hasAttorney && (
-            <label className="block rounded-lg border border-sky-200 bg-white/80 p-4">
-              <span className="mb-2 block text-sm font-medium text-slate-700">Contingency fee, if known</span>
-              <NativeSelect
-                {...register('insurance.attorneyContingency', { valueAsNumber: true })}
-                className="w-full"
-              >
-                <option value="">Use standard estimate</option>
-                <option value="25">25%</option>
-                <option value="33">33.33%</option>
-                <option value="40">40%</option>
-                <option value="45">45%</option>
-              </NativeSelect>
-            </label>
-          )}
-        </div>
+        <ToggleQuestion
+          title="Do you have an attorney?"
+          description="Answer yes only if an attorney is already involved in this claim."
+          icon={Scale}
+          value={hasAttorney}
+          onChange={handleAttorneyChange}
+          ariaLabel="Attorney involved"
+          info="Attorney involvement, liens, and costs can affect net recovery."
+        />
       </SectionPanel>
     </div>
   );

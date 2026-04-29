@@ -113,7 +113,7 @@ export default function QuickFactsStep({
       <FieldGroup className="max-w-full">
         <Field
           data-invalid={Boolean(errors.accidentDetails?.dateOfAccident)}
-          className="w-full min-w-0 sm:max-w-sm"
+          className="w-full max-w-[19rem] min-w-0 sm:max-w-sm"
         >
           <FieldLabel htmlFor="accident-date">
             <Calendar className="h-4 w-4 text-sky-700" />

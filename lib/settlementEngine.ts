@@ -1,5 +1,6 @@
 import settlementLogicConfig from '@/config/settlement-logic.v1.json';
 import { normalizeCounty } from '@/lib/californiaCounties';
+import { calculatorAgeFromDemographics } from '@/lib/demographics';
 import { normalizeGuidedInjuryData } from '@/lib/guidedInjurySignals';
 import { BodyMapSelection, InjuryCalculatorData, SettlementResult } from '@/types/calculator';
 
@@ -145,6 +146,41 @@ function addMedicalRange(left: MedicalCostRange, right: MedicalCostRange): Medic
   };
 }
 
+function rangeFromMidpoint(midpoint: number, spread: MedicalCostRange): MedicalCostRange {
+  return {
+    low: midpoint * spread.low,
+    mid: midpoint * spread.mid,
+    high: midpoint * spread.high
+  };
+}
+
+function applyMedicalSpecialsLowFloor(
+  range: MedicalCostRange,
+  config: SettlementLogicConfig
+): MedicalCostRange {
+  const lowFloor = range.mid * config.medicalSpecialsLowFloorRatio;
+
+  return {
+    low: Math.min(range.mid, Math.max(range.low, lowFloor)),
+    mid: range.mid,
+    high: range.high
+  };
+}
+
+function calibrateUpperGeneralDamages(
+  range: MedicalCostRange,
+  medicalMidpoint: number,
+  config: SettlementLogicConfig
+): MedicalCostRange {
+  const calibratedHigh = medicalMidpoint +
+    ((range.high - medicalMidpoint) * config.upperGeneralDamagesCalibrationFactor);
+
+  return {
+    ...range,
+    high: Math.max(range.mid, calibratedHigh)
+  };
+}
+
 function treatmentRangeForSurgery(
   treatment: InjuryCalculatorData['treatment'],
   ranges: SettlementLogicConfig['treatmentCostRanges']
@@ -181,7 +217,7 @@ export function estimateMedicalCostRange(
 
   total = addMedicalRange(total, treatmentRangeForSurgery(treatment, ranges));
 
-  return roundMedicalRange(total);
+  return roundMedicalRange(applyMedicalSpecialsLowFloor(total, config));
 }
 
 export function estimateMedicalCosts(
@@ -313,13 +349,128 @@ function treatmentProgressionKey(treatment: InjuryCalculatorData['treatment']): 
   return 'none';
 }
 
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function occupationDemandMultiplier(data: InjuryCalculatorData, config: SettlementLogicConfig): number {
+  const multipliers = config.wageLossEstimate.occupationDemandMultipliers;
+  const occupation = String(data.demographics.occupation || 'Other') as keyof typeof multipliers;
+
+  return multipliers[occupation] ?? multipliers.Other ?? 1;
+}
+
+function calculateEstimatedWageLoss(
+  data: InjuryCalculatorData,
+  progressionKey: TreatmentProgressionKey,
+  factors: SettlementResult['factors'],
+  config: SettlementLogicConfig
+) {
+  if (!data.impact.hasWageLoss) {
+    return { amount: 0, days: 0 };
+  }
+
+  const wageConfig = config.wageLossEstimate;
+  const highestSeverity = highestBodyMapSeverity(data);
+  const bodySeverityAdder = wageConfig.bodySeverityAdders[
+    String(highestSeverity) as keyof typeof wageConfig.bodySeverityAdders
+  ] || 0;
+  const impactSeverity = data.accidentDetails.impactSeverity || 'moderate';
+  const impactMultiplier = wageConfig.impactSeverityMultipliers[
+    impactSeverity as keyof typeof wageConfig.impactSeverityMultipliers
+  ] || 1;
+  const estimatedDays = Math.round(clamp(
+    (wageConfig.treatmentBaseDays[progressionKey] + bodySeverityAdder) *
+      occupationDemandMultiplier(data, config) *
+      impactMultiplier,
+    0,
+    wageConfig.maxEstimatedDays
+  ));
+  const annualIncome = Math.max(0, toNumber(data.demographics.annualIncome));
+  const amount = Math.round((annualIncome / wageConfig.workdaysPerYear) * estimatedDays);
+
+  if (amount > 0 && estimatedDays > 0) {
+    addFactor(
+      factors,
+      `Estimated wage loss (${estimatedDays} work day${estimatedDays === 1 ? '' : 's'})`,
+      'positive',
+      Math.min(amount / Math.max(annualIncome, 1), 1)
+    );
+  }
+
+  return {
+    amount,
+    days: estimatedDays
+  };
+}
+
+function lifeImpactContextMultiplier(
+  data: InjuryCalculatorData,
+  progressionKey: TreatmentProgressionKey,
+  config: SettlementLogicConfig
+) {
+  const lifeConfig = config.lifeImpactModifiers;
+  const highestSeverity = highestBodyMapSeverity(data);
+  const bodyContext = lifeConfig.bodySeverityContext[
+    String(highestSeverity) as keyof typeof lifeConfig.bodySeverityContext
+  ] || 1;
+  const treatmentContext = lifeConfig.treatmentContext[progressionKey] || 1;
+
+  return (bodyContext + treatmentContext) / 2;
+}
+
+function calculateLifeImpactGeneralDamagesAdder(
+  data: InjuryCalculatorData,
+  progressionKey: TreatmentProgressionKey,
+  factors: SettlementResult['factors'],
+  config: SettlementLogicConfig
+) {
+  const lifeConfig = config.lifeImpactModifiers;
+  const contextMultiplier = lifeImpactContextMultiplier(data, progressionKey, config);
+  const entries: Array<{ label: string; weight: number }> = [];
+
+  if (data.impact.emotionalDistress) {
+    entries.push({
+      label: 'Emotional distress weighted to injury profile',
+      weight: lifeConfig.bases.emotionalDistress * contextMultiplier
+    });
+  }
+
+  if (data.impact.lossOfConsortium) {
+    entries.push({
+      label: 'Relationship or household impact weighted to injury profile',
+      weight: lifeConfig.bases.lossOfConsortium * contextMultiplier
+    });
+  }
+
+  if (data.impact.permanentImpairment) {
+    entries.push({
+      label: 'Permanent impairment weighted to injury profile',
+      weight: lifeConfig.bases.permanentImpairment * contextMultiplier
+    });
+  }
+
+  const rawTotal = entries.reduce((total, entry) => total + entry.weight, 0);
+  if (rawTotal <= 0) return 0;
+
+  const capRatio = rawTotal > lifeConfig.maxTotalAdder
+    ? lifeConfig.maxTotalAdder / rawTotal
+    : 1;
+
+  return entries.reduce((total, entry) => {
+    const cappedWeight = entry.weight * capRatio;
+    addFactor(factors, entry.label, 'positive', cappedWeight);
+    return total + cappedWeight;
+  }, 0);
+}
+
 function calculateTreatmentGeneralDamagesMultiplier(
   data: InjuryCalculatorData,
   factors: SettlementResult['factors'],
-  config: SettlementLogicConfig
+  config: SettlementLogicConfig,
+  key: TreatmentProgressionKey = treatmentProgressionKey(data.treatment)
 ): number {
   const progression = config.treatmentProgression;
-  const key = treatmentProgressionKey(data.treatment);
   const tier = progression[key];
   let multiplier = tier.multiplier;
 
@@ -358,14 +509,20 @@ function generateExplanation(
   severityBandLabel: string,
   generalDamagesMultiplier: number,
   lowEstimate: number,
-  highEstimate: number
+  highEstimate: number,
+  estimatedWageLoss: number,
+  estimatedWorkLossDays: number
 ): string {
   const parts = [
     `This estimate is classified as: ${severityBandLabel}.`,
-    `The range starts with estimated medical specials, then adds general damages using a ${generalDamagesMultiplier.toFixed(2)}x multiplier based on body-map severity, treatment progression, impact severity, age, and accident county venue context.`
+    `The settlement range is total gross case value: estimated medical specials plus general damages using a ${generalDamagesMultiplier.toFixed(2)}x multiplier based on body-map severity, treatment progression, life-impact signals, impact severity, age, and accident county venue context.`
   ];
 
-  parts.push('Medical specials are estimated from treatment counts and configured reasonable-value cost ranges. Missed work days, prior accidents, and policy limits are not included in the estimate math.');
+  parts.push('General damages are the pain-and-suffering portion added on top of medical specials. Medical specials are estimated from treatment counts and configured reasonable-value cost ranges; the displayed low end includes a calibration floor and is not a user-entered bill. When wage loss is selected, wage loss is estimated from occupation, income range, injury severity, treatment progression, and vehicle impact severity. User-entered missed work days, prior accidents, and policy limits are not included in the estimate math.');
+
+  if (estimatedWageLoss > 0 && estimatedWorkLossDays > 0) {
+    parts.push(`Estimated wage loss adds approximately $${Math.round(estimatedWageLoss).toLocaleString()} based on ${estimatedWorkLossDays} expected work day${estimatedWorkLossDays === 1 ? '' : 's'} away.`);
+  }
 
   if (data.accidentDetails.impactSeverity === 'low') {
     parts.push('Low-impact collisions can reduce the general-damages portion of the estimate.');
@@ -376,10 +533,10 @@ function generateExplanation(
   }
 
   if (data.insurance.hasAttorney) {
-    const feePercentage = toNumber(data.insurance.attorneyContingency) || 33;
+    const feePercentage = 33;
     const netLow = lowEstimate * (1 - feePercentage / 100);
     const netHigh = highEstimate * (1 - feePercentage / 100);
-    parts.push(`If a ${feePercentage}% contingency fee applies, gross attorney-fee-adjusted recovery would be approximately $${Math.round(netLow).toLocaleString()} to $${Math.round(netHigh).toLocaleString()} before liens and costs.`);
+    parts.push(`If a standard ${feePercentage}% contingency fee applies, gross attorney-fee-adjusted recovery would be approximately $${Math.round(netLow).toLocaleString()} to $${Math.round(netHigh).toLocaleString()} before liens and costs.`);
   }
 
   parts.push('This is not legal advice, a guarantee, or a prediction of a specific outcome.');
@@ -397,11 +554,13 @@ export function calculateSettlement(
   const medicalCosts = medicalCostRange.mid;
   addFactor(factors, 'Medical specials estimated from treatment ranges', 'neutral', 0);
 
-  const specialsRange = medicalCostRange;
-  const specials = specialsRange.mid;
+  const treatmentKey = treatmentProgressionKey(data.treatment);
+  const estimatedWorkLoss = calculateEstimatedWageLoss(data, treatmentKey, factors, config);
+  const specials = medicalCosts + estimatedWorkLoss.amount;
   const bodyMapMultiplier = calculateBodyMapGeneralDamagesMultiplier(data, factors, config);
-  const treatmentMultiplier = calculateTreatmentGeneralDamagesMultiplier(data, factors, config);
+  const treatmentMultiplier = calculateTreatmentGeneralDamagesMultiplier(data, factors, config, treatmentKey);
   let generalDamagesMultiplier = bodyMapMultiplier + treatmentMultiplier;
+  generalDamagesMultiplier += calculateLifeImpactGeneralDamagesAdder(data, treatmentKey, factors, config);
 
   const impactSeverity = data.accidentDetails.impactSeverity || 'moderate';
   const impactMultiplier = config.impactSeverityMultipliers[impactSeverity] || 1;
@@ -416,7 +575,7 @@ export function calculateSettlement(
     );
   }
 
-  const age = toNumber(data.demographics.age);
+  const age = calculatorAgeFromDemographics(data.demographics);
   if (age > 0 && age < 30) {
     generalDamagesMultiplier *= config.ageModifiers.under30;
     addFactor(factors, 'Young age recovery modifier', 'negative', config.ageModifiers.under30 - 1);
@@ -427,11 +586,25 @@ export function calculateSettlement(
 
   generalDamagesMultiplier *= countyVenueMultiplier(data, factors, config);
 
-  const generalDamagesRange = mapMedicalRange(
-    specialsRange,
-    (value) => value * generalDamagesMultiplier
-  );
-  let grossRange = addMedicalRange(specialsRange, generalDamagesRange);
+  const severityBand = severityBandForMultiplier(generalDamagesMultiplier, config);
+  const severityBandLabel = config.severityBands[severityBand].label;
+  const minorCaseRangeBoost = impactSeverity === 'low' &&
+    generalDamagesMultiplier <= config.minorCaseRangeBoost.maxGeneralDamagesMultiplier
+    ? config.minorCaseRangeBoost.multiplier
+    : 1;
+  const grossMidpoint = (medicalCosts + (medicalCosts * generalDamagesMultiplier)) * minorCaseRangeBoost;
+  const rangeSpread = minorCaseRangeBoost !== 1
+    ? config.minorCaseRangeBoost.rangeSpread
+    : config.rangeSpreads[severityBand];
+  let grossRange = rangeFromMidpoint(grossMidpoint, rangeSpread);
+  grossRange = calibrateUpperGeneralDamages(grossRange, medicalCosts, config);
+  if (estimatedWorkLoss.amount > 0) {
+    grossRange = addMedicalRange(grossRange, {
+      low: estimatedWorkLoss.amount,
+      mid: estimatedWorkLoss.amount,
+      high: estimatedWorkLoss.amount
+    });
+  }
 
   const faultReduction = Math.min(1, Math.max(0, toNumber(data.accidentDetails.faultPercentage) / 100));
   if (faultReduction > 0) {
@@ -439,15 +612,12 @@ export function calculateSettlement(
     addFactor(factors, `${Math.round(faultReduction * 100)}% comparative fault`, 'negative', -faultReduction);
   }
 
-  const lowEstimate = Math.max(0, grossRange.low * config.rangeMultipliers.low);
-  const midEstimate = Math.max(0, grossRange.mid * config.rangeMultipliers.mid);
-  const highEstimate = Math.max(0, grossRange.high * config.rangeMultipliers.high);
-  const severityBand = severityBandForMultiplier(generalDamagesMultiplier, config);
-  const severityBandLabel = config.severityBands[severityBand].label;
+  const lowEstimate = Math.max(0, grossRange.low);
+  const midEstimate = Math.max(0, grossRange.mid);
+  const highEstimate = Math.max(0, grossRange.high);
 
   if (data.insurance.hasAttorney) {
-    const feePercentage = toNumber(data.insurance.attorneyContingency) || 33;
-    addFactor(factors, `Attorney fee selection (${feePercentage}%)`, 'neutral', 0);
+    addFactor(factors, 'Attorney involvement noted', 'neutral', 0);
   }
 
   return {
@@ -455,6 +625,8 @@ export function calculateSettlement(
     midEstimate: Math.round(midEstimate),
     highEstimate: Math.round(highEstimate),
     medicalCosts: Math.round(medicalCosts),
+    estimatedWageLoss: Math.round(estimatedWorkLoss.amount),
+    estimatedWorkLossDays: estimatedWorkLoss.days,
     medicalCostRange: roundMedicalRange(medicalCostRange),
     specials: Math.round(specials),
     severityBand,
@@ -462,6 +634,14 @@ export function calculateSettlement(
     logicVersion: config.version,
     logicHash: SETTLEMENT_LOGIC_HASH,
     factors,
-    explanation: generateExplanation(data, severityBandLabel, generalDamagesMultiplier, lowEstimate, highEstimate)
+    explanation: generateExplanation(
+      data,
+      severityBandLabel,
+      generalDamagesMultiplier,
+      lowEstimate,
+      highEstimate,
+      estimatedWorkLoss.amount,
+      estimatedWorkLoss.days
+    )
   };
 }

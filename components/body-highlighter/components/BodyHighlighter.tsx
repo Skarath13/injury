@@ -48,6 +48,13 @@ const MODEL_CENTERING_TRANSFORM: Record<string, string | undefined> = {
   "female-back": "translate(-56 0)",
 };
 
+const MODEL_VIEWBOX: Record<string, string | undefined> = {
+  "male-front": undefined,
+  "male-back": undefined,
+  "female-front": "0 -80 724 1600",
+  "female-back": "724 -80 724 1600",
+};
+
 export function BodyHighlighter({
   view,
   gender = "male",
@@ -89,6 +96,7 @@ export function BodyHighlighter({
 
   const disabledSlugSet = useMemo(() => new Set(disabledSlugs), [disabledSlugs]);
   const modelTransform = MODEL_CENTERING_TRANSFORM[`${gender}-${view}`];
+  const modelViewBox = MODEL_VIEWBOX[`${gender}-${view}`] || VIEWBOX[view];
 
   // Create a lookup map for highlighted parts
   const highlightMap = useMemo(() => {
@@ -198,7 +206,7 @@ export function BodyHighlighter({
   return (
     <TooltipProvider delayDuration={100}>
       <svg
-        viewBox={VIEWBOX[view]}
+        viewBox={modelViewBox}
         width={width}
         height={height}
         preserveAspectRatio={preserveAspectRatio}

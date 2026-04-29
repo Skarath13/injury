@@ -28,9 +28,17 @@ import {
   createDefaultGuidedInjurySignals,
   normalizeGuidedInjuryData
 } from '../lib/guidedInjurySignals';
+import {
+  ageFromDateOfBirth,
+  calculatorAgeFromDemographics,
+  dateOfBirthIsInAllowedRange
+} from '../lib/demographics';
 import { attorneyConsentCopyVersion, attorneyDeliveryConsentText } from '../lib/leadConsent';
 import {
+  createFormStartToken,
   createLeadSession,
+  FORM_START_MIN_SECONDS,
+  formStartElapsedSeconds,
   getLeadSession,
   startOtpUnlock,
   unlockEstimateOnly,
@@ -45,6 +53,7 @@ function baseCase(overrides: Partial<InjuryCalculatorData> = {}): InjuryCalculat
   const data: InjuryCalculatorData = {
     demographics: {
       age: 35,
+      dateOfBirth: '1990-01-01',
       occupation: 'Professional/Office Worker',
       annualIncome: 62500
     },
@@ -100,6 +109,7 @@ function baseCase(overrides: Partial<InjuryCalculatorData> = {}): InjuryCalculat
       ongoingTreatment: false
     },
     impact: {
+      hasWageLoss: false,
       missedWorkDays: 0,
       lossOfConsortium: false,
       emotionalDistress: false,
@@ -179,19 +189,43 @@ async function createTestLeadSession(
   }, testLeadEnv);
 }
 
+test('form start token distinguishes fast completions from mature sessions', async () => {
+  const freshToken = await createFormStartToken(testLeadEnv, Date.now() - 5_000);
+  const matureToken = await createFormStartToken(testLeadEnv, Date.now() - ((FORM_START_MIN_SECONDS + 1) * 1000));
+
+  const freshElapsed = await formStartElapsedSeconds(freshToken, testLeadEnv);
+  const matureElapsed = await formStartElapsedSeconds(matureToken, testLeadEnv);
+
+  assert.ok(freshElapsed !== null && freshElapsed < FORM_START_MIN_SECONDS);
+  assert.ok(matureElapsed !== null && matureElapsed >= FORM_START_MIN_SECONDS);
+  assert.equal(await formStartElapsedSeconds('invalid-token', testLeadEnv), null);
+});
+
 test('general-damages model starts with medical specials plus multiplier value', () => {
   const result = calculateSettlement(baseCase());
 
   assert.equal(result.severityBand, 'low');
   assert.equal(result.caseTier, result.severityBand);
-  assert.deepEqual(result.medicalCostRange, { low: 250, mid: 450, high: 900 });
+  assert.deepEqual(result.medicalCostRange, { low: 293, mid: 450, high: 900 });
   assert.equal(result.medicalCosts, 450);
   assert.equal(result.specials, 450);
-  assert.equal(result.lowEstimate, 216);
-  assert.equal(result.midEstimate, 455);
-  assert.equal(result.highEstimate, 1035);
+  assert.equal(result.lowEstimate, 362);
+  assert.equal(result.midEstimate, 518);
+  assert.equal(result.highEstimate, 690);
   assert.ok(result.logicVersion);
   assert.ok(result.logicHash);
+});
+
+test('date of birth helper derives valid calculator age without prefilled age', () => {
+  const referenceDate = new Date(2026, 3, 29);
+
+  assert.equal(ageFromDateOfBirth('1956-04-29', referenceDate), 70);
+  assert.equal(dateOfBirthIsInAllowedRange('1956-04-29', referenceDate), true);
+  assert.equal(dateOfBirthIsInAllowedRange('2010-04-29', referenceDate), false);
+  assert.equal(calculatorAgeFromDemographics({
+    age: 0,
+    dateOfBirth: '1956-04-29'
+  }, referenceDate), 70);
 });
 
 test('about 1x general damages means total value is about specials plus specials', () => {
@@ -209,9 +243,9 @@ test('about 1x general damages means total value is about specials plus specials
     }
   }));
 
-  assert.equal(result.medicalCostRange.high, 900);
-  assert.ok(result.highEstimate >= 1700);
-  assert.ok(result.highEstimate <= 1850);
+  assert.equal(result.medicalCosts, 450);
+  assert.ok(result.midEstimate >= 850);
+  assert.ok(result.midEstimate <= 900);
 });
 
 test('medical cost range adds selected treatment counts by lane', () => {
@@ -224,10 +258,24 @@ test('medical cost range adds selected treatment counts by lane', () => {
   }).treatment);
 
   assert.deepEqual(range, {
-    low: 1150,
+    low: 1625,
     mid: 2500,
     high: 6000
   });
+});
+
+test('medical specials low lane floors to 65 percent of midpoint only', () => {
+  const range = estimateMedicalCostRange(baseCase({
+    treatment: {
+      ...baseCase().treatment,
+      physicalTherapySessions: 2,
+      mris: 1
+    }
+  }).treatment);
+
+  assert.equal(range.low, Math.round(range.mid * SETTLEMENT_LOGIC.medicalSpecialsLowFloorRatio));
+  assert.equal(range.mid, 2500);
+  assert.equal(range.high, 6000);
 });
 
 test('legacy entered bills are ignored in favor of treatment estimates', () => {
@@ -319,6 +367,29 @@ test('comparative fault reduces value while policy limits are ignored', () => {
   assert.equal(result.highEstimate, Math.round(uncapped.highEstimate * 0.5));
   assert.ok(result.factors.some((factor) => factor.factor.includes('comparative fault')));
   assert.ok(!result.factors.some((factor) => factor.factor.includes('policy limit')));
+});
+
+test('upper estimate calibration reduces only the high-end general-damages portion', () => {
+  const result = calculateSettlement(baseCase({
+    injuries: {
+      ...baseCase().injuries,
+      bodyMap: [{
+        slug: 'neck',
+        side: 'common',
+        view: 'front',
+        severity: 1,
+        label: 'Neck'
+      }],
+      primaryInjury: 'Whiplash / Neck Strain'
+    }
+  }));
+  const uncalibratedHigh = result.midEstimate * SETTLEMENT_LOGIC.rangeSpreads.low.high;
+  const expectedHigh = result.medicalCosts +
+    ((uncalibratedHigh - result.medicalCosts) * SETTLEMENT_LOGIC.upperGeneralDamagesCalibrationFactor);
+
+  assert.equal(result.lowEstimate, 536);
+  assert.equal(result.midEstimate, 765);
+  assert.equal(result.highEstimate, Math.round(expectedHigh));
 });
 
 test('estimate-only unlock returns full results without phone hash or OTP state', async () => {
@@ -467,6 +538,7 @@ test('mobile-first flow can calculate without income when no work loss is entere
   const result = calculateSettlement(baseCase({
     demographics: {
       age: 35,
+      dateOfBirth: '1990-01-01',
       occupation: '',
       annualIncome: ''
     },
@@ -479,6 +551,7 @@ test('mobile-first flow can calculate without income when no work loss is entere
     },
     impact: {
       ...baseCase().impact,
+      hasWageLoss: false,
       missedWorkDays: 0
     }
   }));
@@ -486,6 +559,116 @@ test('mobile-first flow can calculate without income when no work loss is entere
   assert.ok(Number.isFinite(result.highEstimate));
   assert.ok(result.highEstimate > 0);
   assert.ok(!result.factors.some((factor) => factor.factor.includes('Lost wage')));
+});
+
+test('wage loss is estimated from occupation income treatment and injury severity', () => {
+  const injuryInput = {
+    ...baseCase().injuries,
+    bodyMap: [{
+      slug: 'neck',
+      side: 'common',
+      view: 'front',
+      severity: 3,
+      label: 'Base of neck / collarbone'
+    }] as BodyMapSelection[],
+    primaryInjury: 'Whiplash / Neck Strain'
+  };
+  const result = calculateSettlement(baseCase({
+    demographics: {
+      ...baseCase().demographics,
+      occupation: 'Construction/Manual Labor',
+      annualIncome: 62500
+    },
+    injuries: injuryInput,
+    treatment: {
+      ...baseCase().treatment,
+      physicalTherapySessions: 4
+    },
+    impact: {
+      ...baseCase().impact,
+      hasWageLoss: true,
+      missedWorkDays: 999
+    }
+  }));
+  const sameWithoutStaleDays = calculateSettlement(baseCase({
+    demographics: {
+      ...baseCase().demographics,
+      occupation: 'Construction/Manual Labor',
+      annualIncome: 62500
+    },
+    injuries: injuryInput,
+    treatment: {
+      ...baseCase().treatment,
+      physicalTherapySessions: 4
+    },
+    impact: {
+      ...baseCase().impact,
+      hasWageLoss: true,
+      missedWorkDays: 0
+    }
+  }));
+
+  assert.equal(result.estimatedWorkLossDays, 9);
+  assert.equal(result.estimatedWageLoss, 2250);
+  assert.equal(result.estimatedWageLoss, sameWithoutStaleDays.estimatedWageLoss);
+  assert.equal(result.highEstimate, sameWithoutStaleDays.highEstimate);
+  assert.equal(result.specials, result.medicalCosts + 2250);
+  assert.ok(result.factors.some((factor) => factor.factor.includes('Estimated wage loss')));
+});
+
+test('life impact answers are weighted by injury context and impairment rating is ignored', () => {
+  const injuryInput = {
+    ...baseCase().injuries,
+    bodyMap: [{
+      slug: 'neck',
+      side: 'common',
+      view: 'front',
+      severity: 3,
+      label: 'Base of neck / collarbone'
+    }] as BodyMapSelection[],
+    primaryInjury: 'Whiplash / Neck Strain'
+  };
+  const baseline = calculateSettlement(baseCase({
+    injuries: injuryInput,
+    treatment: {
+      ...baseCase().treatment,
+      physicalTherapySessions: 4
+    }
+  }));
+  const lifeImpact = calculateSettlement(baseCase({
+    injuries: injuryInput,
+    treatment: {
+      ...baseCase().treatment,
+      physicalTherapySessions: 4
+    },
+    impact: {
+      ...baseCase().impact,
+      emotionalDistress: true,
+      lossOfConsortium: true,
+      permanentImpairment: true,
+      impairmentRating: 99
+    }
+  }));
+  const differentLegacyRating = calculateSettlement(baseCase({
+    injuries: injuryInput,
+    treatment: {
+      ...baseCase().treatment,
+      physicalTherapySessions: 4
+    },
+    impact: {
+      ...baseCase().impact,
+      emotionalDistress: true,
+      lossOfConsortium: true,
+      permanentImpairment: true,
+      impairmentRating: 1
+    }
+  }));
+
+  assert.ok(lifeImpact.highEstimate > baseline.highEstimate);
+  assert.equal(lifeImpact.highEstimate, differentLegacyRating.highEstimate);
+  assert.ok(lifeImpact.factors.some((factor) => factor.factor.includes('Emotional distress weighted')));
+  assert.ok(lifeImpact.factors.some((factor) => factor.factor.includes('Relationship or household impact weighted')));
+  assert.ok(lifeImpact.factors.some((factor) => factor.factor.includes('Permanent impairment weighted')));
 });
 
 test('preview endpoint does not return exact estimate values before OTP unlock', async () => {
@@ -524,6 +707,82 @@ test('preview endpoint does not return exact estimate values before OTP unlock',
   assert.equal(payload.responsibleAttorney, null);
   assert.equal(payload.requiresAttorneyConsent, false);
   assert.ok(text.includes('$••,••• - $•••,•••'));
+});
+
+test('preview endpoint allows missing occupation and income when wage loss is no', async () => {
+  const calculatorData = baseCase({
+    demographics: {
+      age: 0,
+      dateOfBirth: '1990-01-01',
+      occupation: '',
+      annualIncome: ''
+    },
+    impact: {
+      ...baseCase().impact,
+      hasWageLoss: false
+    },
+    injuries: {
+      ...baseCase().injuries,
+      bodyMap: [{
+        slug: 'neck',
+        side: 'common',
+        view: 'front',
+        severity: 1,
+        label: 'Base of neck / collarbone'
+      }],
+      primaryInjury: ''
+    }
+  });
+  const request = new NextRequest('http://localhost/api/estimate/preview', {
+    method: 'POST',
+    body: JSON.stringify({
+      calculatorData,
+      turnstileToken: 'dev-turnstile-token'
+    })
+  });
+
+  const response = await previewPost(request);
+
+  assert.equal(response.status, 200);
+});
+
+test('preview endpoint requires occupation and income when wage loss is yes', async () => {
+  const calculatorData = baseCase({
+    demographics: {
+      age: 0,
+      dateOfBirth: '1990-01-01',
+      occupation: '',
+      annualIncome: ''
+    },
+    impact: {
+      ...baseCase().impact,
+      hasWageLoss: true
+    },
+    injuries: {
+      ...baseCase().injuries,
+      bodyMap: [{
+        slug: 'neck',
+        side: 'common',
+        view: 'front',
+        severity: 1,
+        label: 'Base of neck / collarbone'
+      }],
+      primaryInjury: ''
+    }
+  });
+  const request = new NextRequest('http://localhost/api/estimate/preview', {
+    method: 'POST',
+    body: JSON.stringify({
+      calculatorData,
+      turnstileToken: 'dev-turnstile-token'
+    })
+  });
+
+  const response = await previewPost(request);
+  const payload = await response.json();
+
+  assert.equal(response.status, 400);
+  assert.equal(payload.error, 'Please complete occupation and income details for wage loss.');
 });
 
 test('county lookup only resolves exact California county selections', () => {
@@ -663,6 +922,83 @@ test('mock scenarios span low through severe severity bands', () => {
     'severe'
   ]);
   assert.ok(scenarios.every((scenario, index) => index === 0 || scenario.highEstimate > scenarios[index - 1].highEstimate));
+});
+
+test('midpoint anchored ranges keep calibration scenarios in target zones', () => {
+  const area = (
+    slug: BodyMapSelection['slug'],
+    severity: BodyMapSelection['severity'],
+    label: string,
+    view: BodyMapSelection['view'] = 'front'
+  ): BodyMapSelection => ({
+    slug,
+    side: 'common',
+    view,
+    severity,
+    label
+  });
+  const minor = calculateSettlement(baseCase({
+    accidentDetails: {
+      ...baseCase().accidentDetails,
+      county: 'Orange',
+      impactSeverity: 'low'
+    },
+    injuries: {
+      ...baseCase().injuries,
+      bodyMap: [area('neck', 1, 'Neck')],
+      primaryInjury: 'Whiplash / Neck Strain'
+    }
+  }));
+  const moderate = calculateSettlement(baseCase({
+    accidentDetails: {
+      ...baseCase().accidentDetails,
+      county: 'Alameda',
+      impactSeverity: 'moderate'
+    },
+    injuries: {
+      ...baseCase().injuries,
+      bodyMap: [area('neck', 3, 'Neck')],
+      primaryInjury: 'Whiplash / Neck Strain'
+    },
+    treatment: {
+      ...baseCase().treatment,
+      physicalTherapySessions: 8,
+      mris: 1
+    }
+  }));
+  const severeNoSurgery = calculateSettlement(baseCase({
+    accidentDetails: {
+      ...baseCase().accidentDetails,
+      county: 'Los Angeles',
+      impactSeverity: 'severe'
+    },
+    injuries: {
+      ...baseCase().injuries,
+      bodyMap: [
+        area('neck', 4, 'Neck'),
+        area('lower-back', 4, 'Lower back', 'back'),
+        area('chest', 3, 'Chest')
+      ],
+      primaryInjury: 'Soft Tissue Damage'
+    },
+    treatment: {
+      ...baseCase().treatment,
+      emergencyRoomVisits: 1,
+      physicalTherapySessions: 16,
+      mris: 2,
+      orthopedicConsults: 1,
+      painManagementVisits: 2,
+      esiInjections: 2
+    }
+  }));
+
+  assert.deepEqual([minor.lowEstimate, minor.midEstimate, minor.highEstimate], [1575, 1853, 2388]);
+  assert.ok(moderate.highEstimate >= 22000);
+  assert.ok(moderate.highEstimate <= 23000);
+  assert.deepEqual(
+    [severeNoSurgery.lowEstimate, severeNoSurgery.midEstimate, severeNoSurgery.highEstimate],
+    [75576, 96323, 98501]
+  );
 });
 
 test('body-map selection keys ignore visual body model', () => {
@@ -1201,7 +1537,7 @@ test('guided injury signals and stale objective fields are ignored during normal
   assert.ok(!result.factors.some((factor) => factor.factor.includes('pre-existing')));
 });
 
-test('impact severity and age still affect estimates while missed work days are ignored', () => {
+test('impact severity and derived age still affect estimates while missed work days are ignored', () => {
   const guided = createDefaultGuidedInjurySignals();
   guided.head = {
     status: 'confirmed_tbi',
@@ -1233,7 +1569,8 @@ test('impact severity and age still affect estimates while missed work days are 
     injuries: injuryInput,
     demographics: {
       ...baseCase().demographics,
-      age: 70
+      age: 0,
+      dateOfBirth: '1950-01-01'
     }
   }));
   const missedWork = calculateSettlement(baseCase({

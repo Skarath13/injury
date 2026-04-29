@@ -7,6 +7,9 @@ export const CONSENT_COPY_VERSION = DEFAULT_ATTORNEY_CONSENT_COPY_VERSION;
 const SESSION_TTL_SECONDS = 30 * 60;
 const OTP_TTL_SECONDS = 10 * 60;
 const DEDUPE_WINDOW_SECONDS = 30 * 24 * 60 * 60;
+export const FORM_START_COOKIE_NAME = 'injury_form_started';
+export const FORM_START_MIN_SECONDS = 120;
+const FORM_START_COOKIE_MAX_AGE_SECONDS = 2 * 60 * 60;
 
 export interface LeadSession {
   id: string;
@@ -65,6 +68,7 @@ export interface CreateLeadSessionInput {
   visitorRegion?: string | null;
   visitorCity?: string | null;
   geoEligibilityStatus?: string;
+  initialLeadDeliveryStatus?: string;
 }
 
 export interface AttorneyLeadConsentInput {
@@ -336,7 +340,7 @@ export async function createLeadSession(
     userAgentHash: input.userAgentHash,
     turnstileStatus: input.turnstileStatus,
     otpStatus: 'not_started',
-    leadDeliveryStatus: input.attorney ? 'preview_attorney_available' : 'preview_no_attorney',
+    leadDeliveryStatus: input.initialLeadDeliveryStatus || (input.attorney ? 'preview_attorney_available' : 'preview_no_attorney'),
     duplicateWithin30Days: false,
     inputJson: JSON.stringify(input.input),
     resultJson: JSON.stringify(input.result),
@@ -426,6 +430,51 @@ function base64UrlEncode(value: string): string {
 function base64UrlDecode(value: string): string {
   const padded = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
   return atob(padded);
+}
+
+function formStartSignature(payload: string, env: WorkerEnv): Promise<string> {
+  const salt = env.LEAD_HASH_SALT || 'development-only-lead-hash-salt';
+  return sha256(`${salt}:form-start:${payload}`);
+}
+
+export function formStartCookieMaxAgeSeconds(): number {
+  return FORM_START_COOKIE_MAX_AGE_SECONDS;
+}
+
+export async function createFormStartToken(
+  env: WorkerEnv = getWorkerEnv(),
+  startedAtMs = Date.now()
+): Promise<string> {
+  const payload = `${startedAtMs}.${crypto.randomUUID()}`;
+  const signature = await formStartSignature(payload, env);
+  return `${base64UrlEncode(payload)}.${signature}`;
+}
+
+export async function formStartElapsedSeconds(
+  token: string | undefined,
+  env: WorkerEnv = getWorkerEnv()
+): Promise<number | null> {
+  if (!token) return null;
+
+  const [encodedPayload, signature] = token.split('.');
+  if (!encodedPayload || !signature) return null;
+
+  try {
+    const payload = base64UrlDecode(encodedPayload);
+    const expectedSignature = await formStartSignature(payload, env);
+    if (signature !== expectedSignature) return null;
+
+    const [startedAtValue] = payload.split('.');
+    const startedAt = Number(startedAtValue);
+    if (!Number.isFinite(startedAt) || startedAt <= 0) return null;
+
+    const elapsedSeconds = Math.floor((Date.now() - startedAt) / 1000);
+    if (elapsedSeconds < 0 || elapsedSeconds > FORM_START_COOKIE_MAX_AGE_SECONDS) return null;
+
+    return elapsedSeconds;
+  } catch {
+    return null;
+  }
 }
 
 export function localSessionCookieName(sessionId: string): string {
@@ -540,11 +589,11 @@ function noDeliveryStatusForGeo(session: LeadSession, env: WorkerEnv): string | 
     return 'outside_us_no_delivery';
   }
 
-  if (env.NODE_ENV !== 'production' && session.geoEligibilityStatus === 'unknown') {
-    return null;
-  }
-
   return 'unknown_location_no_delivery';
+}
+
+function isNoDeliveryStatus(status: string): boolean {
+  return status.endsWith('_no_delivery') || status === 'unmapped_no_attorney_delivery';
 }
 
 function generateOtp(env: WorkerEnv): string {
@@ -612,6 +661,10 @@ export async function startOtpUnlock(
     throw new Error(`Please confirm permission to send your results to ${attorney.name} and be contacted about your inquiry.`);
   }
 
+  if (session.leadDeliveryStatus !== 'preview_attorney_available') {
+    throw new Error('Phone verification is not available for this estimate.');
+  }
+
   if (!isValidUsMobileCandidate(phone)) {
     throw new Error('Please enter a valid US mobile phone number.');
   }
@@ -666,7 +719,9 @@ export async function unlockEstimateOnly(
     throw new Error('This estimate session expired. Please calculate again.');
   }
 
-  session.leadDeliveryStatus = 'estimate_only_no_delivery';
+  session.leadDeliveryStatus = isNoDeliveryStatus(session.leadDeliveryStatus)
+    ? session.leadDeliveryStatus
+    : 'estimate_only_no_delivery';
   session.attorneyDeliveryConsent = false;
   session.attorneyDeliveryConsentAt = null;
   session.attorneyDeliveryConsentText = null;

@@ -110,6 +110,7 @@ export interface GuidedInjurySignals {
 export interface InjuryCalculatorData {
   demographics: {
     age: number;
+    dateOfBirth?: string;
     occupation: string;
     annualIncome: number | string;
   };
@@ -172,6 +173,7 @@ export interface InjuryCalculatorData {
   };
   
   impact: {
+    hasWageLoss?: boolean;
     missedWorkDays: number;
     lossOfConsortium: boolean;
     emotionalDistress: boolean;
@@ -195,6 +197,8 @@ export interface SettlementResult {
   midEstimate: number;
   highEstimate: number;
   medicalCosts: number;
+  estimatedWageLoss?: number;
+  estimatedWorkLossDays?: number;
   medicalCostRange: {
     low: number;
     mid: number;
@@ -237,6 +241,8 @@ export interface EstimatePreviewResponse {
   routingVersion: string;
   responsibleAttorney: ResponsibleAttorney | null;
   requiresAttorneyConsent: boolean;
+  unlockMode: 'sms_lead' | 'estimate_only';
+  leadDeliveryStatus: string;
 }
 
 export interface UnlockStartResponse {

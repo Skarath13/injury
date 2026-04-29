@@ -2,10 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCountyRouting } from '@/lib/attorneyRouting';
 import { isCaliforniaCounty, normalizeCounty } from '@/lib/californiaCounties';
 import { getWorkerEnv } from '@/lib/cloudflareEnv';
+import { calculatorAgeFromDemographics } from '@/lib/demographics';
 import { normalizeGuidedInjuryData } from '@/lib/guidedInjurySignals';
 import { PrivacyChoiceSnapshot } from '@/lib/privacyChoices';
 import { calculateSettlement } from '@/lib/settlementEngine';
-import { createLeadSession, encodeLocalSessionCookie, hashForAudit, localSessionCookieName, verifyTurnstileToken } from '@/lib/leadGate';
+import {
+  createLeadSession,
+  encodeLocalSessionCookie,
+  FORM_START_COOKIE_NAME,
+  FORM_START_MIN_SECONDS,
+  formStartElapsedSeconds,
+  hashForAudit,
+  localSessionCookieName,
+  verifyTurnstileToken
+} from '@/lib/leadGate';
 import { EstimatePreviewResponse, InjuryCalculatorData } from '@/types/calculator';
 
 export const runtime = 'edge';
@@ -63,13 +73,35 @@ function deriveGeoEligibility(country: string | null, regionCode: string | null,
   return 'unknown';
 }
 
+function noDeliveryStatusForGeoEligibility(geoEligibilityStatus: string): string | null {
+  if (geoEligibilityStatus === 'california') return null;
+  if (geoEligibilityStatus === 'outside_california') return 'outside_california_no_delivery';
+  if (geoEligibilityStatus === 'outside_us') return 'outside_us_no_delivery';
+  return 'unknown_location_no_delivery';
+}
+
+function estimateOnlyReason(data: InjuryCalculatorData, attorneyAvailable: boolean, geoEligibilityStatus: string, elapsedSeconds: number | null) {
+  if (data.insurance?.hasAttorney) return 'own_attorney_no_delivery';
+  if (!attorneyAvailable) return 'unmapped_no_attorney_delivery';
+
+  const geoStatus = noDeliveryStatusForGeoEligibility(geoEligibilityStatus);
+  if (geoStatus) return geoStatus;
+
+  if (elapsedSeconds === null || elapsedSeconds < FORM_START_MIN_SECONDS) return 'too_fast_no_delivery';
+
+  return null;
+}
+
 function validateCalculatorData(data: InjuryCalculatorData): string | null {
   if (!data || typeof data !== 'object') return 'Invalid calculator data.';
   if (!data.accidentDetails?.county || !isCaliforniaCounty(data.accidentDetails.county)) {
     return 'Please select the California county where the accident happened.';
   }
-  if (!data.demographics?.age || !data.demographics?.occupation || !data.demographics?.annualIncome) {
-    return 'Please complete the required demographics fields.';
+  if (!data.demographics || !calculatorAgeFromDemographics(data.demographics)) {
+    return 'Please enter a valid date of birth.';
+  }
+  if (data.impact?.hasWageLoss && (!data.demographics.occupation || !data.demographics.annualIncome)) {
+    return 'Please complete occupation and income details for wage loss.';
   }
   if (!data.accidentDetails?.dateOfAccident || !data.accidentDetails?.impactSeverity) {
     return 'Please complete the required accident details.';
@@ -80,6 +112,57 @@ function validateCalculatorData(data: InjuryCalculatorData): string | null {
   return null;
 }
 
+function prepareCalculatorDataForEstimate(data: InjuryCalculatorData): InjuryCalculatorData {
+  const demographics: InjuryCalculatorData['demographics'] = data.demographics || {
+    age: 0,
+    dateOfBirth: '',
+    occupation: '',
+    annualIncome: ''
+  };
+  const accidentDetails: InjuryCalculatorData['accidentDetails'] = data.accidentDetails || {
+    dateOfAccident: '',
+    county: '',
+    faultPercentage: 0,
+    priorAccidents: 0,
+    impactSeverity: ''
+  };
+  const impact: InjuryCalculatorData['impact'] = data.impact || {
+    hasWageLoss: false,
+    missedWorkDays: 0,
+    lossOfConsortium: false,
+    emotionalDistress: false,
+    dylanVLeggClaim: false,
+    permanentImpairment: false
+  };
+  const insurance: InjuryCalculatorData['insurance'] = data.insurance || {
+    policyLimitsKnown: false,
+    hasAttorney: false
+  };
+
+  return {
+    ...data,
+    demographics: {
+      ...demographics,
+      age: calculatorAgeFromDemographics(demographics)
+    },
+    accidentDetails: {
+      ...accidentDetails,
+      priorAccidents: 0
+    },
+    impact: {
+      ...impact,
+      missedWorkDays: 0,
+      impairmentRating: undefined
+    },
+    insurance: {
+      ...insurance,
+      policyLimitsKnown: false,
+      policyLimits: undefined,
+      attorneyContingency: undefined
+    }
+  };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const env = getWorkerEnv();
@@ -88,7 +171,9 @@ export async function POST(request: NextRequest) {
       turnstileToken?: string;
       privacyChoiceSnapshot?: PrivacyChoiceSnapshot;
     };
-    const data = body.calculatorData ? normalizeGuidedInjuryData(body.calculatorData) : undefined;
+    const data = body.calculatorData
+      ? prepareCalculatorDataForEstimate(normalizeGuidedInjuryData(body.calculatorData))
+      : undefined;
 
     if (!data) {
       return NextResponse.json({ error: 'Missing calculator data.' }, { status: 400 });
@@ -111,6 +196,18 @@ export async function POST(request: NextRequest) {
     const county = normalizeCounty(data.accidentDetails.county);
     const geo = requestGeo(request);
     const routing = await getCountyRouting(county, env);
+    const elapsedSeconds = await formStartElapsedSeconds(
+      request.cookies.get(FORM_START_COOKIE_NAME)?.value,
+      env
+    );
+    const estimateOnlyStatus = estimateOnlyReason(
+      data,
+      Boolean(routing.responsibleAttorney),
+      geo.geoEligibilityStatus,
+      elapsedSeconds
+    );
+    const isSmsLead = !estimateOnlyStatus;
+    const responsibleAttorney = isSmsLead ? routing.responsibleAttorney : null;
     const result = calculateSettlement({
       ...data,
       accidentDetails: {
@@ -122,7 +219,9 @@ export async function POST(request: NextRequest) {
       severityBand: result.severityBand,
       caseTier: result.caseTier,
       blurredRangeLabel: '$••,••• - $•••,•••',
-      summary: 'Your settlement estimate is ready. Verify your phone to unlock the full range.'
+      summary: isSmsLead
+        ? 'Your settlement estimate is ready. Verify your phone to unlock the full range.'
+        : 'Your settlement estimate is ready to unlock.'
     };
     const session = await createLeadSession({
       county,
@@ -133,7 +232,8 @@ export async function POST(request: NextRequest) {
       input: data,
       result,
       preview,
-      attorney: routing.responsibleAttorney,
+      attorney: responsibleAttorney,
+      initialLeadDeliveryStatus: isSmsLead ? 'preview_attorney_available' : estimateOnlyStatus || undefined,
       ipHash: await hashForAudit(ip, env),
       userAgentHash: await hashForAudit(userAgent(request), env),
       privacyChoiceSnapshot: body.privacyChoiceSnapshot,
@@ -155,8 +255,10 @@ export async function POST(request: NextRequest) {
       logicVersion: result.logicVersion,
       logicHash: result.logicHash,
       routingVersion: routing.routingVersion,
-      responsibleAttorney: routing.responsibleAttorney,
-      requiresAttorneyConsent: Boolean(routing.responsibleAttorney)
+      responsibleAttorney,
+      requiresAttorneyConsent: isSmsLead,
+      unlockMode: isSmsLead ? 'sms_lead' : 'estimate_only',
+      leadDeliveryStatus: session.leadDeliveryStatus
     };
 
     const nextResponse = NextResponse.json(response);

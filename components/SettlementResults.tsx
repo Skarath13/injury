@@ -21,6 +21,9 @@ export default function SettlementResults({ results, medicalCosts, hasAttorney, 
     mid: medicalCosts,
     high: medicalCosts
   };
+  const estimatedWageLoss = results.estimatedWageLoss || 0;
+  const estimatedWorkLossDays = results.estimatedWorkLossDays || 0;
+  const economicDamages = medicalCosts + estimatedWageLoss;
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -68,6 +71,12 @@ export default function SettlementResults({ results, medicalCosts, hasAttorney, 
         return 'Attorney delivery is limited to California visitors in the United States, so this estimate is not treated as an attorney lead.';
       case 'unknown_location_no_delivery':
         return 'We could not confirm California visitor eligibility, so this estimate is not treated as an attorney lead.';
+      case 'too_fast_no_delivery':
+        return 'Estimate-only view: phone verification was skipped because the form was completed before the 120-second lead-quality window.';
+      case 'own_attorney_no_delivery':
+        return 'Estimate-only view: results were not sent to an attorney because you indicated you already have or plan to hire an attorney.';
+      case 'unmapped_no_attorney_delivery':
+        return 'No active attorney advertiser is configured for this county; results were not sent to an attorney.';
       default:
         return null;
     }
@@ -97,7 +106,7 @@ export default function SettlementResults({ results, medicalCosts, hasAttorney, 
         )}
 
         {/* Settlement Range with Visual Bar */}
-        <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6">
+        <div className="bg-white border border-slate-200 rounded-xl p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
             <BarChart3 className="w-5 h-5 mr-2 text-green-600" />
             Estimated Settlement Range (Gross)
@@ -105,44 +114,28 @@ export default function SettlementResults({ results, medicalCosts, hasAttorney, 
           
           {/* Visual Range Bar */}
           <div className="mb-6">
-            <div className="relative h-8 bg-gray-200 rounded-full overflow-hidden">
-              <div 
-                className="absolute h-full bg-gradient-to-r from-green-400 to-green-600 rounded-full"
-                style={{ 
-                  left: `${(results.lowEstimate / results.highEstimate) * 100}%`,
-                  width: `${((results.highEstimate - results.lowEstimate) / results.highEstimate) * 100}%`
-                }}
-              />
-              <div 
-                className="absolute h-full w-1 bg-green-700"
-                style={{ left: `${(results.midEstimate / results.highEstimate) * 100}%` }}
-              />
-            </div>
-            <div className="flex justify-between mt-2 text-xs text-slate-600">
-              <span>$0</span>
-              <span>{formatCurrency(results.highEstimate)}</span>
+            <div className="h-4 overflow-hidden rounded-full bg-gradient-to-r from-emerald-500 via-amber-400 to-red-500 shadow-inner" />
+            <div className="flex justify-between mt-3 text-xs font-medium text-slate-600">
+              <span>Conservative</span>
+              <span>Upper Range</span>
             </div>
           </div>
           
-          <div className="grid grid-cols-3 gap-2 sm:gap-4 text-center">
-            <div className="px-2">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
+            <div className="rounded-lg border bg-slate-50 p-4">
               <p className="text-xs sm:text-sm text-slate-600 mb-1 sm:mb-2">Conservative</p>
               <p className="text-lg sm:text-2xl font-bold text-slate-900 leading-tight">{formatCurrency(results.lowEstimate)}</p>
             </div>
-            <div className="border-l border-r border-green-300 px-2">
-              <p className="text-xs sm:text-sm text-slate-600 mb-1 sm:mb-2">Most Likely</p>
-              <p className="text-xl sm:text-3xl font-bold text-green-600 leading-tight">{formatCurrency(results.midEstimate)}</p>
-            </div>
-            <div className="px-2">
+            <div className="rounded-lg border bg-slate-50 p-4 text-right">
               <p className="text-xs sm:text-sm text-slate-600 mb-1 sm:mb-2">Upper Range</p>
               <p className="text-lg sm:text-2xl font-bold text-slate-900 leading-tight">{formatCurrency(results.highEstimate)}</p>
             </div>
           </div>
           
-          <div className="mt-4 pt-4 border-t border-green-200">
-            <p className="text-xs text-green-800">
+          <div className="mt-4 pt-4 border-t border-slate-200">
+            <p className="text-xs text-slate-600">
               <AlertCircle className="w-3 h-3 inline mr-1" />
-              These are gross amounts before attorney fees, medical liens, and costs
+              This settlement range is total gross case value before attorney fees, medical liens, and costs
             </p>
           </div>
         </div>
@@ -256,7 +249,7 @@ export default function SettlementResults({ results, medicalCosts, hasAttorney, 
                 <span className="font-medium">{formatCurrency(medicalRange.low)} - {formatCurrency(medicalRange.high)}</span>
               </div>
               <div className="flex justify-between items-center mb-1">
-                <span className="text-sm text-slate-600">Midpoint used in this estimate:</span>
+                <span className="text-sm text-slate-600">Estimated medical specials:</span>
                 <span className="font-medium">{formatCurrency(medicalCosts)}</span>
               </div>
               {hasAttorney ? (
@@ -267,26 +260,45 @@ export default function SettlementResults({ results, medicalCosts, hasAttorney, 
                   </div>
                   <p className="text-xs text-slate-500 mt-2">
                     Medical lien and bill resolution depends on the provider, payer, claim facts, and any representation agreement.<br/>
-                    Note: Medi-Cal/Medicare adjustments may involve separate rules and cannot be assumed from this estimate.
+                    Note: Medi-Cal/Medicare adjustments may involve separate rules and cannot be assumed from this estimate. The low end includes a calibration floor for display.
                   </p>
                 </>
               ) : (
                 <p className="text-xs text-slate-500 mt-2">
-                  These are estimated reasonable values from treatment selections, not user-entered medical bills.
+                  These are estimated reasonable values from treatment selections, not user-entered medical bills. The low end includes a calibration floor for display.
                 </p>
               )}
             </div>
+
+            {estimatedWageLoss > 0 && (
+              <div className="pb-4 border-b border-slate-200">
+                <h4 className="text-sm font-semibold text-slate-700 mb-2">Estimated Wage Loss (Economic Damages)</h4>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm text-slate-600">Estimated time away:</span>
+                  <span className="font-medium">
+                    {estimatedWorkLossDays} work day{estimatedWorkLossDays === 1 ? '' : 's'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm text-slate-600">Estimated wage loss:</span>
+                  <span className="font-medium">{formatCurrency(estimatedWageLoss)}</span>
+                </div>
+                <p className="text-xs text-slate-500 mt-2">
+                  Wage loss is estimated from occupation, income range, injury severity, treatment progression, and vehicle impact severity.
+                </p>
+              </div>
+            )}
             
             <div>
               <h4 className="text-sm font-semibold text-slate-700 mb-2">Pain & Suffering (Non-Economic Damages)</h4>
               <div className="flex justify-between items-center mb-1">
                 <span className="text-sm text-slate-600">Estimated Pain & Suffering:</span>
                 <span className="font-medium">
-                  {formatCurrency(Math.max(results.midEstimate - medicalCosts, 500))}
+                  {formatCurrency(Math.max(results.midEstimate - economicDamages, 500))}
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-2">
-                Non-economic damages are estimated as general damages from body-map severity, treatment progression, impact severity, age, and county venue context.
+                General damages are the pain-and-suffering portion added on top of economic damages, estimated from body-map severity, treatment progression, life impact, impact severity, age, and county venue context.
               </p>
             </div>
           </div>
