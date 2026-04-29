@@ -4,7 +4,7 @@ import Footer from '@/components/Footer'
 
 export const metadata: Metadata = {
   title: 'Privacy Policy | CA Auto Injury Calculator Data Protection',
-  description: 'Privacy policy for California auto injury settlement calculator. Learn how we protect your data, CCPA compliance, and our commitment to never selling your information.',
+  description: 'Privacy policy for California auto injury settlement calculator. Learn about calculator sessions, phone verification, attorney sharing consent, and California privacy rights.',
   keywords: 'privacy policy, data protection, CCPA compliance, California privacy rights, settlement calculator privacy',
   openGraph: {
     title: 'Privacy Policy | CA Auto Injury Calculator Data Protection',
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 
 export default function PrivacyPolicy() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex flex-col">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex flex-col">
       <Header />
       <div className="max-w-4xl mx-auto px-4 py-12">
         <h1 className="text-4xl font-bold text-slate-900 mb-2">Privacy Policy</h1>
@@ -46,11 +46,19 @@ export default function PrivacyPolicy() {
             </ul>
             <div className="bg-green-50 border border-green-200 p-3 rounded mb-4">
               <p className="text-slate-700 text-sm">
-                <strong>Important:</strong> This data is processed entirely in your browser using client-side JavaScript. We do NOT transmit or store this information on our servers unless you explicitly opt-in to save your calculation.
+                <strong>Important:</strong> Calculator inputs are transmitted to our Cloudflare Worker to generate and temporarily store an estimate session. Exact estimate values are unlocked only after phone verification. If attorney delivery is available in your accident county, we share results with that specific attorney only after your explicit consent.
               </p>
             </div>
 
-            <h3 className="text-lg font-semibold text-slate-700 mb-3">1.2 Automatically Collected Information</h3>
+            <h3 className="text-lg font-semibold text-slate-700 mb-3">1.2 Verification and Lead Unlock Data</h3>
+            <ul className="list-disc pl-6 text-slate-600 space-y-2 mb-4">
+              <li>Mobile phone number for one-time passcode verification</li>
+              <li>Verification status, consent version, timestamps, and duplicate-check status</li>
+              <li>Accident county and responsible attorney routing status, when applicable</li>
+              <li>Hashed IP address and hashed browser/device metadata for fraud prevention and audit logs</li>
+            </ul>
+
+            <h3 className="text-lg font-semibold text-slate-700 mb-3">1.3 Automatically Collected Information</h3>
             <ul className="list-disc pl-6 text-slate-600 space-y-2 mb-4">
               <li><strong>Device Information:</strong> Browser type, operating system, screen resolution, device type</li>
               <li><strong>Usage Data:</strong> Pages visited, time spent, click patterns, calculator features used</li>
@@ -58,10 +66,11 @@ export default function PrivacyPolicy() {
               <li><strong>Referral Data:</strong> How you arrived at our site, search terms used</li>
             </ul>
 
-            <h3 className="text-lg font-semibold text-slate-700 mb-3">1.3 Cookies and Similar Technologies</h3>
+            <h3 className="text-lg font-semibold text-slate-700 mb-3">1.4 Cookies and Similar Technologies</h3>
             <p className="text-slate-600 mb-3">We use the following types of cookies:</p>
             <ul className="list-disc pl-6 text-slate-600 space-y-2">
               <li><strong>Essential Cookies:</strong> Required for site functionality (session management, security)</li>
+              <li><strong>Cloudflare Turnstile:</strong> Bot prevention and human verification, subject to Cloudflare's Turnstile privacy terms</li>
               <li><strong>Analytics Cookies:</strong> Google Analytics with IP anonymization enabled</li>
               <li><strong>Preference Cookies:</strong> Remember your cookie consent choice and calculator preferences</li>
             </ul>
@@ -73,7 +82,9 @@ export default function PrivacyPolicy() {
             <h3 className="text-lg font-semibold text-slate-700 mb-3">2.1 Primary Uses</h3>
             <ul className="list-disc pl-6 text-slate-600 space-y-2 mb-4">
               <li>Generate settlement estimates based on your inputs</li>
+              <li>Create a temporary estimate session for the phone verification unlock flow</li>
               <li>Improve calculator accuracy and features</li>
+              <li>Prevent duplicate, fake, or automated submissions</li>
               <li>Provide customer support if you contact us</li>
               <li>Ensure website security and prevent fraud</li>
               <li>Comply with legal obligations</li>
@@ -97,15 +108,16 @@ export default function PrivacyPolicy() {
             <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-4">
               <h3 className="text-lg font-semibold text-slate-800 mb-2">Our Commitment on Data Sales</h3>
               <p className="text-slate-700">
-                <strong>We do NOT sell your personal information.</strong> We will never sell your calculator inputs, contact information, or any other personal data without your explicit, informed consent.
+                <strong>We do not sell personal information for money.</strong> Attorney delivery, when available, occurs only after your explicit permission to send results to the named attorney shown in the unlock flow.
               </p>
             </div>
 
             <h3 className="text-lg font-semibold text-slate-700 mb-3">3.1 Limited Sharing Scenarios</h3>
             <p className="text-slate-600 mb-3">We may share your information only in these specific circumstances:</p>
             <ul className="list-disc pl-6 text-slate-600 space-y-2 mb-4">
-              <li><strong>With Your Consent:</strong> Only when you explicitly opt-in and understand what data is being shared</li>
-              <li><strong>Service Providers:</strong> Trusted vendors who help operate our site (hosting, analytics) under strict confidentiality agreements</li>
+              <li><strong>With Your Consent:</strong> Only when you explicitly opt-in to send your results to the named responsible attorney shown in the unlock flow</li>
+              <li><strong>Service Providers:</strong> Cloudflare for hosting, Workers, D1, KV, and Turnstile; SMS/OTP providers for verification; analytics providers if enabled</li>
+              <li><strong>Attorney Recipient:</strong> If available in your county and you consent, calculator results and contact information may be sent to the specifically identified attorney</li>
               <li><strong>Legal Requirements:</strong> When required by law, court order, or to protect rights and safety</li>
               <li><strong>Business Transfers:</strong> In the event of a merger or acquisition, with continued privacy protections</li>
             </ul>
@@ -129,7 +141,7 @@ export default function PrivacyPolicy() {
             <ul className="list-disc pl-6 text-slate-600 space-y-2">
               <li><strong>Encryption:</strong> HTTPS/TLS for all data transmission</li>
               <li><strong>Access Controls:</strong> Limited employee access with authentication requirements</li>
-              <li><strong>Client-Side Processing:</strong> Sensitive calculator data stays in your browser</li>
+              <li><strong>Server-Side Controls:</strong> Estimate sessions are handled through Cloudflare Workers and audit logs use hashed metadata where practical</li>
               <li><strong>Regular Audits:</strong> Security assessments and updates</li>
               <li><strong>Incident Response:</strong> Procedures to handle any potential breaches</li>
             </ul>
@@ -139,7 +151,8 @@ export default function PrivacyPolicy() {
             <h2 className="text-2xl font-semibold text-slate-800 mb-4">5. Data Retention</h2>
             <p className="text-slate-600 mb-3">Our data retention practices:</p>
             <ul className="list-disc pl-6 text-slate-600 space-y-2">
-              <li><strong>Calculator Data:</strong> Not stored unless you opt-in; deleted from browser when you clear cache</li>
+              <li><strong>Calculator Data:</strong> Temporarily stored for estimate unlock and audit purposes; attorney-shared records may be retained longer for compliance and dispute prevention</li>
+              <li><strong>OTP Data:</strong> Verification codes expire quickly and are stored only as hashed values</li>
               <li><strong>Analytics Data:</strong> Aggregated data retained for 26 months per Google Analytics default</li>
               <li><strong>Contact Information:</strong> Retained as long as necessary to respond to your inquiry</li>
               <li><strong>Legal Records:</strong> Retained as required by law or for legitimate business purposes</li>
@@ -170,7 +183,7 @@ export default function PrivacyPolicy() {
             </ul>
           </section>
 
-          <section>
+          <section id="ccpa-rights">
             <h2 className="text-2xl font-semibold text-slate-800 mb-4">7. California Privacy Rights (CCPA)</h2>
             <div className="bg-blue-50 border border-blue-200 p-4 rounded mb-4">
               <p className="text-slate-700 font-semibold mb-2">California Residents Have Additional Rights:</p>
@@ -194,13 +207,13 @@ export default function PrivacyPolicy() {
               <tbody>
                 <tr>
                   <td className="border border-slate-300 px-4 py-2">Identifiers</td>
-                  <td className="border border-slate-300 px-4 py-2">IP address, device ID</td>
-                  <td className="border border-slate-300 px-4 py-2">Yes (anonymized)</td>
+                  <td className="border border-slate-300 px-4 py-2">IP address hash, phone hash, session ID</td>
+                  <td className="border border-slate-300 px-4 py-2">Yes</td>
                 </tr>
                 <tr>
                   <td className="border border-slate-300 px-4 py-2">Personal Information</td>
-                  <td className="border border-slate-300 px-4 py-2">Name, email (if provided)</td>
-                  <td className="border border-slate-300 px-4 py-2">Only if you contact us</td>
+                  <td className="border border-slate-300 px-4 py-2">Phone number, estimate inputs, contact consent</td>
+                  <td className="border border-slate-300 px-4 py-2">Yes, during unlock flow</td>
                 </tr>
                 <tr>
                   <td className="border border-slate-300 px-4 py-2">Commercial Information</td>
@@ -214,14 +227,14 @@ export default function PrivacyPolicy() {
                 </tr>
                 <tr>
                   <td className="border border-slate-300 px-4 py-2">Geolocation</td>
-                  <td className="border border-slate-300 px-4 py-2">Approximate location</td>
-                  <td className="border border-slate-300 px-4 py-2">City/State level only</td>
+                  <td className="border border-slate-300 px-4 py-2">Accident county and approximate network location</td>
+                  <td className="border border-slate-300 px-4 py-2">Yes</td>
                 </tr>
               </tbody>
             </table>
             
-            <p className="text-slate-600 mb-3">
-              <strong>Do Not Sell My Personal Information:</strong> We do not sell personal information. However, you can opt-out of any future sales by emailing shufflin_00@me.com.
+            <p id="do-not-sell-or-share" className="text-slate-600 mb-3 scroll-mt-24">
+              <strong>Do Not Sell/Share:</strong> You may opt out of any sale or sharing of personal information by emailing shufflin_00@me.com with "Do Not Sell/Share" in the subject line. Attorney delivery, when available, occurs only if you explicitly consent to send results to the named attorney shown in the unlock flow.
             </p>
           </section>
 

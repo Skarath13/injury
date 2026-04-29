@@ -1,6 +1,5 @@
-const CACHE_NAME = 'settlement-calculator-v1';
+const CACHE_NAME = 'settlement-calculator-v3-body-map';
 const urlsToCache = [
-  '/',
   '/manifest.json',
   '/icon-192x192.svg',
   '/icon-512x512.svg',
@@ -15,17 +14,46 @@ self.addEventListener('install', (event) => {
         return cache.addAll(urlsToCache);
       })
   );
+  self.skipWaiting();
 });
 
-// Fetch event - serve from cache when offline
+// Fetch event - keep app shells and Next assets network-first to avoid stale CSS/JS
 self.addEventListener('fetch', (event) => {
+  const request = event.request;
+  const url = new URL(request.url);
+
+  if (request.method !== 'GET') {
+    return;
+  }
+
+  if (url.origin !== self.location.origin || url.pathname.startsWith('/_next/')) {
+    event.respondWith(fetch(request));
+    return;
+  }
+
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request).catch(() => new Response('Offline', {
+        status: 503,
+        headers: { 'Content-Type': 'text/plain' }
+      }))
+    );
+    return;
+  }
+
   event.respondWith(
-    caches.match(event.request)
+    fetch(request)
       .then((response) => {
-        // Return cached version or fetch from network
-        return response || fetch(event.request);
-      }
-    )
+        if (response.ok && urlsToCache.includes(url.pathname)) {
+          const copy = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+        }
+        return response;
+      })
+      .catch(() => caches.match(request)
+      .then((response) => {
+        return response || Response.error();
+      }))
   );
 });
 
@@ -42,4 +70,5 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
+  self.clients.claim();
 });

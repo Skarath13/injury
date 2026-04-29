@@ -1,11 +1,11 @@
 {
   "name": "California Auto Injury Settlement Calculator",
   "short_name": "Settlement Calc",
-  "description": "Calculate potential auto injury settlement amounts in California",
+  "description": "Build a California auto injury case profile and unlock an educational estimate",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#3b82f6",
+  "theme_color": "#0f172a",
   "orientation": "portrait-primary",
   "scope": "/",
   "icons": [

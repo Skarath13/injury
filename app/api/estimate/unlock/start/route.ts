@@ -1,0 +1,78 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getWorkerEnv } from '@/lib/cloudflareEnv';
+import {
+  decodeLocalSessionCookie,
+  encodeLocalSessionCookie,
+  getLeadSession,
+  localSessionCookieName,
+  rememberLocalLeadSession,
+  startOtpUnlock
+} from '@/lib/leadGate';
+import { ResponsibleAttorney, UnlockStartResponse } from '@/types/calculator';
+
+export const runtime = 'edge';
+
+export async function POST(request: NextRequest) {
+  try {
+    const env = getWorkerEnv();
+    const body = await request.json() as {
+      sessionId?: string;
+      phone?: string;
+      consentToAttorneyShare?: boolean;
+    };
+
+    if (!body.sessionId || !body.phone) {
+      return NextResponse.json({ error: 'Session and phone number are required.' }, { status: 400 });
+    }
+
+    let session = await getLeadSession(body.sessionId, env);
+    if (!session && !env.LEADS_DB) {
+      const cookieSession = decodeLocalSessionCookie(request.cookies.get(localSessionCookieName(body.sessionId))?.value);
+      if (cookieSession) {
+        rememberLocalLeadSession(cookieSession);
+        session = cookieSession;
+      }
+    }
+    if (!session) {
+      return NextResponse.json({ error: 'Estimate session was not found.' }, { status: 404 });
+    }
+
+    const attorney = session.attorneyJson ? JSON.parse(session.attorneyJson) as ResponsibleAttorney : null;
+    if (attorney && !body.consentToAttorneyShare) {
+      return NextResponse.json(
+        { error: `Please confirm permission to send your results to ${attorney.name}.` },
+        { status: 400 }
+      );
+    }
+
+    const otp = await startOtpUnlock(body.sessionId, body.phone, env);
+    const response: UnlockStartResponse = {
+      maskedPhone: otp.maskedPhone,
+      duplicateWithin30Days: otp.duplicateWithin30Days,
+      provider: otp.provider,
+      devCode: otp.devCode
+    };
+
+    const nextResponse = NextResponse.json(response);
+    if (!env.LEADS_DB) {
+      const updatedSession = await getLeadSession(body.sessionId, env);
+      if (updatedSession) {
+        nextResponse.cookies.set(localSessionCookieName(body.sessionId), encodeLocalSessionCookie(updatedSession), {
+          httpOnly: true,
+          sameSite: 'lax',
+          secure: process.env.NODE_ENV === 'production',
+          path: '/',
+          maxAge: 30 * 60
+        });
+      }
+    }
+
+    return nextResponse;
+  } catch (error) {
+    console.error('OTP start error:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Unable to send verification code.' },
+      { status: 400 }
+    );
+  }
+}

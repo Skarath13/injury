@@ -1,4 +1,4 @@
-import { SettlementResult } from '@/types/calculator';
+import { ResponsibleAttorney, SettlementResult } from '@/types/calculator';
 import { 
   DollarSign, TrendingUp, TrendingDown, Minus, 
   AlertCircle, Calculator, ArrowLeft, Printer, Edit3,
@@ -9,11 +9,13 @@ interface Props {
   results: SettlementResult;
   medicalCosts: number;
   hasAttorney: boolean;
+  responsibleAttorney?: ResponsibleAttorney | null;
+  leadDeliveryStatus?: string | null;
   onBack: () => void;
   onEdit?: () => void;
 }
 
-export default function SettlementResults({ results, medicalCosts, hasAttorney, onBack, onEdit }: Props) {
+export default function SettlementResults({ results, medicalCosts, hasAttorney, responsibleAttorney, onBack, onEdit }: Props) {
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -50,13 +52,23 @@ export default function SettlementResults({ results, medicalCosts, hasAttorney, 
   const takeHomePercentage = (takeHome / total) * 100;
   
   return (
-    <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-      <div className="bg-gradient-to-r from-amber-500 to-amber-600 p-6 text-white">
-        <h2 className="text-2xl font-bold mb-2">Insurance Settlement Estimate</h2>
-        <p className="text-amber-100">Realistic insurance settlement values (not jury verdict amounts)</p>
+    <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+      <div className="bg-slate-950 p-6 text-white">
+        <h2 className="text-2xl font-bold">Insurance Settlement Estimate</h2>
       </div>
       
       <div className="p-6 md:p-8 space-y-6">
+        {responsibleAttorney ? (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+            <h3 className="text-sm font-semibold text-slate-900 mb-1">Responsible Attorney Disclosure</h3>
+            <p className="text-sm text-slate-700">{responsibleAttorney.disclosure}</p>
+          </div>
+        ) : (
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+            <p className="text-sm text-slate-700">No active attorney advertiser is configured for this county; results were not sent to an attorney.</p>
+          </div>
+        )}
+
         {/* Settlement Range with Visual Bar */}
         <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-6">
           <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center">
@@ -95,7 +107,7 @@ export default function SettlementResults({ results, medicalCosts, hasAttorney, 
               <p className="text-xl sm:text-3xl font-bold text-green-600 leading-tight">{formatCurrency(results.midEstimate)}</p>
             </div>
             <div className="px-2">
-              <p className="text-xs sm:text-sm text-slate-600 mb-1 sm:mb-2">Best Case</p>
+              <p className="text-xs sm:text-sm text-slate-600 mb-1 sm:mb-2">Upper Range</p>
               <p className="text-lg sm:text-2xl font-bold text-slate-900 leading-tight">{formatCurrency(results.highEstimate)}</p>
             </div>
           </div>
@@ -223,14 +235,13 @@ export default function SettlementResults({ results, medicalCosts, hasAttorney, 
                     <span className="font-medium">{formatCurrency(medicalCosts * 0.2)} - {formatCurrency(medicalCosts * 0.6)}</span>
                   </div>
                   <p className="text-xs text-slate-500 mt-2">
-                    Good attorneys often negotiate 40-80% reductions through pre-contracted rates.<br/>
-                    Note: Medi-Cal/Medicare adjustments are pre-applied and cannot be profited from.
+                    Medical lien and bill resolution depends on the provider, payer, claim facts, and any representation agreement.<br/>
+                    Note: Medi-Cal/Medicare adjustments may involve separate rules and cannot be assumed from this estimate.
                   </p>
                 </>
               ) : (
                 <p className="text-xs text-slate-500 mt-2">
-                  Without an attorney, you would typically pay the full billed amount.<br/>
-                  Note: Insurance may cover some costs, but medical liens will reduce your settlement.
+                  Medical bills, liens, insurance payments, and provider balances can reduce net recovery.
                 </p>
               )}
             </div>
@@ -244,7 +255,7 @@ export default function SettlementResults({ results, medicalCosts, hasAttorney, 
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-2">
-                This is what you actually keep (minus attorney fees) for your pain, suffering, and life disruption
+                Non-economic damages are estimated from the configured case factors and are not a prediction of a specific outcome.
               </p>
             </div>
           </div>
@@ -308,7 +319,7 @@ export default function SettlementResults({ results, medicalCosts, hasAttorney, 
             </li>
             <li className="flex items-start">
               <span className="font-bold mr-2">•</span>
-              <span>Initial insurance offers are typically 30-50% below fair value</span>
+              <span>Initial offers may not reflect every case factor or later treatment development</span>
             </li>
             <li className="flex items-start">
               <span className="font-bold mr-2">•</span>
@@ -316,7 +327,7 @@ export default function SettlementResults({ results, medicalCosts, hasAttorney, 
             </li>
             <li className="flex items-start">
               <span className="font-bold mr-2">•</span>
-              <span>Settlement timing affects value - too early may leave money on the table</span>
+              <span>Settlement timing can affect value because treatment, liens, and evidence may change</span>
             </li>
             <li className="flex items-start">
               <span className="font-bold mr-2">•</span>

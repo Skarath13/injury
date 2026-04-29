@@ -1,10 +1,15 @@
 import type { Metadata } from "next";
 import "./styles.css";
 import CookieConsent from "@/components/CookieConsent";
+import { Geist } from "next/font/google";
+import { cn } from "@/lib/utils";
+import { TooltipProvider } from "@/components/ui/tooltip";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
-  title: "California Auto Injury Settlement Calculator - Free Realistic Estimates",
-  description: "Free California auto injury settlement calculator based on real insurance data. Get realistic settlement estimates for car accident injuries, medical bills, and pain & suffering. No inflated promises.",
+  title: "California Auto Injury Settlement Calculator",
+  description: "Build a California auto injury case profile and unlock an educational insurance settlement estimate after phone verification.",
   keywords: "California auto injury settlement calculator, car accident settlement, personal injury calculator, California car accident lawyer, settlement estimate, auto accident compensation",
   authors: [{ name: "CA Injury Settlement Calculator" }],
   creator: "CA Injury Settlement Calculator",
@@ -28,8 +33,8 @@ export const metadata: Metadata = {
     locale: 'en_US',
     url: 'https://californiasettlementcalculator.com',
     siteName: 'California Auto Injury Settlement Calculator',
-    title: 'California Auto Injury Settlement Calculator - Free Realistic Estimates',
-    description: 'Free California auto injury settlement calculator based on real insurance data. Get realistic settlement estimates for car accident injuries.',
+    title: 'California Auto Injury Settlement Calculator',
+    description: 'Build a California auto injury case profile and unlock an educational insurance settlement estimate after phone verification.',
     images: [
       {
         url: '/CDA92563-FA4A-4D3E-A231-F28BDAD0D4F3.png',
@@ -41,8 +46,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'California Auto Injury Settlement Calculator - Free Realistic Estimates',
-    description: 'Free California auto injury settlement calculator based on real insurance data.',
+    title: 'California Auto Injury Settlement Calculator',
+    description: 'Build a California auto injury case profile and unlock an educational insurance settlement estimate after phone verification.',
     images: ['/CDA92563-FA4A-4D3E-A231-F28BDAD0D4F3.png'],
     creator: '@CAInjuryCalc',
   },
@@ -52,8 +57,11 @@ export const metadata: Metadata = {
   category: 'Legal Services',
   metadataBase: new URL('https://californiasettlementcalculator.com'),
   icons: {
-    icon: '/favicon.ico',
-    apple: '/apple-touch-icon.png',
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+    ],
+    shortcut: '/favicon.svg',
+    apple: '/apple-touch-icon.svg',
   },
   formatDetection: {
     telephone: false,
@@ -74,27 +82,53 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const serviceWorkerScript = process.env.NODE_ENV === 'production'
+    ? `
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function() {
+          navigator.serviceWorker.register('/sw.js')
+            .then(function(registration) {
+              console.log('SW registered: ', registration);
+            })
+            .catch(function(registrationError) {
+              console.warn('SW registration failed: ', registrationError);
+            });
+        });
+      }
+    `
+    : `
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations()
+          .then(function(registrations) {
+            return Promise.all(registrations.map(function(registration) {
+              return registration.unregister();
+            }));
+          })
+          .then(function() {
+            if ('caches' in window) {
+              return caches.keys().then(function(keys) {
+                return Promise.all(keys.map(function(key) {
+                  return caches.delete(key);
+                }));
+              });
+            }
+          })
+          .catch(function(error) {
+            console.warn('Dev service worker cleanup failed: ', error);
+          });
+      }
+    `;
+
   return (
-    <html lang="en">
+    <html lang="en" className={cn("font-sans", geist.variable)}>
       <body className="antialiased">
-        {children}
-        <CookieConsent />
+        <TooltipProvider>
+          {children}
+          <CookieConsent />
+        </TooltipProvider>
         <script
           dangerouslySetInnerHTML={{
-            __html: `
-              // Service worker registration with error handling
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js')
-                    .then(function(registration) {
-                      console.log('SW registered: ', registration);
-                    })
-                    .catch(function(registrationError) {
-                      console.warn('SW registration failed: ', registrationError);
-                    });
-                });
-              }
-            `,
+            __html: serviceWorkerScript,
           }}
         />
       </body>

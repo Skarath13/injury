@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Cookie, X } from 'lucide-react'
+import { Cookie } from 'lucide-react'
 
 // TypeScript declaration for gtag
 declare global {
@@ -78,38 +78,38 @@ export default function CookieConsent() {
   if (!showBanner) return null
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 shadow-lg z-50 animate-slide-up">
-      <div className="max-w-7xl mx-auto p-4 sm:p-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div className="fixed bottom-3 left-3 right-3 z-50 animate-slide-up sm:bottom-4">
+      <div className="mx-auto max-w-4xl rounded-lg border border-slate-200 bg-white p-3 shadow-lg sm:p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
-            <Cookie className="w-6 h-6 text-blue-600 flex-shrink-0 mt-0.5" />
+            <Cookie className="w-5 h-5 text-sky-700 flex-shrink-0 mt-0.5" />
             <div>
-              <h3 className="text-sm font-semibold text-slate-900 mb-1">Cookie Notice</h3>
-              <p className="text-sm text-slate-600">
-                We use cookies to analyze site usage and improve your experience. 
-                {isEUorCA && ' Under GDPR and CCPA, you have the right to manage your cookie preferences.'}
+              <h3 className="text-sm font-semibold text-slate-900">Cookie notice</h3>
+              <p className="text-xs leading-5 text-slate-600 sm:text-sm">
+                We use cookies for site analytics and preferences.
+                {isEUorCA && ' You can decline analytics cookies.'}
                 {' '}
-                <a href="/privacy" className="text-blue-600 hover:text-blue-700 underline">
+                <a href="/privacy" className="font-medium text-sky-700 hover:text-sky-800 underline">
                   Learn more
                 </a>
               </p>
             </div>
           </div>
           
-          <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
               onClick={declineCookies}
-              className="flex-1 sm:flex-none px-4 py-2 text-sm text-slate-600 hover:text-slate-800 font-medium transition-colors"
+              className="min-h-[40px] flex-1 rounded-lg px-4 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-800 sm:flex-none"
               aria-label="Decline cookies"
             >
               Decline
             </button>
             <button
               onClick={acceptCookies}
-              className="flex-1 sm:flex-none px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+              className="min-h-[40px] flex-1 rounded-lg bg-sky-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-600 sm:flex-none"
               aria-label="Accept cookies"
             >
-              Accept Cookies
+              Accept
             </button>
           </div>
         </div>

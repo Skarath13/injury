@@ -1,3 +1,41 @@
+export type BodyMapView = 'front' | 'back';
+export type BodyMapGender = 'male' | 'female';
+export type BodyMapSide = 'left' | 'right' | 'both' | 'common';
+export type BodyMapSeverity = 1 | 2 | 3 | 4;
+
+export type BodyMapSlug =
+  | 'head'
+  | 'hair'
+  | 'neck'
+  | 'trapezius'
+  | 'deltoids'
+  | 'chest'
+  | 'biceps'
+  | 'triceps'
+  | 'forearm'
+  | 'hands'
+  | 'abs'
+  | 'obliques'
+  | 'upper-back'
+  | 'lower-back'
+  | 'adductors'
+  | 'quadriceps'
+  | 'hamstring'
+  | 'gluteal'
+  | 'knees'
+  | 'tibialis'
+  | 'calves'
+  | 'ankles'
+  | 'feet';
+
+export interface BodyMapSelection {
+  slug: BodyMapSlug;
+  side: BodyMapSide;
+  view: BodyMapView;
+  severity: BodyMapSeverity;
+  label: string;
+}
+
 export interface InjuryCalculatorData {
   demographics: {
     age: number;
@@ -7,12 +45,14 @@ export interface InjuryCalculatorData {
   
   accidentDetails: {
     dateOfAccident: string;
+    county: string;
     faultPercentage: number;
     priorAccidents: number;
     impactSeverity: 'low' | 'moderate' | 'severe' | 'catastrophic' | '';
   };
   
   injuries: {
+    bodyMap: BodyMapSelection[];
     primaryInjury: string;
     secondaryInjuries: string[];
     preExistingConditions: string[];
@@ -74,12 +114,52 @@ export interface SettlementResult {
   midEstimate: number;
   highEstimate: number;
   medicalCosts: number;
+  specials: number;
+  caseTier: string;
+  logicVersion: string;
+  logicHash: string;
   factors: {
     factor: string;
     impact: 'positive' | 'negative' | 'neutral';
     weight: number;
   }[];
   explanation: string;
+}
+
+export interface ResponsibleAttorney {
+  id: string;
+  name: string;
+  barNumber: string;
+  officeLocation: string;
+  disclosure: string;
+  consentCopyVersion: string;
+}
+
+export interface EstimatePreviewResponse {
+  sessionId: string;
+  expiresAt: string;
+  county: string;
+  caseTier: string;
+  blurredRangeLabel: string;
+  summary: string;
+  logicVersion: string;
+  logicHash: string;
+  routingVersion: string;
+  responsibleAttorney: ResponsibleAttorney | null;
+  requiresAttorneyConsent: boolean;
+}
+
+export interface UnlockStartResponse {
+  maskedPhone: string;
+  duplicateWithin30Days: boolean;
+  provider: string;
+  devCode?: string;
+}
+
+export interface UnlockVerifyResponse {
+  results: SettlementResult;
+  responsibleAttorney: ResponsibleAttorney | null;
+  leadDeliveryStatus: string;
 }
 
 export const COMMON_INJURIES = [

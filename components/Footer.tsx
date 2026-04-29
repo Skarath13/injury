@@ -1,48 +1,33 @@
 import Link from 'next/link'
+import { getStaticPanelDisclosure } from '@/lib/attorneyRouting'
 
 export default function Footer() {
   const currentYear = new Date().getFullYear()
-  
+  const panelDisclosure = getStaticPanelDisclosure()
+
   return (
-    <footer className="bg-slate-800 text-white mt-20">
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+    <footer className="mt-16 border-t border-slate-200 bg-slate-950 text-white">
+      <div className="container mx-auto px-4 py-8 sm:px-6">
+        <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
           <div>
-            <h3 className="font-bold mb-3">About This Calculator</h3>
-            <p className="text-sm text-slate-300">
-              Created by an experienced litigation adjuster to provide realistic settlement estimates 
-              based on actual insurance industry practices in California.
-            </p>
+            <h2 className="text-sm font-semibold">California Settlement Calculator</h2>
+            <p className="mt-2 text-xs text-slate-400">Estimate only. Not legal advice. Deadlines apply.</p>
           </div>
-          <div>
-            <h3 className="font-bold mb-3">Important Notes</h3>
-            <ul className="text-sm text-slate-300 space-y-1">
-              <li>• This is an estimate tool only</li>
-              <li>• Actual settlements vary greatly</li>
-              <li>• Consult an attorney for legal advice</li>
-              <li>• California law specific</li>
-            </ul>
-          </div>
-          <div>
-            <h3 className="font-bold mb-3">Settlement Reality</h3>
-            <p className="text-sm text-slate-300">
-              Most soft tissue injuries settle for $5,000-$25,000. Serious injuries with surgery 
-              or permanent impairment can reach six figures, but million-dollar settlements are extremely rare.
-            </p>
-          </div>
-          <div>
-            <h3 className="font-bold mb-3">Legal & Resources</h3>
-            <ul className="text-sm text-slate-300 space-y-1">
-              <li><Link href="/privacy" className="hover:text-amber-400 transition-colors">Privacy Policy</Link></li>
-              <li><Link href="/terms" className="hover:text-amber-400 transition-colors">Terms & Conditions</Link></li>
-              <li><Link href="/about" className="hover:text-amber-400 transition-colors">About Us</Link></li>
-              <li><Link href="/contact" className="hover:text-amber-400 transition-colors">Contact</Link></li>
-            </ul>
-          </div>
+
+          <nav aria-label="Footer" className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-300">
+            <Link href="/privacy" className="transition-colors hover:text-amber-300">Privacy</Link>
+            <Link href="/terms" className="transition-colors hover:text-amber-300">Terms</Link>
+            <Link href="/privacy#do-not-sell-or-share" className="transition-colors hover:text-amber-300">Do Not Sell/Share</Link>
+            <Link href="/contact" className="transition-colors hover:text-amber-300">Contact</Link>
+          </nav>
         </div>
-        <div className="mt-8 pt-8 border-t border-slate-700 text-center text-sm text-slate-400">
-          <p>© {currentYear} California Settlement Calculator. For educational purposes only.</p>
-          <p className="mt-2 text-xs">This calculator does not provide legal advice. Please consult with a licensed attorney.</p>
+
+        <div className="mt-6 border-t border-slate-800 pt-5 text-xs text-slate-500">
+          <details>
+            <summary className="cursor-pointer text-slate-400">Attorney advertiser disclosure</summary>
+            <p className="mt-2 leading-5">{panelDisclosure}</p>
+          </details>
+          <p className="mt-4">© {currentYear} California Settlement Calculator.</p>
         </div>
       </div>
     </footer>

@@ -13,15 +13,49 @@ compatibility_date = "2024-01-01"
 # Environment variables (add production values in Cloudflare dashboard)
 [vars]
 NODE_ENV = "production"
+SMS_PROVIDER = "twilio"
+
+# Replace placeholder IDs after creating Cloudflare resources:
+#   wrangler d1 create california-injury-leads
+#   wrangler kv namespace create ATTORNEY_ROUTING
+[[d1_databases]]
+binding = "LEADS_DB"
+database_name = "california-injury-leads"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+[[kv_namespaces]]
+binding = "ATTORNEY_ROUTING"
+id = "00000000000000000000000000000000"
 
 # Define different environments
 [env.production]
 name = "california-injury-calculator-prod"
-# vars = { }  # Production-specific variables
+vars = { NODE_ENV = "production", SMS_PROVIDER = "twilio" }
+
+[[env.production.d1_databases]]
+binding = "LEADS_DB"
+database_name = "california-injury-leads-prod"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+[[env.production.kv_namespaces]]
+binding = "ATTORNEY_ROUTING"
+id = "00000000000000000000000000000000"
 
 [env.staging]
 name = "california-injury-calculator-staging"
-# vars = { }  # Staging-specific variables
+vars = { NODE_ENV = "development", SMS_PROVIDER = "dev_stub", OTP_DEV_MODE = "true" }
+
+[[env.staging.d1_databases]]
+binding = "LEADS_DB"
+database_name = "california-injury-leads-staging"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+[[env.staging.kv_namespaces]]
+binding = "ATTORNEY_ROUTING"
+id = "00000000000000000000000000000000"
 
 # Development server configuration
 [dev]
@@ -43,17 +77,6 @@ bucket = ".vercel/output/static"
 # period = 60
 
 # CORS configuration is handled in the worker code
-
-# Optional: D1 Database binding if needed in future
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "injury-calculator"
-# database_id = "your-database-id"
-
-# Optional: KV namespace for caching if needed
-# [[kv_namespaces]]
-# binding = "CACHE"
-# id = "your-kv-namespace-id"
 
 # Optional: Durable Objects if needed for state management
 # [[durable_objects.bindings]]

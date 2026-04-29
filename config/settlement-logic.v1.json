@@ -1,0 +1,120 @@
+{
+  "version": "settlement-logic-2026-04-28-v2-body-map",
+  "approvalStatus": "draft_attorney_review_required",
+  "rangeMultipliers": {
+    "low": 0.75,
+    "mid": 0.88,
+    "high": 1
+  },
+  "treatmentUnitCosts": {
+    "emergencyRoomVisits": 3000,
+    "urgentCareVisits": 500,
+    "chiropracticSessions": 100,
+    "physicalTherapySessions": 100,
+    "xrays": 500,
+    "mris": 2000,
+    "ctScans": 3500,
+    "painManagementVisits": 750,
+    "orthopedicConsults": 750,
+    "tpiInjections": 2500,
+    "facetInjections": 5000,
+    "mbbInjections": 5000,
+    "esiInjections": 7500,
+    "rfaInjections": 15000,
+    "prpInjections": 2000,
+    "surgeryMinor": 40000,
+    "surgeryModerate": 75000,
+    "surgeryMajor": 125000
+  },
+  "caseTiers": {
+    "soft_tissue": {
+      "label": "Soft tissue baseline",
+      "specialsMultiplier": 1
+    },
+    "soft_tissue_with_adders": {
+      "label": "Soft tissue with documented treatment adders",
+      "specialsMultiplier": 1.5
+    },
+    "hard_tissue_or_light_fracture": {
+      "label": "Hard tissue, light fracture, or objective imaging case",
+      "specialsMultiplier": 2
+    },
+    "serious_or_surgical": {
+      "label": "Surgical, severe fracture, or serious objective injury case",
+      "specialsMultiplier": 3.25
+    },
+    "catastrophic": {
+      "label": "Catastrophic injury pattern",
+      "specialsMultiplier": 4
+    }
+  },
+  "impactSeverityMultipliers": {
+    "low": 0.65,
+    "moderate": 1,
+    "severe": 1.2,
+    "catastrophic": 1.45
+  },
+  "ageModifiers": {
+    "under30": 0.9,
+    "over65": 1.15
+  },
+  "preExistingConditionReductionPerCondition": 0.08,
+  "preExistingConditionReductionCap": 0.32,
+  "priorAccidentReductionPerAccident": 0.1,
+  "priorAccidentReductionCap": 0.3,
+  "fixedAdders": {
+    "ongoingTreatment": 2500,
+    "tbiMild": 25000,
+    "tbiModerate": 70000,
+    "tbiSevere": 175000,
+    "spinalHerniation": 18000,
+    "spinalNerveRootCompression": 15000,
+    "spinalRadiculopathy": 12000,
+    "spinalMyelopathy": 35000,
+    "spinalPreExistingDegeneration": 3000,
+    "facialScarring": 35000,
+    "generalScarring": 18000,
+    "permanentImpairmentPerPoint": 2200,
+    "emotionalDistress": 3000,
+    "lossOfConsortium": 1500,
+    "dillonVLegg": 2500
+  },
+  "bodyMapSeverity": {
+    "severityAdders": {
+      "1": 250,
+      "2": 1000,
+      "3": 2500,
+      "4": 5000
+    },
+    "highValueRegionMultiplier": 1.25,
+    "maxTotalAdder": 18000,
+    "multiRegionThreshold": 3,
+    "multiRegionAdder": 1500,
+    "highValueRegions": [
+      "head",
+      "neck",
+      "trapezius",
+      "chest",
+      "abs",
+      "upper-back",
+      "lower-back"
+    ],
+    "softTissueWithAddersSeverity": 3,
+    "hardTissueSeverity": 4
+  },
+  "fractureAdders": {
+    "skull": 45000,
+    "facial": 45000,
+    "spine": 75000,
+    "ribs": 10000,
+    "arm": 25000,
+    "wrist": 25000,
+    "hand": 22000,
+    "leg": 35000,
+    "ankle": 32000,
+    "foot": 26000,
+    "pelvis": 55000,
+    "clavicle": 20000,
+    "default": 25000
+  }
+}

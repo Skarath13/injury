@@ -67,7 +67,7 @@ export default function TermsAndConditions() {
               <li>Guaranteed or exact settlement amounts</li>
               <li>Medical advice or diagnosis</li>
               <li>Insurance claim filing services</li>
-              <li>Attorney referrals or recommendations</li>
+              <li>Automatic attorney referrals or recommendations</li>
             </ul>
           </section>
 
@@ -80,6 +80,14 @@ export default function TermsAndConditions() {
                 Using this calculator does NOT create an attorney-client relationship. We are NOT a law firm and do NOT provide legal representation or advice.
               </p>
             </div>
+
+            <h3 className="text-lg font-semibold text-slate-700 mb-3">3.0 Attorney Advertising and Optional Data Delivery</h3>
+            <p className="text-slate-600 mb-3">
+              This website may operate as a legal advertisement where a California attorney or law firm is specifically identified as responsible for a county or territory. If an attorney is shown for your accident county, you may choose whether to send your results to that named attorney. We do not automatically assign you to an attorney, and you are free to contact any lawyer or no lawyer.
+            </p>
+            <p className="text-slate-600 mb-4">
+              Sending calculator results to a named attorney does not create an attorney-client relationship. An attorney-client relationship can only be formed through a separate agreement with the attorney or law firm.
+            </p>
 
             <h3 className="text-lg font-semibold text-slate-700 mb-3">3.1 No Legal Advice</h3>
             <p className="text-slate-600 mb-3">
@@ -213,7 +221,7 @@ export default function TermsAndConditions() {
 
             <h3 className="text-lg font-semibold text-slate-700 mb-3">7.2 Basis of the Bargain</h3>
             <p className="text-slate-600 mb-3">
-              You acknowledge that we have offered the Service free of charge in reliance upon the limitations of liability and disclaimers set forth herein, which form an essential basis of the bargain between us.
+              You acknowledge that your use of the Service is subject to the limitations of liability and disclaimers set forth herein, which form an essential basis of the bargain between us.
             </p>
 
             <h3 className="text-lg font-semibold text-slate-700 mb-3">7.3 Some Jurisdictions</h3>

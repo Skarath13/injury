@@ -5,7 +5,7 @@ import Footer from '@/components/Footer'
 
 export const metadata: Metadata = {
   title: 'Contact Us | CA Auto Injury Settlement Calculator Support',
-  description: 'Contact our California auto injury settlement calculator team. Get help with settlement estimates, calculator questions, or feedback. Free support for CA accident victims.',
+  description: 'Contact the California auto injury settlement calculator team for calculator questions, privacy requests, or feedback.',
   keywords: 'contact auto injury calculator, California settlement help, auto accident support, settlement calculator questions',
   openGraph: {
     title: 'Contact Us | CA Auto Injury Settlement Calculator Support',
@@ -19,12 +19,15 @@ export const metadata: Metadata = {
 
 export default function Contact() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex flex-col">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex flex-col">
       <Header />
       <div className="max-w-4xl mx-auto px-4 py-12">
         <h1 className="text-4xl font-bold text-slate-900 mb-4">Contact Us</h1>
-        <p className="text-lg text-slate-600 mb-12">
+        <p className="text-lg text-slate-600 mb-3">
           We're here to help with questions about our settlement calculator or general inquiries about auto injury settlements in California.
+        </p>
+        <p className="mb-12 text-sm text-slate-500">
+          We cannot provide legal advice or representation.
         </p>
         
         <div className="grid md:grid-cols-2 gap-8 mb-12">
@@ -52,13 +55,6 @@ export default function Contact() {
           </div>
         </div>
 
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-6 mb-12">
-          <h2 className="text-xl font-semibold text-slate-800 mb-3">Important Disclaimer</h2>
-          <p className="text-slate-700">
-            We cannot provide legal advice or representation. This calculator provides estimates only. For legal advice specific to your case, please consult with a licensed California personal injury attorney.
-          </p>
-        </div>
-
         <div className="space-y-8">
           <section>
             <h2 className="text-2xl font-semibold text-slate-800 mb-4">Frequently Asked Questions</h2>
@@ -66,21 +62,21 @@ export default function Contact() {
               <div>
                 <h3 className="font-semibold text-slate-800 mb-2">Can you recommend an attorney?</h3>
                 <p className="text-slate-600">
-                  We do not provide attorney referrals. We recommend contacting the California State Bar's lawyer referral service for assistance finding qualified representation.
+                  We do not automatically recommend or assign attorneys. If a responsible attorney advertiser is available for your accident county, the calculator may ask whether you want to send results to that specifically named attorney.
                 </p>
               </div>
               
               <div>
                 <h3 className="font-semibold text-slate-800 mb-2">How accurate are the settlement estimates?</h3>
                 <p className="text-slate-600">
-                  Our estimates are based on California settlement data patterns but should be considered general guidance only. Actual settlements vary significantly based on specific case details.
+                  Estimates are based on configured claim factors and should be considered educational guidance only. Actual settlements vary significantly based on specific case details.
                 </p>
               </div>
               
               <div>
                 <h3 className="font-semibold text-slate-800 mb-2">Is my information stored when I use the calculator?</h3>
                 <p className="text-slate-600">
-                  No. All calculations are performed locally in your browser. We do not store any personal or case information you enter into the calculator.
+                  Estimate sessions are processed through our Cloudflare Worker and may be temporarily stored for verification, fraud prevention, consent, and audit purposes. See the Privacy Policy for details.
                 </p>
               </div>
             </div>

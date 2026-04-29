@@ -190,7 +190,7 @@ export default function ImpactInsuranceStep({ register, watch, errors }: Props) 
           <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center">
             <Scale className="w-4 h-4 mr-2 text-purple-600" />
             Legal Representation
-            <InfoIcon content="Attorney Benefits: Can increase settlement 2-3x, handle negotiations. Attorney Costs: 33-40% of settlement plus expenses ($5,000-$20,000 for litigation). Self-Representation: Keep 100% but typically receive lower offers. Medical liens may claim reimbursement from settlement." />
+            <InfoIcon content="Attorney involvement, fees, liens, and costs can affect net recovery. This calculator does not predict whether representation will change a specific outcome." />
           </h4>
           
           <label className="flex items-start space-x-3 cursor-pointer mb-4">

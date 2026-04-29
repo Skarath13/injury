@@ -1,16 +1,55 @@
 name = "california-injury-calculator"
-main = "functions/index.js"
+main = "worker.js"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
 
+[vars]
+NODE_ENV = "production"
+SMS_PROVIDER = "twilio"
+
+# Replace placeholder IDs after creating Cloudflare resources:
+#   wrangler d1 create california-injury-leads
+#   wrangler kv namespace create ATTORNEY_ROUTING
+[[d1_databases]]
+binding = "LEADS_DB"
+database_name = "california-injury-leads"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+[[kv_namespaces]]
+binding = "ATTORNEY_ROUTING"
+id = "00000000000000000000000000000000"
+
 [build]
-command = "npm run build && npm run prepare-worker"
+command = "npm run build:cloudflare"
 
 [assets]
-directory = "dist"
+directory = ".vercel/output/static"
 
 [env.production]
 name = "california-injury-calculator-prod"
+vars = { NODE_ENV = "production", SMS_PROVIDER = "twilio" }
+
+[[env.production.d1_databases]]
+binding = "LEADS_DB"
+database_name = "california-injury-leads-prod"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+[[env.production.kv_namespaces]]
+binding = "ATTORNEY_ROUTING"
+id = "00000000000000000000000000000000"
 
 [env.preview]
 name = "california-injury-calculator-preview"
+vars = { NODE_ENV = "development", SMS_PROVIDER = "dev_stub", OTP_DEV_MODE = "true" }
+
+[[env.preview.d1_databases]]
+binding = "LEADS_DB"
+database_name = "california-injury-leads-preview"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+[[env.preview.kv_namespaces]]
+binding = "ATTORNEY_ROUTING"
+id = "00000000000000000000000000000000"

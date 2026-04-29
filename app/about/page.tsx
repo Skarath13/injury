@@ -4,12 +4,12 @@ import Header from '@/components/Header'
 import Footer from '@/components/Footer'
 
 export const metadata: Metadata = {
-  title: 'About Our CA Auto Injury Calculator | Realistic Settlement Estimates',
-  description: 'Learn how our California auto injury settlement calculator works. Based on real insurance data, not inflated promises. Discover our methodology for accurate settlement estimates.',
+  title: 'About Our CA Auto Injury Calculator',
+  description: 'Learn how the California auto injury settlement calculator builds an educational case profile and phone-verified estimate.',
   keywords: 'about settlement calculator, California auto injury estimates, how settlement calculator works, realistic settlement estimates',
   openGraph: {
-    title: 'About Our CA Auto Injury Calculator | Realistic Settlement Estimates',
-    description: 'Learn how our California auto injury settlement calculator works. Based on real insurance data, not inflated promises.',
+    title: 'About Our CA Auto Injury Calculator',
+    description: 'Learn how the California auto injury settlement calculator builds an educational case profile and phone-verified estimate.',
     url: 'https://californiasettlementcalculator.com/about',
   },
   alternates: {
@@ -19,21 +19,21 @@ export const metadata: Metadata = {
 
 export default function About() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex flex-col">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex flex-col">
       <Header />
       <div className="max-w-4xl mx-auto px-4 py-12">
         <h1 className="text-4xl font-bold text-slate-900 mb-4">About Our Settlement Calculator</h1>
         <p className="text-lg text-slate-600 mb-12">
-          Empowering California accident victims with realistic settlement expectations based on actual data and patterns.
+          Helping California accident victims organize the facts that commonly affect an educational insurance settlement estimate.
         </p>
         
         <section className="mb-12">
           <h2 className="text-2xl font-semibold text-slate-800 mb-6">Our Mission</h2>
           <p className="text-slate-600 mb-4">
-            We created this calculator to provide California auto accident victims with transparent, data-driven settlement estimates. Too often, accident victims enter the settlement process with unrealistic expectations or no information at all. Our goal is to bridge this information gap.
+            We created this calculator to help California auto accident victims organize key claim facts before reviewing an educational estimate. Too often, people enter the claim process with no framework for medical bills, liability, policy limits, and treatment signals.
           </p>
           <p className="text-slate-600">
-            By analyzing patterns from thousands of California auto injury settlements, we provide estimates that reflect real-world outcomes rather than inflated marketing promises.
+            The calculator uses a versioned settlement-logic configuration so the assumptions behind the estimate can be reviewed, audited, and updated without hiding the math in application code.
           </p>
         </section>
 
@@ -43,90 +43,73 @@ export default function About() {
             <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
               <div className="flex items-center mb-3">
                 <Calculator className="w-6 h-6 text-blue-600 mr-3" />
-                <h3 className="text-lg font-semibold text-slate-800">Data-Driven Estimates</h3>
+                <h3 className="text-lg font-semibold text-slate-800">Configured Estimate Logic</h3>
               </div>
               <p className="text-slate-600">
-                Our calculator uses actual California settlement data patterns to generate realistic estimates based on injury type, treatment, and impact factors.
+                The estimate is driven by configured factors for injury type, treatment, specials, comparative fault, policy limits, and life impact.
               </p>
             </div>
             
             <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
               <div className="flex items-center mb-3">
                 <Shield className="w-6 h-6 text-green-600 mr-3" />
-                <h3 className="text-lg font-semibold text-slate-800">Privacy First</h3>
+                <h3 className="text-lg font-semibold text-slate-800">Phone Verification</h3>
               </div>
               <p className="text-slate-600">
-                All calculations happen in your browser. We don't store any personal information or case details you enter into the calculator.
+                Exact estimate values are prepared server-side and shown after verification to reduce duplicate submissions.
               </p>
             </div>
             
             <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
               <div className="flex items-center mb-3">
                 <Scale className="w-6 h-6 text-purple-600 mr-3" />
-                <h3 className="text-lg font-semibold text-slate-800">Legal Reality</h3>
+                <h3 className="text-lg font-semibold text-slate-800">Claim Factors</h3>
               </div>
               <p className="text-slate-600">
-                We factor in real-world considerations like comparative negligence, policy limits, and attorney fees to provide net recovery estimates.
+                The calculator includes California comparative fault, known policy limits, liens and fees where entered, and county context.
               </p>
             </div>
             
             <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
               <div className="flex items-center mb-3">
                 <Target className="w-6 h-6 text-amber-600 mr-3" />
-                <h3 className="text-lg font-semibold text-slate-800">Conservative Approach</h3>
+                <h3 className="text-lg font-semibold text-slate-800">Reviewed Copy</h3>
               </div>
               <p className="text-slate-600">
-                Our estimates tend to be conservative, reflecting typical insurance settlement values rather than best-case jury verdicts.
+                The copy avoids guarantees, automatic attorney assignment language, and promises about specific outcomes.
               </p>
             </div>
           </div>
         </section>
 
         <section className="mb-12">
-          <h2 className="text-2xl font-semibold text-slate-800 mb-6">Important Limitations</h2>
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-6">
-            <ul className="space-y-3 text-slate-700">
-              <li className="flex items-start">
-                <span className="text-amber-600 mr-2">•</span>
-                <span>This calculator provides estimates only and cannot predict your specific case outcome</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-amber-600 mr-2">•</span>
-                <span>Every case is unique with factors that may significantly affect value</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-amber-600 mr-2">•</span>
-                <span>We do not provide legal advice or attorney referrals</span>
-              </li>
-              <li className="flex items-start">
-                <span className="text-amber-600 mr-2">•</span>
-                <span>Consult with a qualified California personal injury attorney for case-specific advice</span>
-              </li>
-            </ul>
-          </div>
+          <h2 className="text-2xl font-semibold text-slate-800 mb-4">Limits</h2>
+          <p className="rounded-lg border border-slate-200 bg-white p-5 text-sm leading-6 text-slate-600">
+            Estimates are educational, case outcomes vary, and filing deadlines still apply. The calculator does not provide legal advice or automatically assign attorneys.
+          </p>
         </section>
 
         <section className="mb-12">
-          <h2 className="text-2xl font-semibold text-slate-800 mb-6">Our Data Sources</h2>
+          <h2 className="text-2xl font-semibold text-slate-800 mb-6">Estimate Inputs</h2>
           <p className="text-slate-600 mb-4">
-            Our estimates are based on:
+            The estimate can consider:
           </p>
           <ul className="space-y-2 text-slate-600">
             <li className="flex items-start">
               <span className="text-blue-600 mr-2">•</span>
-              <span>Analysis of California auto injury settlement patterns</span>
+              <span>Injury category and objective injury indicators</span>
             </li>
             <li className="flex items-start">
               <span className="text-blue-600 mr-2">•</span>
-              <span>Insurance industry settlement guidelines and practices</span>
+              <span>Treatment type, medical specials, and treatment status</span>
             </li>
             <li className="flex items-start">
               <span className="text-blue-600 mr-2">•</span>
-              <span>California legal precedents and statutory requirements</span>
+              <span>California comparative fault and known policy limits</span>
             </li>
             <li className="flex items-start">
               <span className="text-blue-600 mr-2">•</span>
-              <span>Medical cost data for common auto injury treatments</span>
+              <span>Work disruption, permanent impairment, and other configured adders</span>
             </li>
           </ul>
         </section>

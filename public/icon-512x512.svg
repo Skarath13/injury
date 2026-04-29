@@ -1,8 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
-  <rect width="512" height="512" fill="#3b82f6" rx="86"/>
-  <g fill="white" transform="translate(128, 128)">
-    <path d="M128 0C57.31 0 0 57.31 0 128s57.31 128 128 128 128-57.31 128-128S198.69 0 128 0zm0 224c-53.02 0-96-42.98-96-96s42.98-96 96-96 96 42.98 96 96-42.98 96-96 96z"/>
-    <path d="M116 64h24v85h-24z"/>
-    <path d="M116 171h24v21h-24z"/>
-  </g>
+<!-- Source: Pinhead map icon library, icons/boundaries/us/california.svg v15.16.0. CC0 1.0 public domain dedication. Styled as outline-only for this site. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 15 15">
+  <path d="M1.5 0L7.5 0L7.5 5L13.9 11.39L13.9 11.91L14.5 12.64L13.9 13.01L13.7 14.14L14.19 14.68L13.9 15L10.66 15L9.84 13.72L8.98 13.01L8.01 13.01L7.53 12.32L6.16 12.32L6.16 11.39L4.4 9.22L4.7 8.36L4.22 8.36L3.69 7.51L3.99 6.97L3.18 6.65L3.18 6.15L2.17 5.05L2.17 3.69L1.5 3.1L1.5 2.48L1.82 1.73L1.82 0.67z" fill="none" stroke="#000000" stroke-width="0.85" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>

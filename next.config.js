@@ -1,5 +1,11 @@
+const isDevelopment = process.env.NODE_ENV === 'development';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Keep `next dev` output separate from `next build` output so local
+  // production builds cannot invalidate the dev server's active JS/CSS assets.
+  distDir: isDevelopment ? '.next-dev' : '.next',
+
   // Enable compression
   compress: true,
   
