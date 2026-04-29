@@ -67,7 +67,7 @@ const faqData = {
       "name": "What factors affect auto injury settlement amounts in California?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "Key factors include injury severity, medical costs, lost wages, pain and suffering, fault percentage, policy limits, pre-existing conditions, and whether you have legal representation. Our calculator considers all these California-specific factors."
+        "text": "Key factors include body-map injury severity, vehicle impact severity, medical treatment progression, age, accident county venue context, pain and suffering, fault percentage, and whether you have legal representation. The estimate no longer uses wage loss or policy limits as value caps."
       }
     },
     {
@@ -101,7 +101,7 @@ export default function Home() {
       />
       
       <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50">
-        <Header />
+        <Header enableCalculatorReset />
         <main className="container mx-auto px-4 sm:px-6 py-5 sm:py-8">
         <div className="mx-auto max-w-6xl">
           <section aria-label="Settlement Calculator">

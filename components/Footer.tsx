@@ -17,7 +17,7 @@ export default function Footer() {
           <nav aria-label="Footer" className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-300">
             <Link href="/privacy" className="transition-colors hover:text-amber-300">Privacy</Link>
             <Link href="/terms" className="transition-colors hover:text-amber-300">Terms</Link>
-            <Link href="/privacy#do-not-sell-or-share" className="transition-colors hover:text-amber-300">Do Not Sell/Share</Link>
+            <a href="#privacy-choices" className="transition-colors hover:text-amber-300">Your Privacy Choices</a>
             <Link href="/contact" className="transition-colors hover:text-amber-300">Contact</Link>
           </nav>
         </div>

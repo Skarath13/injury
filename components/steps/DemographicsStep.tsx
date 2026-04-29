@@ -17,7 +17,7 @@ export default function DemographicsStep({ register, setValue, watch, errors }: 
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-slate-900 mb-2">Personal Information</h2>
-        <p className="text-slate-600">Basic information helps estimate lost wages and life impact.</p>
+        <p className="text-slate-600">Basic information helps place the injury estimate in context.</p>
         <p className="text-sm text-slate-500 mt-2">Fields marked with <span className="text-red-500">*</span> are required</p>
       </div>
 
@@ -51,7 +51,7 @@ export default function DemographicsStep({ register, setValue, watch, errors }: 
           <label className="flex items-center text-sm font-medium text-slate-700 mb-2">
             <Briefcase className="w-4 h-4 mr-2 text-slate-400" />
             Occupation <span className="text-red-500">*</span>
-            <InfoIcon content="Your occupation determines physical demands and lost wages. Physical jobs that you can't return to typically result in higher settlements due to career impact." />
+            <InfoIcon content="Occupation is recorded for context and attorney review. It no longer changes the estimate by itself." />
           </label>
           <select
             {...register('demographics.occupation', { required: 'Occupation is required' })}
@@ -77,7 +77,7 @@ export default function DemographicsStep({ register, setValue, watch, errors }: 
           <label className="flex items-center text-sm font-medium text-slate-700 mb-2">
             <DollarSign className="w-4 h-4 mr-2 text-slate-400" />
             Annual Income (Before Taxes) <span className="text-red-500">*</span>
-            <InfoIcon content="Higher income typically results in higher lost wage claims. This directly impacts economic damages calculations in your settlement." />
+            <InfoIcon content="Income is recorded for context and attorney review. Wage loss no longer changes the estimate calculation." />
           </label>
           <select
             {...register('demographics.annualIncome', { 

@@ -31,6 +31,8 @@ export interface WorkerEnv {
   TWILIO_ACCOUNT_SID?: string;
   TWILIO_AUTH_TOKEN?: string;
   TWILIO_FROM_NUMBER?: string;
+  GEO_ACCESS_MODE?: string;
+  GEO_ALLOW_UNKNOWN?: string;
   NODE_ENV?: string;
 }
 

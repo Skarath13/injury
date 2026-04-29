@@ -14,10 +14,11 @@ A comprehensive, realistic settlement estimation tool for California auto injury
 ### Advanced Capabilities
 - **Attorney Fee Calculations**: Conditional 33% attorney fees when applicable
 - **Medical Bill Negotiation**: Automatic 60% reduction when attorney is involved
-- **Multiple Injury Types**: Support for soft tissue, fractures, TBI, spinal issues
+- **Body-Map Injury Severity**: Injury areas and severity ratings drive injury-specific estimate adjustments
+- **County Venue Context**: Small California county trial-venue modifier using conservative/neutral/liberal venue tendencies
 - **Treatment Tracking**: Detailed medical treatment and cost estimation
 - **Pain & Suffering**: Calculated multipliers based on injury severity
-- **Lost Wages**: Income-based calculations with missed work days
+- **Context Inputs**: Work disruption and insurance information can be recorded without capping estimate value
 
 ### User Experience
 - **Hover Info Icons**: Contextual information without cluttering the interface
@@ -145,18 +146,16 @@ The `wrangler.toml` file contains the Workers configuration:
 ## Settlement Calculation Logic
 
 ### Base Value Calculation
-1. **Medical Costs**: Estimated or actual treatment costs
-2. **Lost Wages**: Based on income and missed work days
-3. **Pain & Suffering**: Multiplier applied to medical costs (1.5x - 5x)
+1. **Medical Specials**: Estimated from selected treatment counts
+2. **General Damages**: Multiplier applied to medical specials from body-map severity and treatment progression
+3. **Gross Range**: Medical specials plus general damages, then range-shaped and adjusted for comparative fault
 
 ### Modifiers Applied
-- **Age Factor**: Younger plaintiffs receive higher multipliers
-- **Impact Severity**: Collision severity affects settlement value
-- **Prior Injuries**: Reduces settlement value
-- **TBI**: Significant positive multiplier for brain injuries
-- **Spinal Issues**: Herniation, nerve compression increase value
-- **Surgery**: Major positive impact on settlement range
-- **Ongoing Treatment**: Increases future medical considerations
+- **Age Factor**: Applied to general damages only
+- **Impact Severity**: Progressively adjusts general damages
+- **Body-Map Severity**: Selected injury areas and severity ratings drive the injury multiplier
+- **County Venue Context**: Accident county adjusts general damages by venue tendency
+- **Treatment Progression**: Imaging, therapy, injections, and surgery increase the general-damages multiplier
 
 ### Attorney Considerations
 - **Legal Representation**: 33% contingency fee when applicable
@@ -168,6 +167,7 @@ The `wrangler.toml` file contains the Workers configuration:
 This calculator is based on:
 - **Insurance Industry Data**: Actual settlement ranges from claims databases
 - **California Specific**: State-specific laws and precedents
+- **County Venue Proxy**: California Secretary of State county-level election returns used as a conservative proxy for civil jury-pool tendency
 - **Conservative Estimates**: Realistic ranges, not inflated promises
 - **Adjuster Experience**: Built by experienced litigation professional
 

@@ -28,12 +28,11 @@ export default function ImpactStep({ register, watch, errors }: Props) {
           <label className="flex items-center text-sm font-medium text-slate-700 mb-2">
             <Briefcase className="w-4 h-4 mr-2 text-slate-400" />
             Total Work Days Missed
-            <InfoIcon content="Include partial days and future expected missed days" />
+            <InfoIcon content="Recorded for context and attorney review. Missed work days no longer change the estimate calculation." />
           </label>
           <input
             type="number"
             {...register('impact.missedWorkDays', { 
-              required: 'Please enter missed work days',
               min: { value: 0, message: 'Invalid number' }
             })}
             className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"

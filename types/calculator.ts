@@ -36,6 +36,77 @@ export interface BodyMapSelection {
   label: string;
 }
 
+export type GuidedInjuryCertainty =
+  | 'none'
+  | 'symptoms_only'
+  | 'suspected_or_mentioned'
+  | 'provider_confirmed'
+  | 'unknown';
+
+export type GuidedHeadStatus =
+  | 'unanswered'
+  | 'none'
+  | 'symptoms_only'
+  | 'doctor_mentioned_concussion'
+  | 'confirmed_tbi'
+  | 'not_sure';
+
+export type GuidedSpineStatus =
+  | 'unanswered'
+  | 'none'
+  | 'strain_sprain'
+  | 'disc_or_mri_finding'
+  | 'nerve_symptoms'
+  | 'spinal_cord_warning'
+  | 'not_sure';
+
+export type GuidedFractureStatus = 'unanswered' | 'no' | 'maybe' | 'confirmed' | 'not_sure';
+
+export type GuidedFractureArea =
+  | 'face_skull'
+  | 'ribs_chest'
+  | 'arm_wrist_hand'
+  | 'leg_ankle_foot'
+  | 'spine_pelvis';
+
+export type GuidedVisibleInternalStatus =
+  | 'unanswered'
+  | 'none'
+  | 'visible_scarring'
+  | 'internal_symptoms'
+  | 'both'
+  | 'not_sure';
+
+export type GuidedPreExistingStatus =
+  | 'unanswered'
+  | 'no'
+  | 'not_sure'
+  | 'yes_minor'
+  | 'yes_active_treatment_or_prior_claim';
+
+export interface GuidedInjurySignals {
+  head: {
+    status: GuidedHeadStatus;
+    certainty: GuidedInjuryCertainty;
+    severity?: 'mild' | 'moderate' | 'severe';
+  };
+  spine: {
+    status: GuidedSpineStatus;
+    certainty: GuidedInjuryCertainty;
+  };
+  fracture: {
+    status: GuidedFractureStatus;
+    certainty: GuidedInjuryCertainty;
+    areas: GuidedFractureArea[];
+  };
+  visibleOrInternal: {
+    status: GuidedVisibleInternalStatus;
+  };
+  preExisting: {
+    sameAreaStatus: GuidedPreExistingStatus;
+  };
+}
+
 export interface InjuryCalculatorData {
   demographics: {
     age: number;
@@ -53,6 +124,7 @@ export interface InjuryCalculatorData {
   
   injuries: {
     bodyMap: BodyMapSelection[];
+    guidedSignals?: GuidedInjurySignals;
     primaryInjury: string;
     secondaryInjuries: string[];
     preExistingConditions: string[];
@@ -69,15 +141,22 @@ export interface InjuryCalculatorData {
   };
   
   treatment: {
+    ambulanceTransports: number;
     emergencyRoomVisits: number;
     urgentCareVisits: number;
+    hospitalAdmissionDays: number;
     chiropracticSessions: number;
     physicalTherapySessions: number;
+    occupationalTherapySessions: number;
     xrays: number;
     mris: number;
     ctScans: number;
+    emgNerveStudies: number;
+    followUpDoctorVisits: number;
     painManagementVisits: number;
     orthopedicConsults: number;
+    neurologyConsults: number;
+    mentalHealthSessions: number;
     tpiInjections: number;
     facetInjections: number;
     mbbInjections: number;
@@ -86,7 +165,7 @@ export interface InjuryCalculatorData {
     prpInjections: number;
     surgeryRecommended: boolean;
     surgeryCompleted: boolean;
-    surgeryType?: 'minor' | 'moderate' | 'major';
+    surgeryType?: '' | 'minor' | 'moderate' | 'major';
     totalMedicalCosts: number;
     useEstimatedCosts: boolean;
     ongoingTreatment: boolean;
@@ -109,12 +188,21 @@ export interface InjuryCalculatorData {
   };
 }
 
+export type SeverityBand = 'low' | 'moderate' | 'elevated' | 'high' | 'severe';
+
 export interface SettlementResult {
   lowEstimate: number;
   midEstimate: number;
   highEstimate: number;
   medicalCosts: number;
+  medicalCostRange: {
+    low: number;
+    mid: number;
+    high: number;
+  };
   specials: number;
+  severityBand: SeverityBand;
+  /** @deprecated Use severityBand. Kept for older preview/session payloads. */
   caseTier: string;
   logicVersion: string;
   logicHash: string;
@@ -139,6 +227,8 @@ export interface EstimatePreviewResponse {
   sessionId: string;
   expiresAt: string;
   county: string;
+  severityBand: SeverityBand;
+  /** @deprecated Use severityBand. Kept for older clients. */
   caseTier: string;
   blurredRangeLabel: string;
   summary: string;
@@ -159,6 +249,12 @@ export interface UnlockStartResponse {
 export interface UnlockVerifyResponse {
   results: SettlementResult;
   responsibleAttorney: ResponsibleAttorney | null;
+  leadDeliveryStatus: string;
+}
+
+export interface EstimateOnlyUnlockResponse {
+  results: SettlementResult;
+  responsibleAttorney: null;
   leadDeliveryStatus: string;
 }
 

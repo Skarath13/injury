@@ -60,6 +60,9 @@ export default function TermsAndConditions() {
               <li>Provides general information about the settlement process</li>
               <li>Offers educational content about auto injury claims</li>
             </ul>
+            <p className="text-slate-600 mb-4">
+              The Service is intended for California auto injury claims and California-eligible visitors. We may use coarse IP-based location signals to limit access to the website and attorney-delivery flow.
+            </p>
 
             <h3 className="text-lg font-semibold text-slate-700 mb-3">2.2 What We DON'T Provide</h3>
             <ul className="list-disc pl-6 text-slate-600 space-y-2">
@@ -67,7 +70,7 @@ export default function TermsAndConditions() {
               <li>Guaranteed or exact settlement amounts</li>
               <li>Medical advice or diagnosis</li>
               <li>Insurance claim filing services</li>
-              <li>Automatic attorney referrals or recommendations</li>
+              <li>Automatic attorney referrals or recommendations without your separate consent</li>
             </ul>
           </section>
 
@@ -83,10 +86,13 @@ export default function TermsAndConditions() {
 
             <h3 className="text-lg font-semibold text-slate-700 mb-3">3.0 Attorney Advertising and Optional Data Delivery</h3>
             <p className="text-slate-600 mb-3">
-              This website may operate as a legal advertisement where a California attorney or law firm is specifically identified as responsible for a county or territory. If an attorney is shown for your accident county, you may choose whether to send your results to that named attorney. We do not automatically assign you to an attorney, and you are free to contact any lawyer or no lawyer.
+              This website may operate as a legal advertisement where a California attorney or law firm is specifically identified as responsible for a county or territory. If an attorney is shown for your accident county, you may choose whether to view your estimate only or send your results to that named attorney. We do not automatically assign you to an attorney, and you are free to contact any lawyer or no lawyer.
             </p>
             <p className="text-slate-600 mb-4">
-              Sending calculator results to a named attorney does not create an attorney-client relationship. An attorney-client relationship can only be formed through a separate agreement with the attorney or law firm.
+              Sending calculator results to a named attorney requires your affirmative consent, phone verification, and permission for the attorney or law firm to contact you about your inquiry. We may be compensated for qualified attorney leads. Sending calculator results does not create an attorney-client relationship. An attorney-client relationship can only be formed through a separate agreement with the attorney or law firm.
+            </p>
+            <p className="text-slate-600 mb-4">
+              Repeat submissions for the same hashed phone number and sessions outside California visitor eligibility are not treated as new qualified attorney leads.
             </p>
 
             <h3 className="text-lg font-semibold text-slate-700 mb-3">3.1 No Legal Advice</h3>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getWorkerEnv } from '@/lib/cloudflareEnv';
+import { attorneyConsentCopyVersion, attorneyDeliveryConsentText } from '@/lib/leadConsent';
 import {
   decodeLocalSessionCookie,
   encodeLocalSessionCookie,
@@ -19,6 +20,7 @@ export async function POST(request: NextRequest) {
       sessionId?: string;
       phone?: string;
       consentToAttorneyShare?: boolean;
+      phoneContactConsent?: boolean;
     };
 
     if (!body.sessionId || !body.phone) {
@@ -38,14 +40,26 @@ export async function POST(request: NextRequest) {
     }
 
     const attorney = session.attorneyJson ? JSON.parse(session.attorneyJson) as ResponsibleAttorney : null;
-    if (attorney && !body.consentToAttorneyShare) {
+    if (!attorney) {
       return NextResponse.json(
-        { error: `Please confirm permission to send your results to ${attorney.name}.` },
+        { error: 'Attorney delivery is not available for this estimate.' },
         { status: 400 }
       );
     }
 
-    const otp = await startOtpUnlock(body.sessionId, body.phone, env);
+    if (!body.consentToAttorneyShare || !body.phoneContactConsent) {
+      return NextResponse.json(
+        { error: `Please confirm permission to send your results to ${attorney.name} and be contacted about your inquiry.` },
+        { status: 400 }
+      );
+    }
+
+    const otp = await startOtpUnlock(body.sessionId, body.phone, {
+      attorneyDeliveryConsent: true,
+      phoneContactConsent: true,
+      consentCopyVersion: attorneyConsentCopyVersion(attorney),
+      consentText: attorneyDeliveryConsentText(attorney)
+    }, env);
     const response: UnlockStartResponse = {
       maskedPhone: otp.maskedPhone,
       duplicateWithin30Days: otp.duplicateWithin30Days,

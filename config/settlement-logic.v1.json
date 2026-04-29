@@ -1,62 +1,154 @@
 {
-  "version": "settlement-logic-2026-04-28-v2-body-map",
+  "version": "settlement-logic-2026-04-29-v5-general-damages",
   "approvalStatus": "draft_attorney_review_required",
   "rangeMultipliers": {
     "low": 0.75,
     "mid": 0.88,
     "high": 1
   },
-  "treatmentUnitCosts": {
-    "emergencyRoomVisits": 3000,
-    "urgentCareVisits": 500,
-    "chiropracticSessions": 100,
-    "physicalTherapySessions": 100,
-    "xrays": 500,
-    "mris": 2000,
-    "ctScans": 3500,
-    "painManagementVisits": 750,
-    "orthopedicConsults": 750,
-    "tpiInjections": 2500,
-    "facetInjections": 5000,
-    "mbbInjections": 5000,
-    "esiInjections": 7500,
-    "rfaInjections": 15000,
-    "prpInjections": 2000,
-    "surgeryMinor": 40000,
-    "surgeryModerate": 75000,
-    "surgeryMajor": 125000
+  "treatmentCostRanges": {
+    "ambulanceTransports": { "low": 1000, "mid": 2000, "high": 5000 },
+    "emergencyRoomVisits": { "low": 1200, "mid": 3000, "high": 7500 },
+    "urgentCareVisits": { "low": 250, "mid": 450, "high": 900 },
+    "hospitalAdmissionDays": { "low": 3500, "mid": 7500, "high": 15000 },
+    "chiropracticSessions": { "low": 75, "mid": 125, "high": 250 },
+    "physicalTherapySessions": { "low": 75, "mid": 150, "high": 300 },
+    "occupationalTherapySessions": { "low": 75, "mid": 150, "high": 300 },
+    "xrays": { "low": 150, "mid": 350, "high": 900 },
+    "mris": { "low": 750, "mid": 1750, "high": 4500 },
+    "ctScans": { "low": 800, "mid": 2500, "high": 6000 },
+    "emgNerveStudies": { "low": 500, "mid": 1200, "high": 2500 },
+    "followUpDoctorVisits": { "low": 250, "mid": 650, "high": 1500 },
+    "painManagementVisits": { "low": 250, "mid": 650, "high": 1500 },
+    "orthopedicConsults": { "low": 250, "mid": 650, "high": 1500 },
+    "neurologyConsults": { "low": 250, "mid": 650, "high": 1500 },
+    "mentalHealthSessions": { "low": 100, "mid": 200, "high": 400 },
+    "tpiInjections": { "low": 300, "mid": 900, "high": 2000 },
+    "facetInjections": { "low": 1200, "mid": 3000, "high": 7000 },
+    "mbbInjections": { "low": 1200, "mid": 3000, "high": 7000 },
+    "esiInjections": { "low": 1500, "mid": 3500, "high": 8000 },
+    "rfaInjections": { "low": 3000, "mid": 7500, "high": 15000 },
+    "prpInjections": { "low": 500, "mid": 1500, "high": 3000 },
+    "surgeryMinor": { "low": 20000, "mid": 40000, "high": 75000 },
+    "surgeryModerate": { "low": 45000, "mid": 85000, "high": 140000 },
+    "surgeryMajor": { "low": 90000, "mid": 150000, "high": 250000 }
   },
-  "caseTiers": {
-    "soft_tissue": {
-      "label": "Soft tissue baseline",
-      "specialsMultiplier": 1
+  "severityBands": {
+    "low": {
+      "label": "Low severity",
+      "maxGeneralDamagesMultiplier": 1
     },
-    "soft_tissue_with_adders": {
-      "label": "Soft tissue with documented treatment adders",
-      "specialsMultiplier": 1.5
+    "moderate": {
+      "label": "Moderate severity",
+      "maxGeneralDamagesMultiplier": 2.25
     },
-    "hard_tissue_or_light_fracture": {
-      "label": "Hard tissue, light fracture, or objective imaging case",
-      "specialsMultiplier": 2
+    "elevated": {
+      "label": "Elevated severity",
+      "maxGeneralDamagesMultiplier": 3.75
     },
-    "serious_or_surgical": {
-      "label": "Surgical, severe fracture, or serious objective injury case",
-      "specialsMultiplier": 3.25
+    "high": {
+      "label": "High severity",
+      "maxGeneralDamagesMultiplier": 6
     },
-    "catastrophic": {
-      "label": "Catastrophic injury pattern",
-      "specialsMultiplier": 4
+    "severe": {
+      "label": "Severe severity",
+      "maxGeneralDamagesMultiplier": null
     }
   },
   "impactSeverityMultipliers": {
-    "low": 0.65,
+    "low": 0.75,
     "moderate": 1,
-    "severe": 1.2,
-    "catastrophic": 1.45
+    "severe": 1.45,
+    "catastrophic": 2
   },
   "ageModifiers": {
     "under30": 0.9,
     "over65": 1.15
+  },
+  "countyVenue": {
+    "source": "California Secretary of State 2024 General Election Statement of Vote, President by County; used as a conservative proxy for civil jury venue tendency.",
+    "tiers": {
+      "liberal": {
+        "label": "Liberal county venue tendency",
+        "multiplier": 1.1
+      },
+      "slightlyLiberal": {
+        "label": "Slightly liberal county venue tendency",
+        "multiplier": 1.05
+      },
+      "neutral": {
+        "label": "Neutral county venue tendency",
+        "multiplier": 1
+      },
+      "slightlyConservative": {
+        "label": "Slightly conservative county venue tendency",
+        "multiplier": 0.95
+      },
+      "conservative": {
+        "label": "Conservative county venue tendency",
+        "multiplier": 0.9
+      }
+    },
+    "counties": {
+      "Alameda": "liberal",
+      "Alpine": "liberal",
+      "Amador": "conservative",
+      "Butte": "neutral",
+      "Calaveras": "conservative",
+      "Colusa": "conservative",
+      "Contra Costa": "liberal",
+      "Del Norte": "slightlyConservative",
+      "El Dorado": "slightlyConservative",
+      "Fresno": "neutral",
+      "Glenn": "conservative",
+      "Humboldt": "liberal",
+      "Imperial": "neutral",
+      "Inyo": "neutral",
+      "Kern": "slightlyConservative",
+      "Kings": "slightlyConservative",
+      "Lake": "neutral",
+      "Lassen": "conservative",
+      "Los Angeles": "liberal",
+      "Madera": "slightlyConservative",
+      "Marin": "liberal",
+      "Mariposa": "slightlyConservative",
+      "Mendocino": "liberal",
+      "Merced": "neutral",
+      "Modoc": "conservative",
+      "Mono": "slightlyLiberal",
+      "Monterey": "liberal",
+      "Napa": "liberal",
+      "Nevada": "slightlyLiberal",
+      "Orange": "neutral",
+      "Placer": "neutral",
+      "Plumas": "slightlyConservative",
+      "Riverside": "neutral",
+      "Sacramento": "slightlyLiberal",
+      "San Benito": "slightlyLiberal",
+      "San Bernardino": "neutral",
+      "San Diego": "slightlyLiberal",
+      "San Francisco": "liberal",
+      "San Joaquin": "neutral",
+      "San Luis Obispo": "slightlyLiberal",
+      "San Mateo": "liberal",
+      "Santa Barbara": "liberal",
+      "Santa Clara": "liberal",
+      "Santa Cruz": "liberal",
+      "Shasta": "conservative",
+      "Sierra": "slightlyConservative",
+      "Siskiyou": "slightlyConservative",
+      "Solano": "slightlyLiberal",
+      "Sonoma": "liberal",
+      "Stanislaus": "slightlyConservative",
+      "Sutter": "conservative",
+      "Tehama": "conservative",
+      "Trinity": "neutral",
+      "Tulare": "slightlyConservative",
+      "Tuolumne": "slightlyConservative",
+      "Ventura": "slightlyLiberal",
+      "Yolo": "liberal",
+      "Yuba": "conservative"
+    }
   },
   "preExistingConditionReductionPerCondition": 0.08,
   "preExistingConditionReductionCap": 0.32,
@@ -80,16 +172,19 @@
     "dillonVLegg": 2500
   },
   "bodyMapSeverity": {
-    "severityAdders": {
-      "1": 250,
-      "2": 1000,
-      "3": 2500,
-      "4": 5000
+    "generalDamagesMultipliers": {
+      "1": 0.4,
+      "2": 0.8,
+      "3": 1.3,
+      "4": 2.2
     },
-    "highValueRegionMultiplier": 1.25,
-    "maxTotalAdder": 18000,
-    "multiRegionThreshold": 3,
-    "multiRegionAdder": 1500,
+    "highValueRegionAdder": 0.15,
+    "regionCountAdders": {
+      "2": 0.15,
+      "3": 0.35,
+      "5": 0.55
+    },
+    "maxGeneralDamagesMultiplier": 3,
     "highValueRegions": [
       "head",
       "neck",
@@ -98,9 +193,35 @@
       "abs",
       "upper-back",
       "lower-back"
-    ],
-    "softTissueWithAddersSeverity": 3,
-    "hardTissueSeverity": 4
+    ]
+  },
+  "treatmentProgression": {
+    "none": {
+      "label": "No documented treatment",
+      "multiplier": 0
+    },
+    "minimal": {
+      "label": "Minimal documentation",
+      "multiplier": 0.15
+    },
+    "softTissueBaseline": {
+      "label": "Soft-tissue baseline treatment",
+      "multiplier": 0.55
+    },
+    "softTissueWithAdders": {
+      "label": "Soft-tissue treatment with adders",
+      "multiplier": 1.1
+    },
+    "advancedDocumented": {
+      "label": "Advanced documented treatment",
+      "multiplier": 1.6
+    },
+    "interventionalOrSurgical": {
+      "label": "Interventional or surgical treatment",
+      "multiplier": 2.4
+    },
+    "multiModalityAdder": 0.15,
+    "softTissueWithAddersMax": 1.49
   },
   "fractureAdders": {
     "skull": 45000,

@@ -1,17 +1,49 @@
 'use client';
 
-import { UseFormRegister, UseFormWatch, FieldErrors, UseFormSetValue } from 'react-hook-form';
-import { InjuryCalculatorData } from '@/types/calculator';
-import { 
-  Stethoscope, Hospital, Scan, Pill, Syringe, 
-  DollarSign, Activity, Heart, Plus, Minus
+import { useEffect, type ChangeEvent, type ComponentType } from 'react';
+import { FieldErrors, UseFormRegister, UseFormSetValue, UseFormWatch } from 'react-hook-form';
+import {
+  Activity,
+  Calculator,
+  CheckCircle2,
+  Hospital,
+  Minus,
+  Plus,
+  Scan,
+  Scissors,
+  Stethoscope,
+  Syringe
 } from 'lucide-react';
-import InfoIcon from '@/components/InfoIcon';
+import settlementLogicConfig from '@/config/settlement-logic.v1.json';
+import { cn } from '@/lib/utils';
+import { InjuryCalculatorData } from '@/types/calculator';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger
+} from '@/components/ui/accordion';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field';
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel
+} from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
+import { Separator } from '@/components/ui/separator';
 
 interface Props {
   register: UseFormRegister<InjuryCalculatorData>;
@@ -20,362 +52,622 @@ interface Props {
   errors: FieldErrors<InjuryCalculatorData>;
 }
 
-interface NumberInputProps {
+type CostRange = {
+  low: number;
+  mid: number;
+  high: number;
+};
+
+type NumericTreatmentField =
+  | 'ambulanceTransports'
+  | 'emergencyRoomVisits'
+  | 'urgentCareVisits'
+  | 'hospitalAdmissionDays'
+  | 'chiropracticSessions'
+  | 'physicalTherapySessions'
+  | 'occupationalTherapySessions'
+  | 'xrays'
+  | 'mris'
+  | 'ctScans'
+  | 'emgNerveStudies'
+  | 'followUpDoctorVisits'
+  | 'painManagementVisits'
+  | 'orthopedicConsults'
+  | 'neurologyConsults'
+  | 'mentalHealthSessions'
+  | 'tpiInjections'
+  | 'facetInjections'
+  | 'mbbInjections'
+  | 'esiInjections'
+  | 'rfaInjections'
+  | 'prpInjections';
+
+type RangeKey = keyof typeof settlementLogicConfig.treatmentCostRanges;
+
+interface TreatmentItem {
+  key: NumericTreatmentField;
+  rangeKey: RangeKey;
   label: string;
-  value: number;
-  onChange: (value: number) => void;
-  min?: number;
+  description: string;
   max?: number;
-  color?: 'red' | 'blue' | 'purple' | 'green' | 'orange';
 }
 
-function NumberInput({ label, value, onChange, min = 0, max = 999 }: NumberInputProps) {
-  const increment = () => {
-    if (value < max) onChange(value + 1);
+interface TreatmentTone {
+  itemClassName: string;
+  triggerClassName: string;
+  iconClassName: string;
+  titleClassName: string;
+}
+
+interface TreatmentSection {
+  value: string;
+  title: string;
+  description: string;
+  icon: ComponentType<{ className?: string }>;
+  tone: TreatmentTone;
+  items: TreatmentItem[];
+}
+
+const COST_RANGES = settlementLogicConfig.treatmentCostRanges;
+
+const SURGERY_TONE: TreatmentTone = {
+  itemClassName: 'border-amber-100 bg-amber-50/25',
+  triggerClassName: 'hover:bg-amber-50/60',
+  iconClassName: 'bg-amber-100 text-amber-700',
+  titleClassName: 'text-amber-950'
+};
+
+const accordionRowTriggerClassName = 'min-h-16 rounded-none px-4 py-4 hover:no-underline active:bg-background/40';
+
+const TREATMENT_SECTIONS: TreatmentSection[] = [
+  {
+    value: 'emergency',
+    title: 'Emergency care',
+    description: 'Transport, ER, urgent care, and hospital days.',
+    icon: Hospital,
+    tone: {
+      itemClassName: 'border-red-100 bg-red-50/25',
+      triggerClassName: 'hover:bg-red-50/60',
+      iconClassName: 'bg-red-100 text-red-700',
+      titleClassName: 'text-red-950'
+    },
+    items: [
+      {
+        key: 'ambulanceTransports',
+        rangeKey: 'ambulanceTransports',
+        label: 'Ambulance transports',
+        description: 'Emergency medical transport after the crash.',
+        max: 10
+      },
+      {
+        key: 'emergencyRoomVisits',
+        rangeKey: 'emergencyRoomVisits',
+        label: 'Emergency room visits',
+        description: 'Hospital emergency department visits.',
+        max: 20
+      },
+      {
+        key: 'urgentCareVisits',
+        rangeKey: 'urgentCareVisits',
+        label: 'Urgent care visits',
+        description: 'Urgent care or walk-in clinic visits.',
+        max: 20
+      },
+      {
+        key: 'hospitalAdmissionDays',
+        rangeKey: 'hospitalAdmissionDays',
+        label: 'Hospital admission days',
+        description: 'Overnight inpatient days related to the accident.',
+        max: 60
+      }
+    ]
+  },
+  {
+    value: 'therapy',
+    title: 'Therapy and rehab',
+    description: 'Chiropractic, physical therapy, and occupational therapy.',
+    icon: Activity,
+    tone: {
+      itemClassName: 'border-emerald-100 bg-emerald-50/25',
+      triggerClassName: 'hover:bg-emerald-50/60',
+      iconClassName: 'bg-emerald-100 text-emerald-700',
+      titleClassName: 'text-emerald-950'
+    },
+    items: [
+      {
+        key: 'chiropracticSessions',
+        rangeKey: 'chiropracticSessions',
+        label: 'Chiropractic sessions',
+        description: 'Adjustment or chiropractic rehab visits.',
+        max: 120
+      },
+      {
+        key: 'physicalTherapySessions',
+        rangeKey: 'physicalTherapySessions',
+        label: 'Physical therapy sessions',
+        description: 'PT visits, exercises, manual therapy, or modalities.',
+        max: 120
+      },
+      {
+        key: 'occupationalTherapySessions',
+        rangeKey: 'occupationalTherapySessions',
+        label: 'Occupational therapy sessions',
+        description: 'Hand, wrist, shoulder, or function-focused therapy.',
+        max: 120
+      }
+    ]
+  },
+  {
+    value: 'imaging',
+    title: 'Imaging and diagnostics',
+    description: 'X-rays, MRI, CT, and nerve testing.',
+    icon: Scan,
+    tone: {
+      itemClassName: 'border-sky-100 bg-sky-50/25',
+      triggerClassName: 'hover:bg-sky-50/60',
+      iconClassName: 'bg-sky-100 text-sky-700',
+      titleClassName: 'text-sky-950'
+    },
+    items: [
+      {
+        key: 'xrays',
+        rangeKey: 'xrays',
+        label: 'X-rays',
+        description: 'Any accident-related X-ray study.',
+        max: 30
+      },
+      {
+        key: 'mris',
+        rangeKey: 'mris',
+        label: 'MRIs',
+        description: 'MRI studies for spine, brain, joints, or soft tissue.',
+        max: 20
+      },
+      {
+        key: 'ctScans',
+        rangeKey: 'ctScans',
+        label: 'CT scans',
+        description: 'CT imaging for head, spine, chest, abdomen, or pelvis.',
+        max: 20
+      },
+      {
+        key: 'emgNerveStudies',
+        rangeKey: 'emgNerveStudies',
+        label: 'EMG / nerve studies',
+        description: 'Electrodiagnostic testing for nerve symptoms.',
+        max: 10
+      }
+    ]
+  },
+  {
+    value: 'specialists',
+    title: 'Doctors and specialists',
+    description: 'Follow-ups, orthopedic, pain, neuro, and mental health care.',
+    icon: Stethoscope,
+    tone: {
+      itemClassName: 'border-indigo-100 bg-indigo-50/25',
+      triggerClassName: 'hover:bg-indigo-50/60',
+      iconClassName: 'bg-indigo-100 text-indigo-700',
+      titleClassName: 'text-indigo-950'
+    },
+    items: [
+      {
+        key: 'followUpDoctorVisits',
+        rangeKey: 'followUpDoctorVisits',
+        label: 'Follow-up doctor visits',
+        description: 'Primary care or general follow-up visits.',
+        max: 60
+      },
+      {
+        key: 'orthopedicConsults',
+        rangeKey: 'orthopedicConsults',
+        label: 'Orthopedic consults',
+        description: 'Orthopedic or spine specialist appointments.',
+        max: 30
+      },
+      {
+        key: 'painManagementVisits',
+        rangeKey: 'painManagementVisits',
+        label: 'Pain management visits',
+        description: 'Pain specialist consultations or follow-ups.',
+        max: 30
+      },
+      {
+        key: 'neurologyConsults',
+        rangeKey: 'neurologyConsults',
+        label: 'Neurology consults',
+        description: 'Neurology visits for concussion, nerve, or headache symptoms.',
+        max: 30
+      },
+      {
+        key: 'mentalHealthSessions',
+        rangeKey: 'mentalHealthSessions',
+        label: 'Mental health sessions',
+        description: 'Therapy or counseling for accident-related distress.',
+        max: 80
+      }
+    ]
+  },
+  {
+    value: 'injections',
+    title: 'Injections and procedures',
+    description: 'Pain procedures often used for spine and joint injuries.',
+    icon: Syringe,
+    tone: {
+      itemClassName: 'border-violet-100 bg-violet-50/25',
+      triggerClassName: 'hover:bg-violet-50/60',
+      iconClassName: 'bg-violet-100 text-violet-700',
+      titleClassName: 'text-violet-950'
+    },
+    items: [
+      {
+        key: 'tpiInjections',
+        rangeKey: 'tpiInjections',
+        label: 'Trigger point injections',
+        description: 'TPI procedures for muscle pain or spasm.',
+        max: 20
+      },
+      {
+        key: 'facetInjections',
+        rangeKey: 'facetInjections',
+        label: 'Facet joint injections',
+        description: 'Facet injections for neck or back pain generators.',
+        max: 20
+      },
+      {
+        key: 'mbbInjections',
+        rangeKey: 'mbbInjections',
+        label: 'Medial branch blocks',
+        description: 'Diagnostic blocks before possible ablation.',
+        max: 20
+      },
+      {
+        key: 'esiInjections',
+        rangeKey: 'esiInjections',
+        label: 'Epidural steroid injections',
+        description: 'ESI procedures for radiating pain or disc findings.',
+        max: 20
+      },
+      {
+        key: 'rfaInjections',
+        rangeKey: 'rfaInjections',
+        label: 'Radiofrequency ablation',
+        description: 'RFA procedures after successful diagnostic blocks.',
+        max: 12
+      },
+      {
+        key: 'prpInjections',
+        rangeKey: 'prpInjections',
+        label: 'PRP injections',
+        description: 'Platelet rich plasma injections for soft tissue or joints.',
+        max: 12
+      }
+    ]
+  }
+];
+
+function formatCurrency(value: number) {
+  return `$${Math.round(value).toLocaleString()}`;
+}
+
+function formatRange(range: CostRange) {
+  if (range.low === 0 && range.high === 0) return '$0';
+  return `${formatCurrency(range.low)} - ${formatCurrency(range.high)}`;
+}
+
+function addRanges(left: CostRange, right: CostRange): CostRange {
+  return {
+    low: left.low + right.low,
+    mid: left.mid + right.mid,
+    high: left.high + right.high
   };
-  
-  const decrement = () => {
-    if (value > min) onChange(value - 1);
+}
+
+function multiplyRange(range: CostRange, count: number): CostRange {
+  return {
+    low: range.low * count,
+    mid: range.mid * count,
+    high: range.high * count
   };
-  
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = parseInt(e.target.value) || 0;
-    if (newValue >= min && newValue <= max) {
-      onChange(newValue);
-    }
+}
+
+function emptyRange(): CostRange {
+  return { low: 0, mid: 0, high: 0 };
+}
+
+function NumberInput({
+  item,
+  value,
+  onChange
+}: {
+  item: TreatmentItem;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  const max = item.max ?? 999;
+  const itemRange = COST_RANGES[item.rangeKey];
+
+  const updateValue = (nextValue: number) => {
+    onChange(Math.min(max, Math.max(0, nextValue)));
+  };
+
+  const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    updateValue(Number.parseInt(event.target.value, 10) || 0);
   };
 
   return (
-    <Field>
-      <FieldLabel>{label}</FieldLabel>
-      <div className="flex items-center gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          size="icon-lg"
-          onClick={decrement}
-          disabled={value <= min}
-          aria-label={`Decrease ${label}`}
-        >
-          <Minus />
-        </Button>
-        
-        <Input
-          type="number"
-          value={value}
-          onChange={handleInputChange}
-          min={min}
-          max={max}
-          className="w-20 text-center"
-        />
-        
-        <Button
-          type="button"
-          variant="outline"
-          size="icon-lg"
-          onClick={increment}
-          disabled={value >= max}
-          aria-label={`Increase ${label}`}
-        >
-          <Plus />
-        </Button>
+    <Field className="border-t border-border/70 bg-transparent py-3 first:border-t-0">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <FieldContent>
+          <FieldLabel className="text-sm font-semibold text-foreground">{item.label}</FieldLabel>
+          <FieldDescription className="text-xs">
+            {item.description} {formatRange(itemRange)} each.
+          </FieldDescription>
+        </FieldContent>
+
+        <div className="flex shrink-0 items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-lg"
+            className="size-11 rounded-full"
+            onClick={() => updateValue(value - 1)}
+            disabled={value <= 0}
+            aria-label={`Decrease ${item.label}`}
+          >
+            <Minus />
+          </Button>
+
+          <Input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={max}
+            value={value}
+            onChange={handleInputChange}
+            className="h-11 w-20 text-center text-base font-semibold"
+            aria-label={item.label}
+          />
+
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-lg"
+            className="size-11 rounded-full"
+            onClick={() => updateValue(value + 1)}
+            disabled={value >= max}
+            aria-label={`Increase ${item.label}`}
+          >
+            <Plus />
+          </Button>
+        </div>
       </div>
     </Field>
   );
 }
 
-export default function TreatmentStep({ register, watch, setValue, errors }: Props) {
-  const surgeryRecommended = watch('treatment.surgeryRecommended');
-  
-  // Watch all the numeric fields
-  const emergencyRoomVisits = watch('treatment.emergencyRoomVisits') || 0;
-  const urgentCareVisits = watch('treatment.urgentCareVisits') || 0;
-  const chiropracticSessions = watch('treatment.chiropracticSessions') || 0;
-  const physicalTherapySessions = watch('treatment.physicalTherapySessions') || 0;
-  const xrays = watch('treatment.xrays') || 0;
-  const mris = watch('treatment.mris') || 0;
-  const ctScans = watch('treatment.ctScans') || 0;
-  const painManagementVisits = watch('treatment.painManagementVisits') || 0;
-  const orthopedicConsults = watch('treatment.orthopedicConsults') || 0;
-  const tpiInjections = watch('treatment.tpiInjections') || 0;
-  const facetInjections = watch('treatment.facetInjections') || 0;
-  const esiInjections = watch('treatment.esiInjections') || 0;
-  const rfaInjections = watch('treatment.rfaInjections') || 0;
-  const mbbInjections = watch('treatment.mbbInjections') || 0;
-  const prpInjections = watch('treatment.prpInjections') || 0;
-  const surgeryCompleted = watch('treatment.surgeryCompleted');
-  const useEstimatedCosts = watch('treatment.useEstimatedCosts');
-  const ongoingTreatment = watch('treatment.ongoingTreatment');
-  
+function SectionSummary({ count, range }: { count: number; range: CostRange }) {
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Treatment so far</h2>
-        <p className="max-w-2xl text-sm leading-6 text-slate-600">
-          Add what you know. If you do not have bills yet, use the treatment-based estimate option and keep moving.
+    <div className="flex flex-wrap items-center gap-2 text-left sm:justify-end sm:text-right">
+      <Badge variant={count > 0 ? 'default' : 'secondary'}>
+        {count > 0 ? `${count} selected` : 'Not added'}
+      </Badge>
+      {count > 0 && (
+        <span className="text-xs font-medium text-muted-foreground">{formatRange(range)}</span>
+      )}
+    </div>
+  );
+}
+
+export default function TreatmentStep({ register, watch, setValue }: Props) {
+  const treatment = watch('treatment');
+  const surgeryRecommended = Boolean(treatment.surgeryRecommended);
+  const surgeryCompleted = Boolean(treatment.surgeryCompleted);
+  const ongoingTreatment = Boolean(treatment.ongoingTreatment);
+
+  useEffect(() => {
+    setValue('treatment.useEstimatedCosts', true, { shouldDirty: false, shouldValidate: false });
+    setValue('treatment.totalMedicalCosts', 0, { shouldDirty: false, shouldValidate: false });
+  }, [setValue]);
+
+  const getValue = (key: NumericTreatmentField) => Number(treatment[key] || 0);
+  const updateTreatmentCount = (key: NumericTreatmentField, value: number) => {
+    setValue(`treatment.${key}`, value, { shouldDirty: true, shouldValidate: true });
+  };
+
+  const rangeForItems = (items: TreatmentItem[]) => items.reduce((total, item) => {
+    const value = getValue(item.key);
+    return addRanges(total, multiplyRange(COST_RANGES[item.rangeKey], value));
+  }, emptyRange());
+
+  const countForItems = (items: TreatmentItem[]) => items.reduce((total, item) => total + getValue(item.key), 0);
+
+  const surgeryRange = surgeryRecommended || surgeryCompleted
+    ? treatment.surgeryType === 'minor'
+      ? COST_RANGES.surgeryMinor
+      : treatment.surgeryType === 'moderate'
+        ? COST_RANGES.surgeryModerate
+        : treatment.surgeryType === 'major'
+          ? COST_RANGES.surgeryMajor
+          : emptyRange()
+    : emptyRange();
+  const surgeryCount = Number(surgeryRecommended || surgeryCompleted || ongoingTreatment);
+  const totalRange = TREATMENT_SECTIONS
+    .map((section) => rangeForItems(section.items))
+    .reduce(addRanges, surgeryRange);
+  const totalCount = TREATMENT_SECTIONS
+    .map((section) => countForItems(section.items))
+    .reduce((total, count) => total + count, surgeryCount);
+
+  return (
+    <div className="flex flex-col gap-5">
+      <div className="flex flex-col gap-2">
+        <h2 className="text-2xl font-semibold tracking-tight text-foreground">Treatment</h2>
+        <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+          Select the care you have received. The estimate uses reasonable treatment ranges instead of raw bills.
         </p>
       </div>
 
-      <div className="space-y-6">
-        {/* Emergency Care */}
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <h3 className="text-sm font-semibold text-slate-700 mb-4 flex items-center">
-            <Hospital className="w-4 h-4 mr-2 text-red-600" />
-            Emergency & Urgent Care
-            <InfoIcon content="Used to estimate medical specials when exact bills are not available." />
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-            <NumberInput
-              label="Emergency Room Visits"
-              value={emergencyRoomVisits}
-              onChange={(value) => setValue('treatment.emergencyRoomVisits', value)}
-              color="red"
-            />
-            <NumberInput
-              label="Urgent Care Visits"
-              value={urgentCareVisits}
-              onChange={(value) => setValue('treatment.urgentCareVisits', value)}
-              color="red"
-            />
-          </div>
-        </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Care categories</CardTitle>
+          <CardDescription>Open each section that applies and add counts with the steppers.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Accordion type="multiple" className="rounded-lg border">
+            {TREATMENT_SECTIONS.map((section) => {
+              const Icon = section.icon;
+              const sectionCount = countForItems(section.items);
+              const sectionRange = rangeForItems(section.items);
 
-        {/* Therapy Sessions */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h3 className="text-sm font-semibold text-slate-700 mb-4 flex items-center">
-            <Activity className="w-4 h-4 mr-2 text-blue-600" />
-            Therapy & Rehabilitation
-            <InfoIcon content="Therapy volume can affect the treatment profile used by the estimate." />
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-            <NumberInput
-              label="Chiropractic Sessions"
-              value={chiropracticSessions}
-              onChange={(value) => setValue('treatment.chiropracticSessions', value)}
-              color="blue"
-            />
-            <NumberInput
-              label="Physical Therapy Sessions"
-              value={physicalTherapySessions}
-              onChange={(value) => setValue('treatment.physicalTherapySessions', value)}
-              color="blue"
-            />
-          </div>
-        </div>
+              return (
+                <AccordionItem
+                  key={section.value}
+                  value={section.value}
+                  className={cn('border-b last:border-b-0', section.tone.itemClassName)}
+                >
+                  <AccordionTrigger className={cn(accordionRowTriggerClassName, section.tone.triggerClassName)}>
+                    <div className="flex w-full min-w-0 flex-col gap-3 pr-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex min-w-0 items-start gap-3 text-left sm:flex-1">
+                        <span className={cn('mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full', section.tone.iconClassName)}>
+                          <Icon className="size-4" />
+                        </span>
+                        <span className="min-w-0">
+                          <span className={cn('block text-sm font-semibold', section.tone.titleClassName)}>{section.title}</span>
+                          <span className="mt-1 block text-xs leading-5 text-muted-foreground">{section.description}</span>
+                        </span>
+                      </div>
+                      <SectionSummary count={sectionCount} range={sectionRange} />
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-4 pb-4">
+                    <FieldGroup>
+                      {section.items.map((item) => (
+                        <NumberInput
+                          key={item.key}
+                          item={item}
+                          value={getValue(item.key)}
+                          onChange={(value) => updateTreatmentCount(item.key, value)}
+                        />
+                      ))}
+                    </FieldGroup>
+                  </AccordionContent>
+                </AccordionItem>
+              );
+            })}
 
-        {/* Imaging */}
-        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-          <h3 className="text-sm font-semibold text-slate-700 mb-4 flex items-center">
-            <Scan className="w-4 h-4 mr-2 text-purple-600" />
-            Diagnostic Imaging
-            <InfoIcon content="Imaging can add treatment cost and objective injury context." />
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
-            <NumberInput
-              label="X-Rays"
-              value={xrays}
-              onChange={(value) => setValue('treatment.xrays', value)}
-              color="purple"
-            />
-            <NumberInput
-              label="MRIs"
-              value={mris}
-              onChange={(value) => setValue('treatment.mris', value)}
-              color="purple"
-            />
-            <NumberInput
-              label="CT Scans"
-              value={ctScans}
-              onChange={(value) => setValue('treatment.ctScans', value)}
-              color="purple"
-            />
-          </div>
-        </div>
-
-        {/* Specialist Care */}
-        <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-          <h3 className="text-sm font-semibold text-slate-700 mb-4 flex items-center">
-            <Stethoscope className="w-4 h-4 mr-2 text-green-600" />
-            Specialist Treatment
-            <InfoIcon content="Specialist care is one treatment signal in the calculation." />
-          </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-            <NumberInput
-              label="Pain Management Visits"
-              value={painManagementVisits}
-              onChange={(value) => setValue('treatment.painManagementVisits', value)}
-              color="green"
-            />
-            <NumberInput
-              label="Orthopedic Consults"
-              value={orthopedicConsults}
-              onChange={(value) => setValue('treatment.orthopedicConsults', value)}
-              color="green"
-            />
-          </div>
-          
-          <div className="mt-6">
-            <h4 className="text-sm font-medium text-slate-700 mb-4 flex items-center">
-              <Syringe className="w-4 h-4 mr-2 text-green-600" />
-              Injections Received
-              <InfoIcon content="Injection types are used as treatment and severity signals in the estimate." />
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-              <NumberInput
-                label="Trigger Point Injections (TPIs)"
-                value={tpiInjections}
-                onChange={(value) => setValue('treatment.tpiInjections', value)}
-                color="green"
-              />
-              <NumberInput
-                label="Facet Joint Injections"
-                value={facetInjections}
-                onChange={(value) => setValue('treatment.facetInjections', value)}
-                color="green"
-              />
-              <NumberInput
-                label="Epidural Steroid Injections (ESIs)"
-                value={esiInjections}
-                onChange={(value) => setValue('treatment.esiInjections', value)}
-                color="green"
-              />
-              <NumberInput
-                label="Radiofrequency Ablation (RFA)"
-                value={rfaInjections}
-                onChange={(value) => setValue('treatment.rfaInjections', value)}
-                color="green"
-              />
-              <NumberInput
-                label="Medial Branch Blocks (MBB)"
-                value={mbbInjections}
-                onChange={(value) => setValue('treatment.mbbInjections', value)}
-                color="green"
-              />
-              <NumberInput
-                label="Platelet Rich Plasma (PRP)"
-                value={prpInjections}
-                onChange={(value) => setValue('treatment.prpInjections', value)}
-                color="green"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Surgery */}
-        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-          <h3 className="text-sm font-semibold text-slate-700 mb-3">Surgery
-            <InfoIcon content="Surgery recommendation or completion can change the case tier. Settlement value still depends on the full fact pattern." />
-          </h3>
-          <div className="flex flex-col gap-3">
-            <Field orientation="horizontal">
-              <Checkbox
-                id="surgeryRecommended"
-                checked={surgeryRecommended}
-                onCheckedChange={(checked) => setValue('treatment.surgeryRecommended', checked === true, { shouldDirty: true })}
-              />
-              <FieldLabel htmlFor="surgeryRecommended">Surgery recommended by doctor</FieldLabel>
-            </Field>
-            
-            {surgeryRecommended && (
-              <>
-                <Field orientation="horizontal" className="ml-7">
-                  <Checkbox
-                    id="surgeryCompleted"
-                    checked={surgeryCompleted}
-                    onCheckedChange={(checked) => setValue('treatment.surgeryCompleted', checked === true, { shouldDirty: true })}
-                  />
-                  <FieldLabel htmlFor="surgeryCompleted">Surgery completed</FieldLabel>
-                </Field>
-                
-                <Field className="ml-7 mt-3">
-                  <FieldLabel>Surgery type/cost range</FieldLabel>
-                  <NativeSelect
-                    {...register('treatment.surgeryType')}
-                    className="w-full"
-                  >
-                    <option value="">Select surgery type...</option>
-                    <option value="minor">Minor Surgery ($30,000 - $50,000) - Arthroscopy, carpal tunnel, etc.</option>
-                    <option value="moderate">Moderate Surgery ($50,000 - $100,000) - Disc surgery, joint repair, etc.</option>
-                    <option value="major">Major Surgery ($100,000 - $150,000+) - Spinal fusion, joint replacement, etc.</option>
-                  </NativeSelect>
-                </Field>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Medical Costs */}
-        <div>
-          <label className="flex items-center text-sm font-medium text-slate-700 mb-3">
-            <DollarSign className="w-4 h-4 mr-2 text-slate-400" />
-            Total Medical Bills (To Date)
-            <InfoIcon content="Include all medical bills, even if paid by insurance" />
-          </label>
-          
-          <div className="mb-4">
-            <Field orientation="horizontal">
-              <Checkbox
-                id="useEstimatedCosts"
-                checked={useEstimatedCosts}
-                onCheckedChange={(checked) => setValue('treatment.useEstimatedCosts', checked === true, { shouldDirty: true, shouldValidate: true })}
-              />
-              <FieldContent>
-                <FieldLabel htmlFor="useEstimatedCosts">I don't know my exact bills</FieldLabel>
-                <FieldDescription>Use estimated amount based on my treatment.</FieldDescription>
-              </FieldContent>
-            </Field>
-          </div>
-          
-          {!useEstimatedCosts ? (
-            <>
-              <Field data-invalid={Boolean(errors.treatment?.totalMedicalCosts)}>
-                <FieldLabel>Total medical bills</FieldLabel>
-                <div className="relative">
-                <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-500">$</span>
-                <Input
-                  type="number"
-                  {...register('treatment.totalMedicalCosts', { 
-                    required: !useEstimatedCosts ? 'Medical costs are required' : false,
-                    min: { value: 0, message: 'Invalid amount' }
-                  })}
-                  className="pl-8"
-                  placeholder="15000"
-                  aria-invalid={Boolean(errors.treatment?.totalMedicalCosts)}
-                />
+            <AccordionItem value="surgery" className={cn('last:border-b-0', SURGERY_TONE.itemClassName)}>
+              <AccordionTrigger className={cn(accordionRowTriggerClassName, SURGERY_TONE.triggerClassName)}>
+                <div className="flex w-full min-w-0 flex-col gap-3 pr-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex min-w-0 items-start gap-3 text-left sm:flex-1">
+                    <span className={cn('mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full', SURGERY_TONE.iconClassName)}>
+                      <Scissors className="size-4" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className={cn('block text-sm font-semibold', SURGERY_TONE.titleClassName)}>Surgery and future care</span>
+                      <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                        Recommended or completed procedures and ongoing treatment.
+                      </span>
+                    </span>
+                  </div>
+                  <SectionSummary count={surgeryCount} range={surgeryRange} />
                 </div>
-                <FieldError>{errors.treatment?.totalMedicalCosts?.message}</FieldError>
-              </Field>
-            </>
-          ) : (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-800 font-medium mb-2">
-                Estimated medical costs will be calculated based on:
-              </p>
-              <ul className="text-xs sm:text-sm text-blue-700 space-y-1 leading-relaxed">
-                <li>• ER visits: $3,000-$8,000 each</li>
-                <li>• Urgent Care visits: $500-$1,000 each</li>
-                <li>• Chiro/PT sessions: $100-$200 each</li>
-                <li>• Imaging (X-ray/MRI/CT): $500-$6,000 each</li>
-                <li>• Specialist visits: $500-$1,500 each</li>
-                <li>• Injections: Based on type selected</li>
-              </ul>
+              </AccordionTrigger>
+              <AccordionContent className="px-4 pb-4">
+                <FieldGroup>
+                  <Field orientation="horizontal" className="rounded-lg border bg-background p-3">
+                    <Checkbox
+                      id="surgeryRecommended"
+                      checked={surgeryRecommended}
+                      onCheckedChange={(checked) => {
+                        const nextValue = checked === true;
+                        setValue('treatment.surgeryRecommended', nextValue, { shouldDirty: true });
+                        if (!nextValue) {
+                          setValue('treatment.surgeryCompleted', false, { shouldDirty: true });
+                          setValue('treatment.surgeryType', undefined, { shouldDirty: true });
+                        }
+                      }}
+                    />
+                    <FieldContent>
+                      <FieldLabel htmlFor="surgeryRecommended">Surgery recommended by a doctor</FieldLabel>
+                      <FieldDescription>Use this when a provider has discussed or recommended surgery.</FieldDescription>
+                    </FieldContent>
+                  </Field>
+
+                  {surgeryRecommended && (
+                    <div className="flex flex-col gap-4 rounded-lg border bg-muted/30 p-3">
+                      <Field orientation="horizontal">
+                        <Checkbox
+                          id="surgeryCompleted"
+                          checked={surgeryCompleted}
+                          onCheckedChange={(checked) => setValue('treatment.surgeryCompleted', checked === true, { shouldDirty: true })}
+                        />
+                        <FieldContent>
+                          <FieldLabel htmlFor="surgeryCompleted">Surgery completed</FieldLabel>
+                          <FieldDescription>Select this if the accident-related surgery already happened.</FieldDescription>
+                        </FieldContent>
+                      </Field>
+
+                      <Separator />
+
+                      <Field>
+                        <FieldLabel>Surgery type</FieldLabel>
+                        <NativeSelect {...register('treatment.surgeryType')} className="min-h-11">
+                          <option value="">Select surgery type...</option>
+                          <option value="minor">Minor surgery: arthroscopy or smaller procedure ($20k - $75k)</option>
+                          <option value="moderate">Moderate surgery: disc or joint repair ($45k - $140k)</option>
+                          <option value="major">Major surgery: fusion or replacement ($90k - $250k)</option>
+                        </NativeSelect>
+                        <FieldDescription>Choose the closest category; the estimate still uses a broad range.</FieldDescription>
+                      </Field>
+                    </div>
+                  )}
+
+                  <Field orientation="horizontal" className={cn('rounded-lg border bg-background p-3', ongoingTreatment && 'bg-muted/40')}>
+                    <Checkbox
+                      id="ongoingTreatment"
+                      checked={ongoingTreatment}
+                      onCheckedChange={(checked) => setValue('treatment.ongoingTreatment', checked === true, { shouldDirty: true })}
+                    />
+                    <FieldContent>
+                      <FieldLabel htmlFor="ongoingTreatment">Still receiving treatment or future care is planned</FieldLabel>
+                      <FieldDescription>Use this when care is ongoing, even if future costs are not known yet.</FieldDescription>
+                    </FieldContent>
+                  </Field>
+                </FieldGroup>
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="gap-3 sm:grid-cols-[1fr_auto]">
+          <div className="flex items-start gap-3">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted">
+              <Calculator className="size-5 text-muted-foreground" />
+            </span>
+            <div className="min-w-0">
+              <CardTitle>Estimated medical specials</CardTitle>
+              <CardDescription>
+                {totalCount > 0 ? `${totalCount} treatment item${totalCount === 1 ? '' : 's'} selected` : 'Nothing selected yet'}
+              </CardDescription>
             </div>
-          )}
-        </div>
-
-        {/* Ongoing Treatment */}
-        <div>
-          <Field orientation="horizontal">
-            <Checkbox
-              id="ongoingTreatment"
-              checked={ongoingTreatment}
-              onCheckedChange={(checked) => setValue('treatment.ongoingTreatment', checked === true, { shouldDirty: true })}
-            />
-            <FieldLabel htmlFor="ongoingTreatment">Still receiving treatment / future treatment planned</FieldLabel>
-          </Field>
-        </div>
-      </div>
-
+          </div>
+          <div className="rounded-lg border bg-muted/40 px-3 py-2 text-right">
+            <p className="text-xs font-medium text-muted-foreground">Reasonable value range</p>
+            <p className="text-base font-semibold text-foreground">{formatRange(totalRange)}</p>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Alert>
+            <CheckCircle2 data-icon="inline-start" />
+            <AlertDescription>
+              No medical bills are entered here. Insurers often negotiate or reduce charges, so this calculator estimates low, mid, and high medical specials from treatment counts.
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
     </div>
   );
 }

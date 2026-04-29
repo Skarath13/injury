@@ -17,7 +17,7 @@ export default function InsuranceStep({ register, watch, errors }: Props) {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-slate-900 mb-2">Insurance & Legal</h2>
-        <div className="text-slate-600">Policy limits and legal representation affect your net recovery.
+        <div className="text-slate-600">Policy limits are recorded for context. Legal representation can affect your net recovery.
           <InfoIcon content="Settlement Timeline: 3-6 months for simple soft tissue cases with attorney, 6-12 months for moderate injuries, 12-24 months for serious injuries, 2-4 years for trial cases. Your net recovery will be reduced by attorney fees, medical liens, and case costs." />
         </div>
       </div>
@@ -28,7 +28,7 @@ export default function InsuranceStep({ register, watch, errors }: Props) {
           <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center">
             <Shield className="w-4 h-4 mr-2 text-blue-600" />
             Insurance Policy Limits
-            <InfoIcon content="California minimum liability is only $15,000 per person. Many drivers carry only minimum coverage, which severely limits potential recovery." />
+            <InfoIcon content="Policy limits are recorded for context and attorney review. They no longer cap this educational estimate." />
           </h3>
           
           <label className="flex items-center space-x-2 cursor-pointer mb-3">
@@ -47,7 +47,7 @@ export default function InsuranceStep({ register, watch, errors }: Props) {
               <label className="flex items-center text-sm font-medium text-slate-700 mb-2">
                 <DollarSign className="w-4 h-4 mr-2 text-slate-400" />
                 Policy Limits (Per Person)
-                <InfoIcon content="You cannot recover more than the policy limits unless the at-fault party has significant assets" />
+                <InfoIcon content="Recorded for context only; the estimate is no longer capped by this value." />
               </label>
               <select
                 {...register('insurance.policyLimits')}

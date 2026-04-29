@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { NextRequest } from 'next/server';
 import { POST as previewPost } from '../app/api/estimate/preview/route';
+import { POST as unlockStartPost } from '../app/api/estimate/unlock/start/route';
 import {
   BODY_MAP_CLICKABLE_SLUGS,
   bodyMapHighlightSideForView,
@@ -11,18 +12,34 @@ import {
   bodyMapSelectionIdentityKey,
   bodyMapSelectionViewLabel,
   cycleBodyMapSelection,
+  deriveBodyMapOnlyInjuryFields,
   removeBodyMapSelection
 } from '../lib/bodyMapInjuries';
 import { bodyBack, bodyFemaleBack, bodyFemaleFront, bodyFront } from '../components/body-highlighter/assets';
 import type { BodyPartSlug } from '../components/body-highlighter/types';
 import {
+  CALIFORNIA_COUNTIES,
   formatCounty,
   rankCaliforniaCountyMatches,
   resolveCaliforniaCountySelection,
   resolveCountyAutocompleteValue
 } from '../lib/californiaCounties';
-import { calculateSettlement } from '../lib/settlementEngine';
-import { BodyMapSelection, InjuryCalculatorData } from '../types/calculator';
+import {
+  createDefaultGuidedInjurySignals,
+  normalizeGuidedInjuryData
+} from '../lib/guidedInjurySignals';
+import { attorneyConsentCopyVersion, attorneyDeliveryConsentText } from '../lib/leadConsent';
+import {
+  createLeadSession,
+  getLeadSession,
+  startOtpUnlock,
+  unlockEstimateOnly,
+  verifyOtpUnlock
+} from '../lib/leadGate';
+import type { CreateLeadSessionInput } from '../lib/leadGate';
+import { createDefaultPrivacyChoices, createPrivacyChoiceSnapshot } from '../lib/privacyChoices';
+import { calculateSettlement, estimateMedicalCostRange, SETTLEMENT_LOGIC } from '../lib/settlementEngine';
+import { BodyMapSelection, InjuryCalculatorData, ResponsibleAttorney } from '../types/calculator';
 
 function baseCase(overrides: Partial<InjuryCalculatorData> = {}): InjuryCalculatorData {
   const data: InjuryCalculatorData = {
@@ -54,15 +71,22 @@ function baseCase(overrides: Partial<InjuryCalculatorData> = {}): InjuryCalculat
       }
     },
     treatment: {
+      ambulanceTransports: 0,
       emergencyRoomVisits: 0,
-      urgentCareVisits: 0,
+      urgentCareVisits: 1,
+      hospitalAdmissionDays: 0,
       chiropracticSessions: 0,
       physicalTherapySessions: 0,
+      occupationalTherapySessions: 0,
       xrays: 0,
       mris: 0,
       ctScans: 0,
+      emgNerveStudies: 0,
+      followUpDoctorVisits: 0,
       painManagementVisits: 0,
       orthopedicConsults: 0,
+      neurologyConsults: 0,
+      mentalHealthSessions: 0,
       tpiInjections: 0,
       facetInjections: 0,
       mbbInjections: 0,
@@ -71,8 +95,8 @@ function baseCase(overrides: Partial<InjuryCalculatorData> = {}): InjuryCalculat
       prpInjections: 0,
       surgeryRecommended: false,
       surgeryCompleted: false,
-      totalMedicalCosts: 10000,
-      useEstimatedCosts: false,
+      totalMedicalCosts: 0,
+      useEstimatedCosts: true,
       ongoingTreatment: false
     },
     impact: {
@@ -107,17 +131,127 @@ function baseCase(overrides: Partial<InjuryCalculatorData> = {}): InjuryCalculat
   };
 }
 
-test('soft tissue baseline uses the 1x specials tier', () => {
+const testLeadEnv = {
+  LEAD_HASH_SALT: 'test-lead-salt',
+  OTP_DEV_CODE: '1234',
+  NODE_ENV: 'test'
+};
+
+const testAttorney: ResponsibleAttorney = {
+  id: 'test-attorney',
+  name: 'Test Injury Law',
+  barNumber: '123456',
+  officeLocation: 'Los Angeles, CA',
+  disclosure: 'Test Injury Law is responsible for this attorney advertisement.',
+  consentCopyVersion: 'test-attorney-consent-v1'
+};
+
+async function createTestLeadSession(
+  attorney: ResponsibleAttorney | null = testAttorney,
+  overrides: Partial<CreateLeadSessionInput> = {}
+) {
+  const data = baseCase();
+  const result = calculateSettlement(data);
+
+  return createLeadSession({
+    county: data.accidentDetails.county,
+    logicVersion: result.logicVersion,
+    logicHash: result.logicHash,
+    routingVersion: 'test-routing-v1',
+    turnstileStatus: 'verified',
+    input: data,
+    result,
+    preview: {
+      severityBand: result.severityBand,
+      caseTier: result.caseTier,
+      blurredRangeLabel: '$••,••• - $•••,•••'
+    },
+    attorney,
+    ipHash: 'ip-hash',
+    userAgentHash: 'ua-hash',
+    privacyChoiceSnapshot: createPrivacyChoiceSnapshot(createDefaultPrivacyChoices('2026-04-29T00:00:00.000Z'), false),
+    visitorCountry: 'US',
+    visitorRegionCode: 'CA',
+    visitorRegion: 'California',
+    visitorCity: 'Irvine',
+    geoEligibilityStatus: 'california',
+    ...overrides
+  }, testLeadEnv);
+}
+
+test('general-damages model starts with medical specials plus multiplier value', () => {
   const result = calculateSettlement(baseCase());
 
-  assert.equal(result.caseTier, 'soft_tissue');
-  assert.equal(result.specials, 10000);
-  assert.equal(result.highEstimate, 10000);
+  assert.equal(result.severityBand, 'low');
+  assert.equal(result.caseTier, result.severityBand);
+  assert.deepEqual(result.medicalCostRange, { low: 250, mid: 450, high: 900 });
+  assert.equal(result.medicalCosts, 450);
+  assert.equal(result.specials, 450);
+  assert.equal(result.lowEstimate, 216);
+  assert.equal(result.midEstimate, 455);
+  assert.equal(result.highEstimate, 1035);
   assert.ok(result.logicVersion);
   assert.ok(result.logicHash);
 });
 
-test('documented treatment adders move soft tissue to 1.5x', () => {
+test('about 1x general damages means total value is about specials plus specials', () => {
+  const result = calculateSettlement(baseCase({
+    injuries: {
+      ...baseCase().injuries,
+      bodyMap: [{
+        slug: 'knees',
+        side: 'left',
+        view: 'front',
+        severity: 2,
+        label: 'Left knee'
+      }],
+      primaryInjury: 'Knee Injury'
+    }
+  }));
+
+  assert.equal(result.medicalCostRange.high, 900);
+  assert.ok(result.highEstimate >= 1700);
+  assert.ok(result.highEstimate <= 1850);
+});
+
+test('medical cost range adds selected treatment counts by lane', () => {
+  const range = estimateMedicalCostRange(baseCase({
+    treatment: {
+      ...baseCase().treatment,
+      physicalTherapySessions: 2,
+      mris: 1
+    }
+  }).treatment);
+
+  assert.deepEqual(range, {
+    low: 1150,
+    mid: 2500,
+    high: 6000
+  });
+});
+
+test('legacy entered bills are ignored in favor of treatment estimates', () => {
+  const estimated = calculateSettlement(baseCase());
+  const legacyBillPayload = calculateSettlement(baseCase({
+    treatment: {
+      ...baseCase().treatment,
+      totalMedicalCosts: 999999,
+      useEstimatedCosts: false
+    }
+  }));
+
+  assert.equal(legacyBillPayload.medicalCosts, estimated.medicalCosts);
+  assert.deepEqual(legacyBillPayload.medicalCostRange, estimated.medicalCostRange);
+  assert.equal(legacyBillPayload.highEstimate, estimated.highEstimate);
+});
+
+test('documented treatment adders stay below 1.5x general damages before advanced care', () => {
+  const emergencyBaseline = calculateSettlement(baseCase({
+    treatment: {
+      ...baseCase().treatment,
+      emergencyRoomVisits: 1
+    }
+  }));
   const result = calculateSettlement(baseCase({
     treatment: {
       ...baseCase().treatment,
@@ -125,12 +259,20 @@ test('documented treatment adders move soft tissue to 1.5x', () => {
     }
   }));
 
-  assert.equal(result.caseTier, 'soft_tissue_with_adders');
-  assert.ok(result.highEstimate > 10000);
+  const emergencyFactor = emergencyBaseline.factors.find((factor) => factor.factor.includes('Soft-tissue baseline'));
+  const treatmentFactor = result.factors.find((factor) => factor.factor.includes('Soft-tissue treatment with adders'));
+
+  assert.ok(emergencyFactor);
+  assert.ok(emergencyFactor.weight < 1);
+  assert.ok(treatmentFactor);
+  assert.ok(treatmentFactor.weight > 1);
+  assert.ok(treatmentFactor.weight < 1.5);
+  assert.ok(result.highEstimate > calculateSettlement(baseCase()).highEstimate);
 });
 
-test('fractures and surgery escalate to configured higher tiers', () => {
-  const fracture = calculateSettlement(baseCase({
+test('legacy fracture fields are ignored while surgery increases treatment progression', () => {
+  const baseline = calculateSettlement(baseCase());
+  const legacyFracture = calculateSettlement(baseCase({
     injuries: {
       ...baseCase().injuries,
       fractures: ['Wrist Fracture']
@@ -139,18 +281,29 @@ test('fractures and surgery escalate to configured higher tiers', () => {
   const surgery = calculateSettlement(baseCase({
     treatment: {
       ...baseCase().treatment,
-      totalMedicalCosts: 75000,
       surgeryRecommended: true,
       surgeryType: 'moderate'
     }
   }));
 
-  assert.equal(fracture.caseTier, 'hard_tissue_or_light_fracture');
-  assert.equal(surgery.caseTier, 'serious_or_surgical');
-  assert.ok(surgery.highEstimate > fracture.highEstimate);
+  const surgeryFactor = surgery.factors.find((factor) => factor.factor.includes('Interventional or surgical treatment'));
+
+  assert.equal(legacyFracture.severityBand, baseline.severityBand);
+  assert.equal(legacyFracture.highEstimate, baseline.highEstimate);
+  assert.ok(!legacyFracture.factors.some((factor) => factor.factor.includes('fracture')));
+  assert.ok(surgeryFactor);
+  assert.ok(surgeryFactor.weight > 2.4);
+  assert.ok(surgery.highEstimate > legacyFracture.highEstimate);
 });
 
-test('comparative fault and policy caps reduce the high estimate', () => {
+test('comparative fault reduces value while policy limits are ignored', () => {
+  const uncapped = calculateSettlement(baseCase({
+    insurance: {
+      policyLimitsKnown: true,
+      policyLimits: 400,
+      hasAttorney: false
+    }
+  }));
   const result = calculateSettlement(baseCase({
     accidentDetails: {
       ...baseCase().accidentDetails,
@@ -158,14 +311,156 @@ test('comparative fault and policy caps reduce the high estimate', () => {
     },
     insurance: {
       policyLimitsKnown: true,
-      policyLimits: 4000,
+      policyLimits: 400,
       hasAttorney: false
     }
   }));
 
-  assert.equal(result.highEstimate, 4000);
+  assert.equal(result.highEstimate, Math.round(uncapped.highEstimate * 0.5));
   assert.ok(result.factors.some((factor) => factor.factor.includes('comparative fault')));
-  assert.ok(result.factors.some((factor) => factor.factor.includes('policy limit')));
+  assert.ok(!result.factors.some((factor) => factor.factor.includes('policy limit')));
+});
+
+test('estimate-only unlock returns full results without phone hash or OTP state', async () => {
+  const session = await createTestLeadSession();
+  const unlocked = await unlockEstimateOnly(session.id, testLeadEnv);
+  const updated = await getLeadSession(session.id, testLeadEnv);
+
+  assert.equal(unlocked.result.midEstimate, JSON.parse(session.resultJson).midEstimate);
+  assert.equal(unlocked.session.leadDeliveryStatus, 'estimate_only_no_delivery');
+  assert.equal(updated?.leadDeliveryStatus, 'estimate_only_no_delivery');
+  assert.equal(updated?.phoneHash, null);
+  assert.equal(updated?.otpStatus, 'not_started');
+  assert.equal(updated?.attorneyDeliveryConsent, false);
+  assert.equal(updated?.phoneContactConsent, false);
+});
+
+test('attorney delivery start rejects missing consent', async () => {
+  const session = await createTestLeadSession();
+  const response = await unlockStartPost(new NextRequest('http://localhost/api/estimate/unlock/start', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sessionId: session.id,
+      phone: '(949) 555-1212'
+    })
+  }));
+  const payload = await response.json() as { error?: string };
+
+  assert.equal(response.status, 400);
+  assert.match(payload.error || '', /confirm permission/i);
+});
+
+test('attorney delivery start records consent metadata before OTP verification', async () => {
+  const session = await createTestLeadSession();
+  const consentText = attorneyDeliveryConsentText(testAttorney);
+  const otp = await startOtpUnlock(session.id, '(949) 555-1212', {
+    attorneyDeliveryConsent: true,
+    phoneContactConsent: true,
+    consentCopyVersion: attorneyConsentCopyVersion(testAttorney),
+    consentText
+  }, testLeadEnv);
+  const updated = await getLeadSession(session.id, testLeadEnv);
+
+  assert.equal(otp.provider, 'dev_stub');
+  assert.equal(otp.devCode, '1234');
+  assert.equal(updated?.attorneyDeliveryConsent, true);
+  assert.equal(updated?.phoneContactConsent, true);
+  assert.equal(updated?.consentCopyVersion, testAttorney.consentCopyVersion);
+  assert.equal(updated?.attorneyDeliveryConsentText, consentText);
+  assert.ok(updated?.attorneyDeliveryConsentAt);
+  assert.ok(updated?.phoneContactConsentAt);
+  assert.ok(updated?.phoneHash);
+  assert.equal(updated?.otpStatus, 'sent');
+});
+
+test('prior attorney-delivery submission marks repeat phone no-charge before OTP verification', async () => {
+  const firstSession = await createTestLeadSession();
+  const secondSession = await createTestLeadSession();
+  const consentText = attorneyDeliveryConsentText(testAttorney);
+  const consent = {
+    attorneyDeliveryConsent: true,
+    phoneContactConsent: true,
+    consentCopyVersion: attorneyConsentCopyVersion(testAttorney),
+    consentText
+  };
+
+  await startOtpUnlock(firstSession.id, '(949) 555-3434', consent, testLeadEnv);
+  const otp = await startOtpUnlock(secondSession.id, '(949) 555-3434', consent, testLeadEnv);
+  const updated = await getLeadSession(secondSession.id, testLeadEnv);
+
+  assert.equal(otp.duplicateWithin30Days, true);
+  assert.equal(updated?.leadDeliveryStatus, 'duplicate_30d_no_charge');
+});
+
+test('outside-California session cannot start attorney delivery', async () => {
+  const session = await createTestLeadSession(testAttorney, {
+    visitorRegionCode: 'NV',
+    visitorRegion: 'Nevada',
+    visitorCity: 'Las Vegas',
+    geoEligibilityStatus: 'outside_california'
+  });
+
+  await assert.rejects(
+    () => startOtpUnlock(session.id, '(949) 555-4545', {
+      attorneyDeliveryConsent: true,
+      phoneContactConsent: true,
+      consentCopyVersion: attorneyConsentCopyVersion(testAttorney),
+      consentText: attorneyDeliveryConsentText(testAttorney)
+    }, testLeadEnv),
+    /California/
+  );
+
+  const updated = await getLeadSession(session.id, testLeadEnv);
+  assert.equal(updated?.leadDeliveryStatus, 'outside_california_no_delivery');
+});
+
+test('outside-California verified OTP never becomes a deliverable attorney lead', async () => {
+  const session = await createTestLeadSession();
+  await startOtpUnlock(session.id, '(949) 555-5656', {
+    attorneyDeliveryConsent: true,
+    phoneContactConsent: true,
+    consentCopyVersion: attorneyConsentCopyVersion(testAttorney),
+    consentText: attorneyDeliveryConsentText(testAttorney)
+  }, testLeadEnv);
+
+  const stored = await getLeadSession(session.id, testLeadEnv);
+  assert.ok(stored);
+  stored.geoEligibilityStatus = 'outside_california';
+
+  const unlocked = await verifyOtpUnlock(session.id, '1234', testLeadEnv);
+  assert.equal(unlocked.session.otpStatus, 'verified');
+  assert.equal(unlocked.session.leadDeliveryStatus, 'outside_california_no_delivery');
+});
+
+test('no-attorney preview can unlock without SMS', async () => {
+  const session = await createTestLeadSession(null);
+  const unlocked = await unlockEstimateOnly(session.id, testLeadEnv);
+  const updated = await getLeadSession(session.id, testLeadEnv);
+
+  assert.equal(unlocked.session.leadDeliveryStatus, 'estimate_only_no_delivery');
+  assert.equal(updated?.attorneyId, null);
+  assert.equal(updated?.phoneHash, null);
+  assert.equal(updated?.otpStatus, 'not_started');
+});
+
+test('default privacy choices and GPC block marketing pixels', () => {
+  const defaultSnapshot = createPrivacyChoiceSnapshot(
+    createDefaultPrivacyChoices('2026-04-29T00:00:00.000Z'),
+    false
+  );
+  const gpcSnapshot = createPrivacyChoiceSnapshot({
+    version: defaultSnapshot.version,
+    analytics: true,
+    marketing: true,
+    updatedAt: '2026-04-29T00:00:00.000Z'
+  }, true);
+
+  assert.equal(defaultSnapshot.effectiveAnalytics, false);
+  assert.equal(defaultSnapshot.effectiveMarketing, false);
+  assert.equal(gpcSnapshot.effectiveAnalytics, true);
+  assert.equal(gpcSnapshot.effectiveMarketing, false);
+  assert.equal(gpcSnapshot.gpcHonored, true);
 });
 
 test('mobile-first flow can calculate without income when no work loss is entered', () => {
@@ -194,7 +489,19 @@ test('mobile-first flow can calculate without income when no work loss is entere
 });
 
 test('preview endpoint does not return exact estimate values before OTP unlock', async () => {
-  const calculatorData = baseCase();
+  const calculatorData = baseCase({
+    injuries: {
+      ...baseCase().injuries,
+      bodyMap: [{
+        slug: 'neck',
+        side: 'common',
+        view: 'front',
+        severity: 1,
+        label: 'Base of neck / collarbone'
+      }],
+      primaryInjury: ''
+    }
+  });
   const expectedResult = calculateSettlement(calculatorData);
   const request = new NextRequest('http://localhost/api/estimate/preview', {
     method: 'POST',
@@ -247,6 +554,115 @@ test('county filtering ranks starts-with matches before contains matches', () =>
   assert.ok(sanMatches.length >= 5);
   assert.ok(sanMatches.slice(0, 5).every((county) => county.toLowerCase().startsWith('san')));
   assert.deepEqual(rankCaliforniaCountyMatches('O'), []);
+});
+
+test('county venue config classifies every California county', () => {
+  const configuredCounties = SETTLEMENT_LOGIC.countyVenue.counties as Record<string, string>;
+  const missingCounties = CALIFORNIA_COUNTIES.filter((county) => !configuredCounties[county]);
+
+  assert.deepEqual(missingCounties, []);
+});
+
+test('county venue tendency applies heavier general-damages modifier', () => {
+  const neutral = calculateSettlement(baseCase({
+    accidentDetails: {
+      ...baseCase().accidentDetails,
+      county: 'Orange'
+    }
+  }));
+  const liberal = calculateSettlement(baseCase({
+    accidentDetails: {
+      ...baseCase().accidentDetails,
+      county: 'Alameda'
+    }
+  }));
+  const conservative = calculateSettlement(baseCase({
+    accidentDetails: {
+      ...baseCase().accidentDetails,
+      county: 'Shasta'
+    }
+  }));
+
+  assert.equal(neutral.highEstimate, calculateSettlement(baseCase()).highEstimate);
+  assert.ok(liberal.highEstimate > neutral.highEstimate);
+  assert.ok(conservative.highEstimate < neutral.highEstimate);
+  const liberalFactor = liberal.factors.find((factor) => factor.factor.includes('Alameda County venue tendency'));
+  const conservativeFactor = conservative.factors.find((factor) => factor.factor.includes('Shasta County venue tendency'));
+
+  assert.ok(liberalFactor);
+  assert.equal(liberalFactor.impact, 'positive');
+  assert.ok(Math.abs(liberalFactor.weight - 0.1) < 0.001);
+  assert.ok(conservativeFactor);
+  assert.equal(conservativeFactor.impact, 'negative');
+  assert.ok(Math.abs(conservativeFactor.weight + 0.1) < 0.001);
+});
+
+test('mock scenarios span low through severe severity bands', () => {
+  const area = (slug: BodyMapSelection['slug'], severity: BodyMapSelection['severity'], label: string): BodyMapSelection => ({
+    slug,
+    side: 'common',
+    view: 'front',
+    severity,
+    label
+  });
+  const scenarios = [
+    calculateSettlement(baseCase()),
+    calculateSettlement(baseCase({
+      injuries: {
+        ...baseCase().injuries,
+        bodyMap: [area('knees', 3, 'Knee')],
+        primaryInjury: 'Knee Injury'
+      }
+    })),
+    calculateSettlement(baseCase({
+      injuries: {
+        ...baseCase().injuries,
+        bodyMap: [area('neck', 4, 'Neck')],
+        primaryInjury: 'Whiplash / Neck Strain'
+      }
+    })),
+    calculateSettlement(baseCase({
+      injuries: {
+        ...baseCase().injuries,
+        bodyMap: [area('neck', 4, 'Neck')],
+        primaryInjury: 'Whiplash / Neck Strain'
+      },
+      treatment: {
+        ...baseCase().treatment,
+        physicalTherapySessions: 16
+      }
+    })),
+    calculateSettlement(baseCase({
+      accidentDetails: {
+        ...baseCase().accidentDetails,
+        county: 'San Francisco',
+        impactSeverity: 'catastrophic'
+      },
+      injuries: {
+        ...baseCase().injuries,
+        bodyMap: [
+          area('head', 4, 'Head'),
+          area('neck', 4, 'Neck'),
+          area('chest', 3, 'Chest')
+        ],
+        primaryInjury: 'Soft Tissue Damage'
+      },
+      treatment: {
+        ...baseCase().treatment,
+        surgeryCompleted: true,
+        surgeryType: 'major'
+      }
+    }))
+  ];
+
+  assert.deepEqual(scenarios.map((scenario) => scenario.severityBand), [
+    'low',
+    'moderate',
+    'elevated',
+    'high',
+    'severe'
+  ]);
+  assert.ok(scenarios.every((scenario, index) => index === 0 || scenario.highEstimate > scenarios[index - 1].highEstimate));
 });
 
 test('body-map selection keys ignore visual body model', () => {
@@ -588,6 +1004,21 @@ test('female back ankle geometry stays aligned to the female model', () => {
 });
 
 test('body-map severity changes value without inferring objective injuries', () => {
+  const severityResults = ([1, 2, 3, 4] as const).map((severity) => calculateSettlement(baseCase({
+    injuries: {
+      ...baseCase().injuries,
+      bodyMap: [
+        {
+          slug: 'neck',
+          side: 'common',
+          view: 'front',
+          severity,
+          label: 'Neck'
+        }
+      ],
+      primaryInjury: 'Whiplash / Neck Strain'
+    }
+  })));
   const result = calculateSettlement(baseCase({
     injuries: {
       ...baseCase().injuries,
@@ -604,13 +1035,16 @@ test('body-map severity changes value without inferring objective injuries', () 
     }
   }));
 
-  assert.equal(result.caseTier, 'soft_tissue_with_adders');
-  assert.ok(result.highEstimate > 10000);
+  assert.equal(result.severityBand, 'elevated');
+  assert.ok(result.highEstimate > calculateSettlement(baseCase()).highEstimate);
+  assert.ok(severityResults[1].highEstimate > severityResults[0].highEstimate);
+  assert.ok(severityResults[2].highEstimate > severityResults[1].highEstimate);
+  assert.ok(severityResults[3].highEstimate > severityResults[2].highEstimate);
   assert.ok(!result.factors.some((factor) => factor.factor.includes('fracture')));
   assert.ok(!result.factors.some((factor) => factor.factor.includes('Traumatic brain')));
 });
 
-test('body-map serious area needs explicit context before hard-tissue tier', () => {
+test('imaging lifts treatment progression without case-tier picking', () => {
   const bodyOnly = calculateSettlement(baseCase({
     injuries: {
       ...baseCase().injuries,
@@ -646,11 +1080,13 @@ test('body-map serious area needs explicit context before hard-tissue tier', () 
     }
   }));
 
-  assert.equal(bodyOnly.caseTier, 'soft_tissue_with_adders');
-  assert.equal(withImaging.caseTier, 'hard_tissue_or_light_fracture');
+  assert.equal(bodyOnly.caseTier, bodyOnly.severityBand);
+  assert.equal(withImaging.caseTier, withImaging.severityBand);
+  assert.ok(withImaging.highEstimate > bodyOnly.highEstimate);
+  assert.ok(withImaging.factors.some((factor) => factor.factor.includes('Soft-tissue treatment with adders')));
 });
 
-test('body-map adders are capped by config', () => {
+test('body-map general-damages multiplier is capped by config', () => {
   const result = calculateSettlement(baseCase({
     injuries: {
       ...baseCase().injuries,
@@ -675,5 +1111,144 @@ test('body-map adders are capped by config', () => {
   const bodyFactor = result.factors.find((factor) => factor.factor.includes('selected pain area'));
 
   assert.ok(bodyFactor);
-  assert.ok(result.highEstimate <= 10000 * 1.5 + 18000);
+  assert.ok(bodyFactor.weight <= SETTLEMENT_LOGIC.bodyMapSeverity.maxGeneralDamagesMultiplier);
+  assert.ok(bodyFactor.weight > 2.8);
+});
+
+test('body-map selections derive primary injury without guided cards', () => {
+  const derived = deriveBodyMapOnlyInjuryFields({
+    ...baseCase().injuries,
+    bodyMap: [{
+      slug: 'lower-back',
+      side: 'common',
+      view: 'back',
+      severity: 1,
+      label: 'Lower back'
+    }],
+    primaryInjury: ''
+  });
+
+  assert.equal(derived.primaryInjury, 'Back Strain / Sprain');
+  assert.deepEqual(derived.preExistingConditions, []);
+  assert.deepEqual(derived.fractures, []);
+  assert.equal(derived.tbi, false);
+  assert.equal(derived.tbiSeverity, undefined);
+});
+
+test('guided injury signals and stale objective fields are ignored during normalization', () => {
+  const guided = createDefaultGuidedInjurySignals();
+  guided.head = {
+    status: 'confirmed_tbi',
+    certainty: 'provider_confirmed',
+    severity: 'severe'
+  };
+  guided.spine = {
+    status: 'spinal_cord_warning',
+    certainty: 'provider_confirmed'
+  };
+  guided.fracture = {
+    status: 'confirmed',
+    certainty: 'provider_confirmed',
+    areas: ['arm_wrist_hand']
+  };
+  guided.visibleOrInternal = { status: 'both' };
+  guided.preExisting = { sameAreaStatus: 'yes_active_treatment_or_prior_claim' };
+
+  const normalized = normalizeGuidedInjuryData(baseCase({
+    injuries: {
+      ...baseCase().injuries,
+      guidedSignals: guided,
+      bodyMap: [{
+        slug: 'head',
+        side: 'common',
+        view: 'front',
+        severity: 4,
+        label: 'Head'
+      }],
+      primaryInjury: 'Concussion / Mild TBI',
+      secondaryInjuries: ['Scarring / Disfigurement'],
+      preExistingConditions: ['Prior same-area treatment or claim'],
+      fractures: ['Wrist Fracture'],
+      tbi: true,
+      tbiSeverity: 'severe',
+      spinalIssues: {
+        herniation: true,
+        nerveRootCompression: true,
+        radiculopathy: true,
+        myelopathy: true,
+        preExistingDegeneration: true
+      }
+    }
+  }));
+  const result = calculateSettlement(normalized);
+
+  assert.equal(normalized.injuries.primaryInjury, 'Soft Tissue Damage');
+  assert.deepEqual(normalized.injuries.secondaryInjuries, []);
+  assert.deepEqual(normalized.injuries.preExistingConditions, []);
+  assert.deepEqual(normalized.injuries.fractures, []);
+  assert.equal(normalized.injuries.tbi, false);
+  assert.equal(normalized.injuries.tbiSeverity, undefined);
+  assert.deepEqual(normalized.injuries.spinalIssues, {
+    herniation: false,
+    nerveRootCompression: false,
+    radiculopathy: false,
+    myelopathy: false,
+    preExistingDegeneration: false
+  });
+  assert.ok(!result.factors.some((factor) => factor.factor.includes('Traumatic brain')));
+  assert.ok(!result.factors.some((factor) => factor.factor.includes('fracture')));
+  assert.ok(!result.factors.some((factor) => factor.factor.includes('spinal finding')));
+  assert.ok(!result.factors.some((factor) => factor.factor.includes('pre-existing')));
+});
+
+test('impact severity and age still affect estimates while missed work days are ignored', () => {
+  const guided = createDefaultGuidedInjurySignals();
+  guided.head = {
+    status: 'confirmed_tbi',
+    certainty: 'provider_confirmed',
+    severity: 'severe'
+  };
+
+  const injuryInput = {
+    ...baseCase().injuries,
+    guidedSignals: guided,
+    bodyMap: [{
+      slug: 'neck',
+      side: 'common',
+      view: 'front',
+      severity: 3,
+      label: 'Base of neck / collarbone'
+    }] as BodyMapSelection[],
+    primaryInjury: ''
+  };
+  const baseline = calculateSettlement(baseCase({ injuries: injuryInput }));
+  const severeImpact = calculateSettlement(baseCase({
+    injuries: injuryInput,
+    accidentDetails: {
+      ...baseCase().accidentDetails,
+      impactSeverity: 'severe'
+    }
+  }));
+  const olderClient = calculateSettlement(baseCase({
+    injuries: injuryInput,
+    demographics: {
+      ...baseCase().demographics,
+      age: 70
+    }
+  }));
+  const missedWork = calculateSettlement(baseCase({
+    injuries: injuryInput,
+    impact: {
+      ...baseCase().impact,
+      missedWorkDays: 10
+    }
+  }));
+
+  assert.ok(severeImpact.highEstimate > baseline.highEstimate);
+  assert.ok(severeImpact.factors.some((factor) => factor.factor.includes('Severe impact severity')));
+  assert.ok(olderClient.highEstimate > baseline.highEstimate);
+  assert.ok(olderClient.factors.some((factor) => factor.factor.includes('Advanced age')));
+  assert.equal(missedWork.highEstimate, baseline.highEstimate);
+  assert.ok(!missedWork.factors.some((factor) => factor.factor.includes('Lost wage')));
+  assert.ok(!baseline.factors.some((factor) => factor.factor.includes('Traumatic brain')));
 });

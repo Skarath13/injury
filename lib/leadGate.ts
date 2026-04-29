@@ -1,7 +1,9 @@
 import { getWorkerEnv, WorkerEnv } from '@/lib/cloudflareEnv';
+import { attorneyConsentCopyVersion, DEFAULT_ATTORNEY_CONSENT_COPY_VERSION } from '@/lib/leadConsent';
+import { PrivacyChoiceSnapshot } from '@/lib/privacyChoices';
 import { ResponsibleAttorney, SettlementResult } from '@/types/calculator';
 
-export const CONSENT_COPY_VERSION = 'unlock-consent-2026-04-28-v1';
+export const CONSENT_COPY_VERSION = DEFAULT_ATTORNEY_CONSENT_COPY_VERSION;
 const SESSION_TTL_SECONDS = 30 * 60;
 const OTP_TTL_SECONDS = 10 * 60;
 const DEDUPE_WINDOW_SECONDS = 30 * 24 * 60 * 60;
@@ -17,6 +19,18 @@ export interface LeadSession {
   logicHash: string;
   routingVersion: string;
   consentCopyVersion: string;
+  attorneyDeliveryConsent: boolean;
+  attorneyDeliveryConsentAt: string | null;
+  attorneyDeliveryConsentText: string | null;
+  phoneContactConsent: boolean;
+  phoneContactConsentAt: string | null;
+  privacyChoiceSnapshot: string | null;
+  gpcStatus: string;
+  visitorCountry: string | null;
+  visitorRegionCode: string | null;
+  visitorRegion: string | null;
+  visitorCity: string | null;
+  geoEligibilityStatus: string;
   phoneHash: string | null;
   ipHash: string;
   userAgentHash: string;
@@ -45,6 +59,19 @@ export interface CreateLeadSessionInput {
   attorney: ResponsibleAttorney | null;
   ipHash: string;
   userAgentHash: string;
+  privacyChoiceSnapshot?: PrivacyChoiceSnapshot;
+  visitorCountry?: string | null;
+  visitorRegionCode?: string | null;
+  visitorRegion?: string | null;
+  visitorCity?: string | null;
+  geoEligibilityStatus?: string;
+}
+
+export interface AttorneyLeadConsentInput {
+  attorneyDeliveryConsent: boolean;
+  phoneContactConsent: boolean;
+  consentText: string;
+  consentCopyVersion: string;
 }
 
 export interface OtpSendResult {
@@ -65,6 +92,18 @@ type LeadSessionRow = {
   logic_hash: string;
   routing_version: string;
   consent_copy_version: string;
+  attorney_delivery_consent?: number;
+  attorney_delivery_consent_at?: string | null;
+  attorney_delivery_consent_text?: string | null;
+  phone_contact_consent?: number;
+  phone_contact_consent_at?: string | null;
+  privacy_choice_snapshot?: string | null;
+  gpc_status?: string | null;
+  visitor_country?: string | null;
+  visitor_region_code?: string | null;
+  visitor_region?: string | null;
+  visitor_city?: string | null;
+  geo_eligibility_status?: string | null;
   phone_hash: string | null;
   ip_hash: string;
   user_agent_hash: string;
@@ -157,6 +196,18 @@ function rowToSession(row: LeadSessionRow): LeadSession {
     logicHash: row.logic_hash,
     routingVersion: row.routing_version,
     consentCopyVersion: row.consent_copy_version,
+    attorneyDeliveryConsent: Boolean(row.attorney_delivery_consent),
+    attorneyDeliveryConsentAt: row.attorney_delivery_consent_at || null,
+    attorneyDeliveryConsentText: row.attorney_delivery_consent_text || null,
+    phoneContactConsent: Boolean(row.phone_contact_consent),
+    phoneContactConsentAt: row.phone_contact_consent_at || null,
+    privacyChoiceSnapshot: row.privacy_choice_snapshot || null,
+    gpcStatus: row.gpc_status || 'unknown',
+    visitorCountry: row.visitor_country || null,
+    visitorRegionCode: row.visitor_region_code || null,
+    visitorRegion: row.visitor_region || null,
+    visitorCity: row.visitor_city || null,
+    geoEligibilityStatus: row.geo_eligibility_status || 'unknown',
     phoneHash: row.phone_hash,
     ipHash: row.ip_hash,
     userAgentHash: row.user_agent_hash,
@@ -189,6 +240,18 @@ async function ensureD1Schema(env: WorkerEnv): Promise<void> {
       logic_hash TEXT NOT NULL,
       routing_version TEXT NOT NULL,
       consent_copy_version TEXT NOT NULL,
+      attorney_delivery_consent INTEGER NOT NULL DEFAULT 0,
+      attorney_delivery_consent_at TEXT,
+      attorney_delivery_consent_text TEXT,
+      phone_contact_consent INTEGER NOT NULL DEFAULT 0,
+      phone_contact_consent_at TEXT,
+      privacy_choice_snapshot TEXT,
+      gpc_status TEXT NOT NULL DEFAULT 'unknown',
+      visitor_country TEXT,
+      visitor_region_code TEXT,
+      visitor_region TEXT,
+      visitor_city TEXT,
+      geo_eligibility_status TEXT NOT NULL DEFAULT 'unknown',
       phone_hash TEXT,
       ip_hash TEXT NOT NULL,
       user_agent_hash TEXT NOT NULL,
@@ -206,7 +269,29 @@ async function ensureD1Schema(env: WorkerEnv): Promise<void> {
     )
   `).run();
 
+  const columns = await env.LEADS_DB.prepare('PRAGMA table_info(lead_sessions)').all<{ name: string }>();
+  const existingColumns = new Set((columns.results || []).map((column) => column.name));
+  const addColumn = async (name: string, definition: string) => {
+    if (existingColumns.has(name)) return;
+    await env.LEADS_DB?.prepare(`ALTER TABLE lead_sessions ADD COLUMN ${definition}`).run();
+    existingColumns.add(name);
+  };
+
+  await addColumn('attorney_delivery_consent', 'attorney_delivery_consent INTEGER NOT NULL DEFAULT 0');
+  await addColumn('attorney_delivery_consent_at', 'attorney_delivery_consent_at TEXT');
+  await addColumn('attorney_delivery_consent_text', 'attorney_delivery_consent_text TEXT');
+  await addColumn('phone_contact_consent', 'phone_contact_consent INTEGER NOT NULL DEFAULT 0');
+  await addColumn('phone_contact_consent_at', 'phone_contact_consent_at TEXT');
+  await addColumn('privacy_choice_snapshot', 'privacy_choice_snapshot TEXT');
+  await addColumn('gpc_status', "gpc_status TEXT NOT NULL DEFAULT 'unknown'");
+  await addColumn('visitor_country', 'visitor_country TEXT');
+  await addColumn('visitor_region_code', 'visitor_region_code TEXT');
+  await addColumn('visitor_region', 'visitor_region TEXT');
+  await addColumn('visitor_city', 'visitor_city TEXT');
+  await addColumn('geo_eligibility_status', "geo_eligibility_status TEXT NOT NULL DEFAULT 'unknown'");
+
   await env.LEADS_DB.prepare('CREATE INDEX IF NOT EXISTS idx_lead_sessions_phone_created ON lead_sessions (phone_hash, created_at)').run();
+  await env.LEADS_DB.prepare('CREATE INDEX IF NOT EXISTS idx_lead_sessions_geo_eligibility_created ON lead_sessions (geo_eligibility_status, created_at)').run();
 }
 
 export async function createLeadSession(
@@ -216,6 +301,9 @@ export async function createLeadSession(
   const id = crypto.randomUUID();
   const createdAt = nowIso();
   const expiresAt = secondsFromNow(SESSION_TTL_SECONDS);
+  const privacyChoiceSnapshot = input.privacyChoiceSnapshot
+    ? JSON.stringify(input.privacyChoiceSnapshot)
+    : null;
   const session: LeadSession = {
     id,
     createdAt,
@@ -226,7 +314,23 @@ export async function createLeadSession(
     logicVersion: input.logicVersion,
     logicHash: input.logicHash,
     routingVersion: input.routingVersion,
-    consentCopyVersion: input.attorney?.consentCopyVersion || CONSENT_COPY_VERSION,
+    consentCopyVersion: input.attorney ? attorneyConsentCopyVersion(input.attorney) : CONSENT_COPY_VERSION,
+    attorneyDeliveryConsent: false,
+    attorneyDeliveryConsentAt: null,
+    attorneyDeliveryConsentText: null,
+    phoneContactConsent: false,
+    phoneContactConsentAt: null,
+    privacyChoiceSnapshot,
+    gpcStatus: input.privacyChoiceSnapshot?.gpcEnabled
+      ? 'enabled_honored'
+      : input.privacyChoiceSnapshot
+        ? 'not_enabled'
+        : 'not_provided',
+    visitorCountry: input.visitorCountry || null,
+    visitorRegionCode: input.visitorRegionCode || null,
+    visitorRegion: input.visitorRegion || null,
+    visitorCity: input.visitorCity || null,
+    geoEligibilityStatus: input.geoEligibilityStatus || 'unknown',
     phoneHash: null,
     ipHash: input.ipHash,
     userAgentHash: input.userAgentHash,
@@ -248,10 +352,13 @@ export async function createLeadSession(
     await env.LEADS_DB.prepare(`
       INSERT INTO lead_sessions (
         id, created_at, updated_at, expires_at, county, attorney_id, logic_version, logic_hash,
-        routing_version, consent_copy_version, phone_hash, ip_hash, user_agent_hash,
+        routing_version, consent_copy_version, attorney_delivery_consent, attorney_delivery_consent_at,
+        attorney_delivery_consent_text, phone_contact_consent, phone_contact_consent_at,
+        privacy_choice_snapshot, gpc_status, visitor_country, visitor_region_code, visitor_region,
+        visitor_city, geo_eligibility_status, phone_hash, ip_hash, user_agent_hash,
         turnstile_status, otp_status, lead_delivery_status, duplicate_within_30_days,
         input_json, result_json, preview_json, attorney_json, otp_hash, otp_expires_at, otp_attempts
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       session.id,
       session.createdAt,
@@ -263,6 +370,18 @@ export async function createLeadSession(
       session.logicHash,
       session.routingVersion,
       session.consentCopyVersion,
+      session.attorneyDeliveryConsent ? 1 : 0,
+      session.attorneyDeliveryConsentAt,
+      session.attorneyDeliveryConsentText,
+      session.phoneContactConsent ? 1 : 0,
+      session.phoneContactConsentAt,
+      session.privacyChoiceSnapshot,
+      session.gpcStatus,
+      session.visitorCountry,
+      session.visitorRegionCode,
+      session.visitorRegion,
+      session.visitorCity,
+      session.geoEligibilityStatus,
       session.phoneHash,
       session.ipHash,
       session.userAgentHash,
@@ -329,6 +448,18 @@ export function decodeLocalSessionCookie(value: string | undefined): LeadSession
     const compact = JSON.parse(base64UrlDecode(value)) as CookieLeadSession;
     return {
       ...compact,
+      attorneyDeliveryConsent: Boolean(compact.attorneyDeliveryConsent),
+      attorneyDeliveryConsentAt: compact.attorneyDeliveryConsentAt || null,
+      attorneyDeliveryConsentText: compact.attorneyDeliveryConsentText || null,
+      phoneContactConsent: Boolean(compact.phoneContactConsent),
+      phoneContactConsentAt: compact.phoneContactConsentAt || null,
+      privacyChoiceSnapshot: compact.privacyChoiceSnapshot || null,
+      gpcStatus: compact.gpcStatus || 'unknown',
+      visitorCountry: compact.visitorCountry || null,
+      visitorRegionCode: compact.visitorRegionCode || null,
+      visitorRegion: compact.visitorRegion || null,
+      visitorCity: compact.visitorCity || null,
+      geoEligibilityStatus: compact.geoEligibilityStatus || 'unknown',
       inputJson: '{}',
       previewJson: '{}'
     };
@@ -345,7 +476,10 @@ async function updateSession(session: LeadSession, env: WorkerEnv): Promise<void
     await env.LEADS_DB.prepare(`
       UPDATE lead_sessions
       SET updated_at = ?, phone_hash = ?, otp_status = ?, lead_delivery_status = ?,
-          duplicate_within_30_days = ?, otp_hash = ?, otp_expires_at = ?, otp_attempts = ?
+          duplicate_within_30_days = ?, otp_hash = ?, otp_expires_at = ?, otp_attempts = ?,
+          attorney_delivery_consent = ?, attorney_delivery_consent_at = ?,
+          attorney_delivery_consent_text = ?, phone_contact_consent = ?, phone_contact_consent_at = ?,
+          privacy_choice_snapshot = ?, gpc_status = ?, consent_copy_version = ?
       WHERE id = ?
     `).bind(
       session.updatedAt,
@@ -356,6 +490,14 @@ async function updateSession(session: LeadSession, env: WorkerEnv): Promise<void
       session.otpHash,
       session.otpExpiresAt,
       session.otpAttempts,
+      session.attorneyDeliveryConsent ? 1 : 0,
+      session.attorneyDeliveryConsentAt,
+      session.attorneyDeliveryConsentText,
+      session.phoneContactConsent ? 1 : 0,
+      session.phoneContactConsentAt,
+      session.privacyChoiceSnapshot,
+      session.gpcStatus,
+      session.consentCopyVersion,
       session.id
     ).run();
   } else {
@@ -363,7 +505,7 @@ async function updateSession(session: LeadSession, env: WorkerEnv): Promise<void
   }
 }
 
-async function hasRecentVerifiedPhone(phoneHash: string, currentSessionId: string, env: WorkerEnv): Promise<boolean> {
+async function hasRecentSubmittedPhone(phoneHash: string, currentSessionId: string, env: WorkerEnv): Promise<boolean> {
   const cutoff = new Date(Date.now() - DEDUPE_WINDOW_SECONDS * 1000).toISOString();
 
   if (env.LEADS_DB) {
@@ -373,7 +515,7 @@ async function hasRecentVerifiedPhone(phoneHash: string, currentSessionId: strin
       WHERE phone_hash = ?
         AND id != ?
         AND created_at >= ?
-        AND otp_status = 'verified'
+        AND lead_delivery_status != 'estimate_only_no_delivery'
       LIMIT 1
     `).bind(phoneHash, currentSessionId, cutoff).first<{ id: string }>();
     return Boolean(row);
@@ -382,9 +524,27 @@ async function hasRecentVerifiedPhone(phoneHash: string, currentSessionId: strin
   return [...getMemorySessions().values()].some((session) => (
     session.id !== currentSessionId &&
     session.phoneHash === phoneHash &&
-    session.otpStatus === 'verified' &&
+    session.leadDeliveryStatus !== 'estimate_only_no_delivery' &&
     session.createdAt >= cutoff
   ));
+}
+
+function noDeliveryStatusForGeo(session: LeadSession, env: WorkerEnv): string | null {
+  if (session.geoEligibilityStatus === 'california') return null;
+
+  if (session.geoEligibilityStatus === 'outside_california') {
+    return 'outside_california_no_delivery';
+  }
+
+  if (session.geoEligibilityStatus === 'outside_us') {
+    return 'outside_us_no_delivery';
+  }
+
+  if (env.NODE_ENV !== 'production' && session.geoEligibilityStatus === 'unknown') {
+    return null;
+  }
+
+  return 'unknown_location_no_delivery';
 }
 
 function generateOtp(env: WorkerEnv): string {
@@ -435,6 +595,7 @@ async function sendOtp(phone: string, code: string, env: WorkerEnv): Promise<{ p
 export async function startOtpUnlock(
   sessionId: string,
   phone: string,
+  consent: AttorneyLeadConsentInput,
   env: WorkerEnv = getWorkerEnv()
 ): Promise<OtpSendResult> {
   const session = await getLeadSession(sessionId, env);
@@ -442,24 +603,50 @@ export async function startOtpUnlock(
     throw new Error('This estimate session expired. Please calculate again.');
   }
 
+  const attorney = session.attorneyJson ? JSON.parse(session.attorneyJson) as ResponsibleAttorney : null;
+  if (!attorney) {
+    throw new Error('Attorney delivery is not available for this estimate.');
+  }
+
+  if (!consent.attorneyDeliveryConsent || !consent.phoneContactConsent) {
+    throw new Error(`Please confirm permission to send your results to ${attorney.name} and be contacted about your inquiry.`);
+  }
+
   if (!isValidUsMobileCandidate(phone)) {
     throw new Error('Please enter a valid US mobile phone number.');
   }
 
+  const geoNoDeliveryStatus = noDeliveryStatusForGeo(session, env);
+  if (geoNoDeliveryStatus) {
+    session.leadDeliveryStatus = geoNoDeliveryStatus;
+    await updateSession(session, env);
+    throw new Error('Attorney delivery is only available for visitors we can confirm are in California.');
+  }
+
   const normalizedPhone = normalizePhone(phone);
   const phoneHash = await hashForAudit(normalizedPhone, env);
-  const duplicateWithin30Days = await hasRecentVerifiedPhone(phoneHash, session.id, env);
+  const duplicateWithin30Days = await hasRecentSubmittedPhone(phoneHash, session.id, env);
   const code = generateOtp(env);
   const otpHash = await hashOtp(session.id, code, env);
-  const sms = await sendOtp(phone, code, env);
 
   session.phoneHash = phoneHash;
-  session.otpHash = otpHash;
-  session.otpExpiresAt = secondsFromNow(OTP_TTL_SECONDS);
+  session.attorneyDeliveryConsent = true;
+  session.attorneyDeliveryConsentAt = nowIso();
+  session.attorneyDeliveryConsentText = consent.consentText;
+  session.phoneContactConsent = true;
+  session.phoneContactConsentAt = session.attorneyDeliveryConsentAt;
+  session.consentCopyVersion = consent.consentCopyVersion;
   session.otpAttempts = 0;
-  session.otpStatus = 'sent';
+  session.otpStatus = 'pending_send';
   session.duplicateWithin30Days = duplicateWithin30Days;
   session.leadDeliveryStatus = duplicateWithin30Days ? 'duplicate_30d_no_charge' : session.leadDeliveryStatus;
+  await updateSession(session, env);
+
+  const sms = await sendOtp(phone, code, env);
+
+  session.otpHash = otpHash;
+  session.otpExpiresAt = secondsFromNow(OTP_TTL_SECONDS);
+  session.otpStatus = 'sent';
   await updateSession(session, env);
 
   return {
@@ -467,6 +654,35 @@ export async function startOtpUnlock(
     duplicateWithin30Days,
     provider: sms.provider,
     devCode: sms.devCode
+  };
+}
+
+export async function unlockEstimateOnly(
+  sessionId: string,
+  env: WorkerEnv = getWorkerEnv()
+): Promise<{ session: LeadSession; result: SettlementResult }> {
+  const session = await getLeadSession(sessionId, env);
+  if (!session || isExpired(session.expiresAt)) {
+    throw new Error('This estimate session expired. Please calculate again.');
+  }
+
+  session.leadDeliveryStatus = 'estimate_only_no_delivery';
+  session.attorneyDeliveryConsent = false;
+  session.attorneyDeliveryConsentAt = null;
+  session.attorneyDeliveryConsentText = null;
+  session.phoneContactConsent = false;
+  session.phoneContactConsentAt = null;
+  session.phoneHash = null;
+  session.otpHash = null;
+  session.otpExpiresAt = null;
+  session.otpAttempts = 0;
+  session.otpStatus = 'not_started';
+  session.duplicateWithin30Days = false;
+  await updateSession(session, env);
+
+  return {
+    session,
+    result: JSON.parse(session.resultJson) as SettlementResult
   };
 }
 
@@ -499,10 +715,17 @@ export async function verifyOtpUnlock(
   }
 
   const attorney = session.attorneyJson ? JSON.parse(session.attorneyJson) as ResponsibleAttorney : null;
+  if (attorney && (!session.attorneyDeliveryConsent || !session.phoneContactConsent)) {
+    throw new Error(`Please confirm permission to send your results to ${attorney.name}.`);
+  }
+
+  const geoNoDeliveryStatus = noDeliveryStatusForGeo(session, env);
   session.otpStatus = 'verified';
   session.leadDeliveryStatus = session.duplicateWithin30Days
     ? 'duplicate_30d_no_charge'
-    : attorney
+    : geoNoDeliveryStatus
+      ? geoNoDeliveryStatus
+      : attorney
       ? 'ready_for_delivery'
       : 'unmapped_no_attorney_delivery';
   await updateSession(session, env);

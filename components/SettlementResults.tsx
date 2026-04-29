@@ -15,7 +15,13 @@ interface Props {
   onEdit?: () => void;
 }
 
-export default function SettlementResults({ results, medicalCosts, hasAttorney, responsibleAttorney, onBack, onEdit }: Props) {
+export default function SettlementResults({ results, medicalCosts, hasAttorney, responsibleAttorney, leadDeliveryStatus, onBack, onEdit }: Props) {
+  const medicalRange = results.medicalCostRange || {
+    low: medicalCosts,
+    mid: medicalCosts,
+    high: medicalCosts
+  };
+
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -50,22 +56,43 @@ export default function SettlementResults({ results, medicalCosts, hasAttorney, 
   const medicalPercentage = (negotiatedMedical / total) * 100;
   const attorneyPercentage = hasAttorney ? (attorneyFees / total) * 100 : 0;
   const takeHomePercentage = (takeHome / total) * 100;
+  const noDeliveryMessage = (() => {
+    switch (leadDeliveryStatus) {
+      case 'estimate_only_no_delivery':
+        return 'Estimate-only view: results were not sent to an attorney, and no phone verification was used.';
+      case 'duplicate_30d_no_charge':
+        return 'This phone was already used for a recent attorney-delivery request, so this is not treated as a new attorney lead.';
+      case 'outside_california_no_delivery':
+        return 'Attorney delivery is limited to California visitors, so this estimate is not treated as an attorney lead.';
+      case 'outside_us_no_delivery':
+        return 'Attorney delivery is limited to California visitors in the United States, so this estimate is not treated as an attorney lead.';
+      case 'unknown_location_no_delivery':
+        return 'We could not confirm California visitor eligibility, so this estimate is not treated as an attorney lead.';
+      default:
+        return null;
+    }
+  })();
   
   return (
     <div className="bg-white rounded-lg shadow-lg overflow-hidden">
       <div className="bg-slate-950 p-6 text-white">
         <h2 className="text-2xl font-bold">Insurance Settlement Estimate</h2>
+        <p className="mt-1 text-sm text-slate-200">
+          Severity band: <span className="font-semibold capitalize">{results.severityBand}</span>
+        </p>
       </div>
       
       <div className="p-6 md:p-8 space-y-6">
-        {responsibleAttorney ? (
+        {responsibleAttorney && !noDeliveryMessage ? (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
             <h3 className="text-sm font-semibold text-slate-900 mb-1">Responsible Attorney Disclosure</h3>
             <p className="text-sm text-slate-700">{responsibleAttorney.disclosure}</p>
           </div>
         ) : (
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
-            <p className="text-sm text-slate-700">No active attorney advertiser is configured for this county; results were not sent to an attorney.</p>
+            <p className="text-sm text-slate-700">
+              {noDeliveryMessage || 'No active attorney advertiser is configured for this county; results were not sent to an attorney.'}
+            </p>
           </div>
         )}
 
@@ -183,7 +210,7 @@ export default function SettlementResults({ results, medicalCosts, hasAttorney, 
                 <div className="flex items-center">
                   <div className="w-4 h-4 bg-red-500 rounded mr-2"></div>
                   <span className="text-sm text-slate-700">
-                    {hasAttorney ? "Medical Bills (After Negotiation)" : "Medical Bills (Full Amount)"}
+                    {hasAttorney ? "Medical Specials (After Estimated Resolution)" : "Estimated Medical Specials"}
                   </span>
                 </div>
                 <span className="text-sm font-medium">{formatCurrency(negotiatedMedical)}</span>
@@ -223,15 +250,19 @@ export default function SettlementResults({ results, medicalCosts, hasAttorney, 
           
           <div className="space-y-4">
             <div className="pb-4 border-b border-slate-200">
-              <h4 className="text-sm font-semibold text-slate-700 mb-2">Medical Specials (Economic Damages)</h4>
+              <h4 className="text-sm font-semibold text-slate-700 mb-2">Estimated Medical Specials (Economic Damages)</h4>
               <div className="flex justify-between items-center mb-1">
-                <span className="text-sm text-slate-600">Original Billed Medical Costs:</span>
+                <span className="text-sm text-slate-600">Reasonable value range:</span>
+                <span className="font-medium">{formatCurrency(medicalRange.low)} - {formatCurrency(medicalRange.high)}</span>
+              </div>
+              <div className="flex justify-between items-center mb-1">
+                <span className="text-sm text-slate-600">Midpoint used in this estimate:</span>
                 <span className="font-medium">{formatCurrency(medicalCosts)}</span>
               </div>
               {hasAttorney ? (
                 <>
                   <div className="flex justify-between items-center text-green-700">
-                    <span className="text-sm">After Attorney Negotiation (40-80% reduction):</span>
+                    <span className="text-sm">Possible resolved lien / balance range:</span>
                     <span className="font-medium">{formatCurrency(medicalCosts * 0.2)} - {formatCurrency(medicalCosts * 0.6)}</span>
                   </div>
                   <p className="text-xs text-slate-500 mt-2">
@@ -241,7 +272,7 @@ export default function SettlementResults({ results, medicalCosts, hasAttorney, 
                 </>
               ) : (
                 <p className="text-xs text-slate-500 mt-2">
-                  Medical bills, liens, insurance payments, and provider balances can reduce net recovery.
+                  These are estimated reasonable values from treatment selections, not user-entered medical bills.
                 </p>
               )}
             </div>
@@ -255,7 +286,7 @@ export default function SettlementResults({ results, medicalCosts, hasAttorney, 
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-2">
-                Non-economic damages are estimated from the configured case factors and are not a prediction of a specific outcome.
+                Non-economic damages are estimated as general damages from body-map severity, treatment progression, impact severity, age, and county venue context.
               </p>
             </div>
           </div>
@@ -288,7 +319,7 @@ export default function SettlementResults({ results, medicalCosts, hasAttorney, 
                       factor.impact === 'positive' ? 'bg-green-500' : 
                       factor.impact === 'negative' ? 'bg-red-500' : 'bg-gray-400'
                     }`}
-                    style={{ width: `${Math.abs(factor.weight) * 100}%` }}
+                    style={{ width: `${Math.min(Math.abs(factor.weight) * 100, 100)}%` }}
                   />
                 </div>
               </div>
@@ -323,7 +354,7 @@ export default function SettlementResults({ results, medicalCosts, hasAttorney, 
             </li>
             <li className="flex items-start">
               <span className="font-bold mr-2">•</span>
-              <span>Medical liens can reduce your net recovery by 30-50%</span>
+              <span>Medical liens, provider balances, and payer reimbursement claims can reduce net recovery</span>
             </li>
             <li className="flex items-start">
               <span className="font-bold mr-2">•</span>

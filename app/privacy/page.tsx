@@ -61,8 +61,8 @@ export default function PrivacyPolicy() {
             <h3 className="text-lg font-semibold text-slate-700 mb-3">1.3 Automatically Collected Information</h3>
             <ul className="list-disc pl-6 text-slate-600 space-y-2 mb-4">
               <li><strong>Device Information:</strong> Browser type, operating system, screen resolution, device type</li>
-              <li><strong>Usage Data:</strong> Pages visited, time spent, click patterns, calculator features used</li>
-              <li><strong>Network Information:</strong> IP address (anonymized), approximate location (city/state level), ISP</li>
+              <li><strong>Usage Data:</strong> Pages visited, time spent, click patterns, calculator features used, when analytics are enabled through your privacy choices</li>
+              <li><strong>Network Information:</strong> Hashed IP address, approximate location (city/state/country level), ISP, and California visitor eligibility status</li>
               <li><strong>Referral Data:</strong> How you arrived at our site, search terms used</li>
             </ul>
 
@@ -71,8 +71,9 @@ export default function PrivacyPolicy() {
             <ul className="list-disc pl-6 text-slate-600 space-y-2">
               <li><strong>Essential Cookies:</strong> Required for site functionality (session management, security)</li>
               <li><strong>Cloudflare Turnstile:</strong> Bot prevention and human verification, subject to Cloudflare's Turnstile privacy terms</li>
-              <li><strong>Analytics Cookies:</strong> Google Analytics with IP anonymization enabled</li>
-              <li><strong>Preference Cookies:</strong> Remember your cookie consent choice and calculator preferences</li>
+              <li><strong>Analytics Cookies:</strong> Analytics measurement only if enabled through Your Privacy Choices</li>
+              <li><strong>Marketing Pixels:</strong> Advertising or retargeting pixels only if enabled through Your Privacy Choices and not blocked by a browser opt-out signal</li>
+              <li><strong>Preference Cookies:</strong> Remember your privacy choices and calculator preferences</li>
             </ul>
           </section>
 
@@ -85,6 +86,7 @@ export default function PrivacyPolicy() {
               <li>Create a temporary estimate session for the phone verification unlock flow</li>
               <li>Improve calculator accuracy and features</li>
               <li>Prevent duplicate, fake, or automated submissions</li>
+              <li>Limit website and attorney-delivery access to eligible California visitors</li>
               <li>Provide customer support if you contact us</li>
               <li>Ensure website security and prevent fraud</li>
               <li>Comply with legal obligations</li>
@@ -108,16 +110,17 @@ export default function PrivacyPolicy() {
             <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-4">
               <h3 className="text-lg font-semibold text-slate-800 mb-2">Our Commitment on Data Sales</h3>
               <p className="text-slate-700">
-                <strong>We do not sell personal information for money.</strong> Attorney delivery, when available, occurs only after your explicit permission to send results to the named attorney shown in the unlock flow.
+                Attorney delivery, when available, occurs only after your explicit permission to send results to the named attorney shown in the unlock flow. We may be compensated for qualified attorney leads.
               </p>
             </div>
 
             <h3 className="text-lg font-semibold text-slate-700 mb-3">3.1 Limited Sharing Scenarios</h3>
             <p className="text-slate-600 mb-3">We may share your information only in these specific circumstances:</p>
             <ul className="list-disc pl-6 text-slate-600 space-y-2 mb-4">
-              <li><strong>With Your Consent:</strong> Only when you explicitly opt-in to send your results to the named responsible attorney shown in the unlock flow</li>
+              <li><strong>With Your Consent:</strong> Only when you explicitly opt-in to send your results and contact information to the named responsible attorney shown in the unlock flow</li>
               <li><strong>Service Providers:</strong> Cloudflare for hosting, Workers, D1, KV, and Turnstile; SMS/OTP providers for verification; analytics providers if enabled</li>
-              <li><strong>Attorney Recipient:</strong> If available in your county and you consent, calculator results and contact information may be sent to the specifically identified attorney</li>
+              <li><strong>Attorney Recipient:</strong> If available in your county and you consent, calculator results and contact information may be sent to the specifically identified attorney. We may receive compensation for qualified leads.</li>
+              <li><strong>Marketing Providers:</strong> If you allow marketing pixels, advertising platforms may receive limited browsing or event data for ad measurement or retargeting, subject to your choices and browser privacy signals</li>
               <li><strong>Legal Requirements:</strong> When required by law, court order, or to protect rights and safety</li>
               <li><strong>Business Transfers:</strong> In the event of a merger or acquisition, with continued privacy protections</li>
             </ul>
@@ -128,11 +131,14 @@ export default function PrivacyPolicy() {
             </p>
             <ul className="list-disc pl-6 text-slate-600 space-y-2">
               <li>We will request explicit opt-in consent with clear explanations</li>
-              <li>You will have full control to approve or deny any data sharing</li>
+              <li>You will have full control to approve or deny attorney delivery and marketing-pixel sharing</li>
               <li>We will only share aggregated, anonymized data unless you specifically consent to more</li>
               <li>You can withdraw consent at any time</li>
               <li>We will provide clear value exchange and benefits for data sharing</li>
             </ul>
+            <p className="text-slate-600 mt-3">
+              A repeat attorney-delivery submission for the same hashed phone number, or a session we cannot confirm as California-eligible, is not treated as a new qualified attorney lead.
+            </p>
           </section>
 
           <section>
@@ -142,6 +148,7 @@ export default function PrivacyPolicy() {
               <li><strong>Encryption:</strong> HTTPS/TLS for all data transmission</li>
               <li><strong>Access Controls:</strong> Limited employee access with authentication requirements</li>
               <li><strong>Server-Side Controls:</strong> Estimate sessions are handled through Cloudflare Workers and audit logs use hashed metadata where practical</li>
+              <li><strong>Location Controls:</strong> We use coarse IP-based location signals to limit the calculator and attorney-delivery flow to California-eligible visitors</li>
               <li><strong>Regular Audits:</strong> Security assessments and updates</li>
               <li><strong>Incident Response:</strong> Procedures to handle any potential breaches</li>
             </ul>
@@ -152,6 +159,7 @@ export default function PrivacyPolicy() {
             <p className="text-slate-600 mb-3">Our data retention practices:</p>
             <ul className="list-disc pl-6 text-slate-600 space-y-2">
               <li><strong>Calculator Data:</strong> Temporarily stored for estimate unlock and audit purposes; attorney-shared records may be retained longer for compliance and dispute prevention</li>
+              <li><strong>Access Logs:</strong> Hashed IP/user-agent access logs and coarse location decisions may be retained for fraud prevention, duplicate prevention, and compliance review</li>
               <li><strong>OTP Data:</strong> Verification codes expire quickly and are stored only as hashed values</li>
               <li><strong>Analytics Data:</strong> Aggregated data retained for 26 months per Google Analytics default</li>
               <li><strong>Contact Information:</strong> Retained as long as necessary to respond to your inquiry</li>
@@ -168,7 +176,7 @@ export default function PrivacyPolicy() {
               <li><strong>Access:</strong> Request a copy of information we have about you</li>
               <li><strong>Correction:</strong> Request correction of inaccurate information</li>
               <li><strong>Deletion:</strong> Request deletion of your personal information</li>
-              <li><strong>Opt-Out:</strong> Disable analytics tracking and marketing communications</li>
+              <li><strong>Opt-Out:</strong> Disable analytics tracking, marketing pixels, attorney delivery, and marketing communications</li>
               <li><strong>Portability:</strong> Receive your data in a structured, machine-readable format</li>
               <li><strong>Withdraw Consent:</strong> Withdraw any consent you've previously given</li>
             </ul>
@@ -190,7 +198,7 @@ export default function PrivacyPolicy() {
               <ul className="list-disc pl-6 text-slate-700 space-y-2">
                 <li>Right to know what personal information we collect, use, and share</li>
                 <li>Right to delete personal information (with some exceptions)</li>
-                <li>Right to opt-out of the sale of personal information</li>
+                <li>Right to opt-out of the sale or sharing of personal information</li>
                 <li>Right to non-discrimination for exercising privacy rights</li>
               </ul>
             </div>
@@ -227,14 +235,14 @@ export default function PrivacyPolicy() {
                 </tr>
                 <tr>
                   <td className="border border-slate-300 px-4 py-2">Geolocation</td>
-                  <td className="border border-slate-300 px-4 py-2">Accident county and approximate network location</td>
+                  <td className="border border-slate-300 px-4 py-2">Accident county, approximate network location, and California visitor eligibility status</td>
                   <td className="border border-slate-300 px-4 py-2">Yes</td>
                 </tr>
               </tbody>
             </table>
             
             <p id="do-not-sell-or-share" className="text-slate-600 mb-3 scroll-mt-24">
-              <strong>Do Not Sell/Share:</strong> You may opt out of any sale or sharing of personal information by emailing shufflin_00@me.com with "Do Not Sell/Share" in the subject line. Attorney delivery, when available, occurs only if you explicitly consent to send results to the named attorney shown in the unlock flow.
+              <strong>Do Not Sell/Share:</strong> You may opt out of marketing-pixel sale/share activity through <a href="#privacy-choices" className="font-medium text-sky-700 underline">Your Privacy Choices</a> or by emailing shufflin_00@me.com with "Do Not Sell/Share" in the subject line. We honor browser Global Privacy Control signals where detected. Attorney delivery, when available, occurs only if you explicitly consent to send results to the named attorney shown in the unlock flow; you can view your estimate without attorney delivery.
             </p>
           </section>
 

@@ -6,6 +6,7 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 NODE_ENV = "production"
 SMS_PROVIDER = "twilio"
+GEO_ACCESS_MODE = "california"
 
 # Replace placeholder IDs after creating Cloudflare resources:
 #   wrangler d1 create california-injury-leads
@@ -28,7 +29,7 @@ directory = ".vercel/output/static"
 
 [env.production]
 name = "california-injury-calculator-prod"
-vars = { NODE_ENV = "production", SMS_PROVIDER = "twilio" }
+vars = { NODE_ENV = "production", SMS_PROVIDER = "twilio", GEO_ACCESS_MODE = "california" }
 
 [[env.production.d1_databases]]
 binding = "LEADS_DB"
@@ -42,7 +43,7 @@ id = "00000000000000000000000000000000"
 
 [env.preview]
 name = "california-injury-calculator-preview"
-vars = { NODE_ENV = "development", SMS_PROVIDER = "dev_stub", OTP_DEV_MODE = "true" }
+vars = { NODE_ENV = "development", SMS_PROVIDER = "dev_stub", OTP_DEV_MODE = "true", GEO_ACCESS_MODE = "off", GEO_ALLOW_UNKNOWN = "true" }
 
 [[env.preview.d1_databases]]
 binding = "LEADS_DB"

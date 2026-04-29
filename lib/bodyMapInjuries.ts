@@ -14,6 +14,16 @@ export const BODY_MAP_SEVERITY_LABELS: Record<BodyMapSeverity, string> = {
   4: 'Severe'
 };
 
+function createEmptySpinalIssues(): InjuryCalculatorData['injuries']['spinalIssues'] {
+  return {
+    herniation: false,
+    nerveRootCompression: false,
+    radiculopathy: false,
+    myelopathy: false,
+    preExistingDegeneration: false
+  };
+}
+
 export const BODY_MAP_CLICKABLE_SLUGS: BodyMapSlug[] = [
   'head',
   'hair',
@@ -263,19 +273,12 @@ export function hasBoneOrJointRegion(selections: BodyMapSelection[] = []): boole
   ]);
 }
 
-function legacyInjuryFromSelection(
-  selection: BodyMapSelection,
-  injuries: InjuryCalculatorData['injuries']
-): string {
+function legacyInjuryFromSelection(selection: BodyMapSelection): string {
   const slug = canonicalBodyMapSlug(selection.slug);
-  const hasSpinalFinding = Object.values(injuries.spinalIssues).some(Boolean);
 
-  if (slug === 'head' || slug === 'hair') {
-    return injuries.tbi ? 'Concussion / Mild TBI' : 'Soft Tissue Damage';
-  }
-
+  if (slug === 'head' || slug === 'hair') return 'Soft Tissue Damage';
   if (slug === 'neck' || slug === 'trapezius') return 'Whiplash / Neck Strain';
-  if (slug === 'upper-back' || slug === 'lower-back') return hasSpinalFinding ? 'Disc Herniation' : 'Back Strain / Sprain';
+  if (slug === 'upper-back' || slug === 'lower-back') return 'Back Strain / Sprain';
   if (slug === 'deltoids') return 'Shoulder Injury';
   if (slug === 'knees') return 'Knee Injury';
 
@@ -298,14 +301,39 @@ export function deriveLegacyInjuryFields(
   const secondaryInjuries = Array.from(
     new Set(
       secondary
-        .map((selection) => legacyInjuryFromSelection(selection, injuries))
-        .filter((injury) => injury !== legacyInjuryFromSelection(primary, injuries))
+        .map((selection) => legacyInjuryFromSelection(selection))
+        .filter((injury) => injury !== legacyInjuryFromSelection(primary))
     )
   );
 
   return {
-    primaryInjury: legacyInjuryFromSelection(primary, injuries),
+    primaryInjury: legacyInjuryFromSelection(primary),
     secondaryInjuries
+  };
+}
+
+export function deriveBodyMapOnlyInjuryFields(
+  injuries: InjuryCalculatorData['injuries']
+): Pick<
+  InjuryCalculatorData['injuries'],
+  'primaryInjury' |
+  'secondaryInjuries' |
+  'preExistingConditions' |
+  'fractures' |
+  'tbi' |
+  'tbiSeverity' |
+  'spinalIssues'
+> {
+  const bodyDerived = deriveLegacyInjuryFields(injuries);
+
+  return {
+    primaryInjury: bodyDerived.primaryInjury,
+    secondaryInjuries: bodyDerived.secondaryInjuries,
+    preExistingConditions: [],
+    fractures: [],
+    tbi: false,
+    tbiSeverity: undefined,
+    spinalIssues: createEmptySpinalIssues()
   };
 }
 

@@ -2,7 +2,7 @@
 
 import { Calculator, Menu, X } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, type MouseEvent } from 'react';
 import CaliforniaMark from '@/components/CaliforniaMark';
 
 const navItems = [
@@ -13,14 +13,28 @@ const navItems = [
   { href: '/contact', label: 'Contact' }
 ];
 
-export default function Header() {
+const CALCULATOR_RESET_EVENT = 'injury-calculator:request-reset';
+
+interface HeaderProps {
+  enableCalculatorReset?: boolean;
+}
+
+export default function Header({ enableCalculatorReset = false }: HeaderProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const handleBrandClick = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (!enableCalculatorReset) return;
+
+    event.preventDefault();
+    setIsMenuOpen(false);
+    window.dispatchEvent(new Event(CALCULATOR_RESET_EVENT));
+  };
 
   return (
     <header className="border-b border-slate-200 bg-white/95 backdrop-blur">
       <div className="container mx-auto px-4 sm:px-6">
         <div className="flex min-h-[76px] items-center justify-between gap-4">
-          <Link href="/" className="flex min-w-0 items-center gap-3">
+          <Link href="/" onClick={handleBrandClick} className="flex min-w-0 items-center gap-3">
             <CaliforniaMark className="h-12 w-12 flex-none" label="Custom California settlement mark" />
             <div className="min-w-0">
               <p className="truncate text-base font-semibold tracking-tight text-slate-950 sm:text-lg">

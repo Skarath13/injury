@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./styles.css";
-import CookieConsent from "@/components/CookieConsent";
+import PrivacyChoicesManager from "@/components/CookieConsent";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -124,7 +124,7 @@ export default function RootLayout({
       <body className="antialiased">
         <TooltipProvider>
           {children}
-          <CookieConsent />
+          <PrivacyChoicesManager />
         </TooltipProvider>
         <script
           dangerouslySetInnerHTML={{

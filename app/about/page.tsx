@@ -30,7 +30,7 @@ export default function About() {
         <section className="mb-12">
           <h2 className="text-2xl font-semibold text-slate-800 mb-6">Our Mission</h2>
           <p className="text-slate-600 mb-4">
-            We created this calculator to help California auto accident victims organize key claim facts before reviewing an educational estimate. Too often, people enter the claim process with no framework for medical bills, liability, policy limits, and treatment signals.
+            We created this calculator to help California auto accident victims organize key claim facts before reviewing an educational estimate. Too often, people enter the claim process with no framework for medical treatment, injury severity, liability, venue context, and case-value signals.
           </p>
           <p className="text-slate-600">
             The calculator uses a versioned settlement-logic configuration so the assumptions behind the estimate can be reviewed, audited, and updated without hiding the math in application code.
@@ -46,7 +46,7 @@ export default function About() {
                 <h3 className="text-lg font-semibold text-slate-800">Configured Estimate Logic</h3>
               </div>
               <p className="text-slate-600">
-                The estimate is driven by configured factors for injury type, treatment, specials, comparative fault, policy limits, and life impact.
+                The estimate is driven by configured factors for body-map severity, treatment progression, medical specials, impact severity, county venue context, age, and comparative fault.
               </p>
             </div>
             
@@ -66,7 +66,7 @@ export default function About() {
                 <h3 className="text-lg font-semibold text-slate-800">Claim Factors</h3>
               </div>
               <p className="text-slate-600">
-                The calculator includes California comparative fault, known policy limits, liens and fees where entered, and county context.
+                The calculator includes California comparative fault, liens and fees where entered, and county venue context.
               </p>
             </div>
             
@@ -97,7 +97,7 @@ export default function About() {
           <ul className="space-y-2 text-slate-600">
             <li className="flex items-start">
               <span className="text-blue-600 mr-2">•</span>
-              <span>Injury category and objective injury indicators</span>
+              <span>Body-map injury areas and severity ratings</span>
             </li>
             <li className="flex items-start">
               <span className="text-blue-600 mr-2">•</span>
@@ -105,11 +105,11 @@ export default function About() {
             </li>
             <li className="flex items-start">
               <span className="text-blue-600 mr-2">•</span>
-              <span>California comparative fault and known policy limits</span>
+              <span>California comparative fault and county venue context</span>
             </li>
             <li className="flex items-start">
               <span className="text-blue-600 mr-2">•</span>
-              <span>Work disruption, permanent impairment, and other configured adders</span>
+              <span>Context fields such as work disruption and known insurance information, without using them as value caps</span>
             </li>
           </ul>
         </section>

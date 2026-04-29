@@ -43,7 +43,8 @@ export default function SettlementPreviewGate({ preview, onBack, onUnlocked }: P
         body: JSON.stringify({
           sessionId: preview.sessionId,
           phone,
-          consentToAttorneyShare: preview.requiresAttorneyConsent ? consent : false
+          consentToAttorneyShare: preview.requiresAttorneyConsent ? consent : false,
+          phoneContactConsent: preview.requiresAttorneyConsent ? consent : false
         })
       });
 
@@ -120,7 +121,7 @@ export default function SettlementPreviewGate({ preview, onBack, onUnlocked }: P
           </summary>
           <div className="mt-2 flex flex-col gap-1">
             <p>
-              County: <span className="font-semibold">{preview.county}</span>. Case tier: <span className="font-semibold">{preview.caseTier.replace(/_/g, ' ')}</span>.
+              County: <span className="font-semibold">{preview.county}</span>. Severity band: <span className="font-semibold">{preview.severityBand}</span>.
             </p>
             <p>Logic version {preview.logicVersion} ({preview.logicHash}) was used for this preview.</p>
           </div>
@@ -199,7 +200,7 @@ export default function SettlementPreviewGate({ preview, onBack, onUnlocked }: P
                   </FieldLabel>
                   <FieldDescription>
                     Code sent to {otpSent.maskedPhone}.
-                    {otpSent.duplicateWithin30Days && ' This phone was already verified recently, so any attorney lead is marked duplicate/no-charge.'}
+                    {otpSent.duplicateWithin30Days && ' This phone was already used for a recent attorney-delivery request, so any attorney lead is marked duplicate/no-charge.'}
                     {otpSent.devCode && ` Development code: ${otpSent.devCode}.`}
                   </FieldDescription>
                   <div className="grid gap-3 md:grid-cols-[1fr_auto]">
@@ -236,7 +237,7 @@ export default function SettlementPreviewGate({ preview, onBack, onUnlocked }: P
         <details className="rounded-lg border bg-muted/30 px-4 py-3 text-xs leading-5 text-muted-foreground">
           <summary className="cursor-pointer font-medium text-foreground">Notice at collection</summary>
           <p className="mt-2">
-            We use calculator inputs, phone verification data, IP/user-agent hashes, and consent records to create the estimate session, reduce duplicate submissions, and, only if you consent, send results to the named attorney shown above. See the{' '}
+            We use calculator inputs, phone verification data, IP/user-agent hashes, coarse California eligibility signals, and consent records to create the estimate session, reduce duplicate submissions, and, only if you consent, send results to the named attorney shown above. See the{' '}
             <a href="/privacy" className="font-medium text-primary underline">Privacy Policy</a>
             {' '}and{' '}
             <a href="/privacy#do-not-sell-or-share" className="font-medium text-primary underline">Do Not Sell/Share</a>

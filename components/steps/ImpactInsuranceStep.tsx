@@ -33,12 +33,11 @@ export default function ImpactInsuranceStep({ register, watch, errors }: Props) 
           <label className="flex items-center text-sm font-medium text-slate-700 mb-2">
             <Briefcase className="w-4 h-4 mr-2 text-slate-400" />
             Total Work Days Missed
-            <InfoIcon content="Include partial days and future expected missed days" />
+            <InfoIcon content="Recorded for context and attorney review. Missed work days no longer change the estimate calculation." />
           </label>
           <input
             type="number"
             {...register('impact.missedWorkDays', { 
-              required: 'Please enter missed work days',
               min: { value: 0, message: 'Invalid number' }
             })}
             className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
@@ -137,7 +136,7 @@ export default function ImpactInsuranceStep({ register, watch, errors }: Props) 
       <div className="space-y-6">
         <h3 className="text-lg font-semibold text-slate-800 border-b border-slate-200 pb-2">Insurance & Legal</h3>
         <div className="text-slate-600 text-sm">
-          Policy limits and legal representation affect your net recovery.
+          Policy limits are recorded for context. Legal representation can affect net recovery.
           <InfoIcon content="Settlement Timeline: 3-6 months for simple soft tissue cases with attorney, 6-12 months for moderate injuries, 12-24 months for serious injuries, 2-4 years for trial cases. Your net recovery will be reduced by attorney fees, medical liens, and case costs." />
         </div>
 
@@ -146,7 +145,7 @@ export default function ImpactInsuranceStep({ register, watch, errors }: Props) 
           <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center">
             <Shield className="w-4 h-4 mr-2 text-blue-600" />
             Insurance Policy Limits
-            <InfoIcon content="California minimum liability is only $15,000 per person. Many drivers carry only minimum coverage, which severely limits potential recovery." />
+            <InfoIcon content="Policy limits are recorded for context and attorney review. They no longer cap this educational estimate." />
           </h4>
           
           <label className="flex items-start space-x-3 cursor-pointer mb-4">
@@ -165,7 +164,7 @@ export default function ImpactInsuranceStep({ register, watch, errors }: Props) 
               <label className="flex items-center text-sm font-medium text-slate-700 mb-2">
                 <DollarSign className="w-4 h-4 mr-2 text-slate-400" />
                 Policy Limits (Per Person)
-                <InfoIcon content="You cannot recover more than the policy limits unless the at-fault party has significant assets" />
+                <InfoIcon content="Recorded for context only; the estimate is no longer capped by this value." />
               </label>
               <select
                 {...register('insurance.policyLimits')}
