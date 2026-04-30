@@ -60,7 +60,7 @@ export default function TermsAndConditions() {
               <li>Offers educational content about auto injury claims</li>
             </ul>
             <p className="text-slate-600 mb-4">
-              The Service is intended for California auto injury claims and California-eligible visitors. We may use coarse IP-based location signals to support California-specific estimate logic and security checks.
+              The Service is intended for California auto injury claims and California-eligible visitors. We may use coarse IP-based location signals to support California-specific estimate logic and fraud prevention.
             </p>
 
             <h3 className="text-lg font-semibold text-slate-700 mb-3">2.2 What We DON'T Provide</h3>

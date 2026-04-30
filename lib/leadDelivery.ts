@@ -391,7 +391,7 @@ export function qualifyLeadSession(session: LeadSession, at = nowIso()): LeadQua
   const hasActiveRecipient = Boolean(attorney && session.attorneyId);
   const consented = session.attorneyDeliveryConsent && session.phoneContactConsent;
   const geoEligible = session.geoEligibilityStatus === 'california';
-  const turnstileVerified = session.turnstileStatus === 'verified';
+  const turnstileVerified = session.turnstileStatus === 'verified' || session.turnstileStatus === 'disabled';
   const otpVerified = session.otpStatus === 'verified';
   const duplicate = session.duplicateWithin30Days || session.leadDeliveryStatus === 'duplicate_30d_no_charge';
   const readyForDelivery = session.leadDeliveryStatus === 'ready_for_delivery';

@@ -69,7 +69,6 @@ export default function PrivacyPolicy() {
             <p className="text-slate-600 mb-3">We use the following types of cookies:</p>
             <ul className="list-disc pl-6 text-slate-600 space-y-2">
               <li><strong>Essential Cookies:</strong> Required for site functionality (session management, security)</li>
-              <li><strong>Cloudflare Turnstile:</strong> Bot prevention and human verification, subject to Cloudflare's Turnstile privacy terms</li>
               <li><strong>Analytics Cookies:</strong> Analytics measurement only if enabled through Your Privacy Choices</li>
               <li><strong>Marketing Pixels:</strong> Advertising or retargeting pixels only if enabled through Your Privacy Choices and not blocked by a browser opt-out signal</li>
               <li><strong>Preference Cookies:</strong> Remember your privacy choices and calculator preferences</li>
@@ -117,7 +116,7 @@ export default function PrivacyPolicy() {
             <p className="text-slate-600 mb-3">We may share your information only in these specific circumstances:</p>
             <ul className="list-disc pl-6 text-slate-600 space-y-2 mb-4">
               <li><strong>With Your Consent:</strong> Only when you explicitly opt in to send your results and contact information to the named law firm or attorney sponsor shown before submission</li>
-              <li><strong>Service Providers:</strong> Cloudflare for hosting, Workers, D1, KV, and Turnstile; SMS/OTP providers for optional SMS verification; analytics providers if enabled</li>
+              <li><strong>Service Providers:</strong> Cloudflare for hosting, Workers, D1, and KV; SMS/OTP providers for optional SMS verification; analytics providers if enabled</li>
               <li><strong>Named Sponsor Recipient:</strong> If you consent, calculator results and contact information may be sent only to the specifically identified law firm or attorney sponsor shown before submission. We may receive compensation for a sponsored contact submission.</li>
               <li><strong>Marketing Providers:</strong> If you allow marketing pixels, advertising platforms may receive limited browsing or event data for ad measurement or retargeting, subject to your choices and browser privacy signals</li>
               <li><strong>Legal Requirements:</strong> When required by law, court order, or to protect rights and safety</li>
@@ -147,7 +146,7 @@ export default function PrivacyPolicy() {
               <li><strong>Encryption:</strong> HTTPS/TLS for all data transmission</li>
               <li><strong>Access Controls:</strong> Limited employee access with authentication requirements</li>
               <li><strong>Server-Side Controls:</strong> Estimate sessions are handled through Cloudflare Workers and audit logs use hashed metadata where practical</li>
-              <li><strong>Location Controls:</strong> We use coarse IP-based location signals to support California-specific estimate logic and security checks</li>
+              <li><strong>Location Controls:</strong> We use coarse IP-based location signals to support California-specific estimate logic and fraud prevention</li>
               <li><strong>Regular Audits:</strong> Security assessments and updates</li>
               <li><strong>Incident Response:</strong> Procedures to handle any potential breaches</li>
             </ul>

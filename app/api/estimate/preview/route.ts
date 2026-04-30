@@ -237,7 +237,6 @@ export async function POST(request: NextRequest) {
     const leadGate = await import('@/lib/leadGate');
     const body = await request.json() as {
       calculatorData?: InjuryCalculatorData;
-      turnstileToken?: string;
       privacyChoiceSnapshot?: PrivacyChoiceSnapshot;
     };
     const data = body.calculatorData
@@ -254,13 +253,7 @@ export async function POST(request: NextRequest) {
     }
 
     const ip = clientIp(request);
-    const turnstile = await leadGate.verifyTurnstileToken(body.turnstileToken, ip, env);
-    if (!turnstile.ok) {
-      return NextResponse.json(
-        { error: 'Verification failed. Please refresh and try again.', details: turnstile.errors },
-        { status: 400 }
-      );
-    }
+    const turnstileStatus = 'disabled';
 
     const county = normalizeCounty(data.accidentDetails.county);
     const geo = requestGeo(request);
@@ -298,7 +291,7 @@ export async function POST(request: NextRequest) {
       logicVersion: result.logicVersion,
       logicHash: result.logicHash,
       routingVersion: routing.routingVersion,
-      turnstileStatus: turnstile.status,
+      turnstileStatus,
       input: data,
       result,
       preview,

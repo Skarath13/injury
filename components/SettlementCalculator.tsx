@@ -68,7 +68,6 @@ import InjuriesStep from './steps/InjuriesStep';
 import TreatmentStep from './steps/TreatmentStep';
 import WorkLifeStep from './steps/WorkLifeStep';
 import SettlementResults from './SettlementResults';
-import TurnstileWidget from './TurnstileWidget';
 import EstimatePreparationLoader, { ESTIMATE_PREPARATION_MIN_MS } from './EstimatePreparationLoader';
 import CountyCombobox from './CountyCombobox';
 import InfoIcon from './InfoIcon';
@@ -444,7 +443,7 @@ function hasTreatmentSignal(data: InjuryCalculatorData) {
   );
 }
 
-function buildProfileItems(data: InjuryCalculatorData, turnstileToken: string, currentStep = 1): ProfileItem[] {
+function buildProfileItems(data: InjuryCalculatorData, currentStep = 1): ProfileItem[] {
   return [
     {
       label: 'Quick Facts',
@@ -463,8 +462,11 @@ function buildProfileItems(data: InjuryCalculatorData, turnstileToken: string, c
       complete: currentStep > 4 || Boolean(data.demographics.dateOfBirth)
     },
     {
-      label: 'Security Check',
-      complete: Boolean(turnstileToken && dateOfBirthIsInAllowedRange(data.demographics.dateOfBirth))
+      label: 'Unlock Details',
+      complete: Boolean(
+        dateOfBirthIsInAllowedRange(data.demographics.dateOfBirth) &&
+        data.accidentDetails.county
+      )
     }
   ];
 }
@@ -475,13 +477,12 @@ function profileState(completedCount: number) {
   return { label: 'Started', helper: 'Add quick facts to build momentum.', color: 'text-amber-700' };
 }
 
-function ProfileStrengthCard({ data, turnstileToken, currentStep }: {
+function ProfileStrengthCard({ data, currentStep }: {
   data: InjuryCalculatorData;
-  turnstileToken: string;
   currentStep: number;
 }) {
   const shouldReduceMotion = Boolean(useReducedMotion());
-  const items = buildProfileItems(data, turnstileToken, currentStep);
+  const items = buildProfileItems(data, currentStep);
   const completedCount = items.filter((item) => item.complete).length;
   const strength = profileState(completedCount);
   const progressValue = Math.round((completedCount / items.length) * 100);
@@ -1230,19 +1231,17 @@ function UnlockActionPanel({
   );
 }
 
-function ReviewUnlockStep({ data, register, setValue, errors, turnstileToken, onTurnstileToken, preview, onUnlocked, onResetPreview }: {
+function ReviewUnlockStep({ data, register, setValue, errors, preview, onUnlocked, onResetPreview }: {
   data: InjuryCalculatorData;
   register: UseFormRegister<InjuryCalculatorData>;
   setValue: UseFormSetValue<InjuryCalculatorData>;
   errors: FieldErrors<InjuryCalculatorData>;
-  turnstileToken: string;
-  onTurnstileToken: (token: string) => void;
   preview: EstimatePreviewResponse | null;
   onUnlocked: (results: SettlementResult, attorney: ResponsibleAttorney | null, leadDeliveryStatus: string) => void;
   onResetPreview: () => void;
 }) {
   const shouldReduceMotion = Boolean(useReducedMotion());
-  const items = buildProfileItems(data, turnstileToken, STEPS.length);
+  const items = buildProfileItems(data, STEPS.length);
   const completedCount = items.filter((item) => item.complete).length;
 
   return (
@@ -1251,7 +1250,7 @@ function ReviewUnlockStep({ data, register, setValue, errors, turnstileToken, on
         <Badge variant="secondary" className="w-fit">Unlock</Badge>
         <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Unlock</h2>
         <p className="max-w-2xl text-sm leading-6 text-slate-600">
-          Confirm Date of Birth, complete the security check, then unlock the educational range.
+          Confirm Date of Birth and accident county, then unlock the educational range.
         </p>
       </div>
 
@@ -1359,20 +1358,6 @@ function ReviewUnlockStep({ data, register, setValue, errors, turnstileToken, on
         </div>
       </div>
 
-      {!preview && (
-        <Card className="border-slate-200 bg-white shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <ShieldCheck data-icon="inline-start" className="text-sky-700" />
-              Security check
-            </CardTitle>
-            <CardDescription>Complete this before preparing your secure preview.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <TurnstileWidget onToken={onTurnstileToken} />
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
@@ -1790,7 +1775,6 @@ export default function SettlementCalculator({ initialEstimateSlug = null }: Set
   const [isCalculating, setIsCalculating] = useState(false);
   const [calculationError, setCalculationError] = useState<string | null>(null);
   const [isAbandonDialogOpen, setIsAbandonDialogOpen] = useState(false);
-  const [turnstileToken, setTurnstileToken] = useState('');
   const [bodyModel, setBodyModel] = useState<BodyMapGender | ''>('');
   const [bodyModelError, setBodyModelError] = useState<string | null>(null);
   const [workLifeBooleanAnswers, setWorkLifeBooleanAnswers] = useState<WorkLifeBooleanAnswers>(() => (
@@ -1893,7 +1877,6 @@ export default function SettlementCalculator({ initialEstimateSlug = null }: Set
     setShowValidationError(false);
     setIsCalculating(false);
     setCalculationError(null);
-    setTurnstileToken('');
     setBodyModelError(null);
     clearErrors();
   }, [clearErrors]);
@@ -2297,10 +2280,6 @@ export default function SettlementCalculator({ initialEstimateSlug = null }: Set
     const calculatorData = prepareCalculatorDataForEstimate(data);
 
     try {
-      if (!turnstileToken) {
-        throw new Error('Please complete the security check before preparing your estimate.');
-      }
-
       writeCalculatorRouteHistory('pushState', routeStateForSlug('preparing'));
       setIsCalculating(true);
       const requestPreview = async () => {
@@ -2311,7 +2290,6 @@ export default function SettlementCalculator({ initialEstimateSlug = null }: Set
           },
           body: JSON.stringify({
             calculatorData,
-            turnstileToken,
             privacyChoiceSnapshot: readBrowserPrivacyChoices()
           })
         });
@@ -2444,7 +2422,7 @@ export default function SettlementCalculator({ initialEstimateSlug = null }: Set
             'demographics.dateOfBirth',
             'accidentDetails.county'
           ]);
-          return unlockFieldsAreValid && Boolean(turnstileToken);
+          return unlockFieldsAreValid;
         }
       default:
         return true;
@@ -2564,7 +2542,7 @@ export default function SettlementCalculator({ initialEstimateSlug = null }: Set
     handleSubmit(onSubmit)();
   };
 
-  const liveProfileItems = buildProfileItems(watchData, turnstileToken, currentStep);
+  const liveProfileItems = buildProfileItems(watchData, currentStep);
   const liveCompletedCount = liveProfileItems.filter((item) => item.complete).length;
   const liveStrength = profileState(liveCompletedCount);
   const stepProgress = Math.round((currentStep / STEPS.length) * 100);
@@ -2644,7 +2622,7 @@ export default function SettlementCalculator({ initialEstimateSlug = null }: Set
     <div className="mx-auto max-w-7xl space-y-5">
       <div className={`grid min-w-0 gap-5 ${currentStep === 1 ? 'grid-cols-1' : 'lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)]'}`}>
         <div className={`${currentStep === 1 ? 'hidden' : 'hidden lg:sticky lg:top-4 lg:block lg:self-start'}`}>
-          <ProfileStrengthCard data={watchData} turnstileToken={turnstileToken} currentStep={currentStep} />
+          <ProfileStrengthCard data={watchData} currentStep={currentStep} />
         </div>
 
         <motion.div
@@ -2817,8 +2795,6 @@ export default function SettlementCalculator({ initialEstimateSlug = null }: Set
                     register={register}
                     setValue={setValue}
                     errors={errors}
-                    turnstileToken={turnstileToken}
-                    onTurnstileToken={setTurnstileToken}
                     preview={preview}
                     onResetPreview={() => {
                       setPreview(null);
@@ -2894,7 +2870,7 @@ export default function SettlementCalculator({ initialEstimateSlug = null }: Set
                     <AlertCircle data-icon="inline-start" />
                     <AlertDescription>
                       {currentStep === 5
-                        ? 'Please complete Date of Birth, accident county, and the security check before preparing your estimate.'
+                        ? 'Please complete Date of Birth and accident county before preparing your estimate.'
                         : 'Please complete the required fields before continuing.'}
                     </AlertDescription>
                   </Alert>

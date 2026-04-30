@@ -23,7 +23,6 @@ export interface KVNamespaceLike {
 export interface WorkerEnv {
   LEADS_DB?: D1DatabaseLike;
   ATTORNEY_ROUTING?: KVNamespaceLike;
-  TURNSTILE_SECRET_KEY?: string;
   LEAD_HASH_SALT?: string;
   OTP_DEV_MODE?: string;
   OTP_DEV_CODE?: string;

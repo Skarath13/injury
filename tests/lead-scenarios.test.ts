@@ -261,7 +261,6 @@ function envFor(scenario: LeadScenario, data: InjuryCalculatorData): WorkerEnv {
     LEAD_HASH_SALT: `lead-scenario-hash-${scenario.id}`,
     LEAD_ENCRYPTION_KEY: `lead-scenario-encryption-${scenario.id}`,
     LEAD_ENCRYPTION_KEY_VERSION: `lead-scenario-key-${scenario.id}`,
-    TURNSTILE_SECRET_KEY: `lead-scenario-turnstile-${scenario.id}`,
     ATTORNEY_ROUTING: {
       async get() {
         return routingConfig;
@@ -276,26 +275,6 @@ function setCloudflareEnv(env: WorkerEnv) {
 
 function clearCloudflareEnv() {
   delete (globalThis as Record<symbol, { env: WorkerEnv }>)[cloudflareContextSymbol];
-}
-
-function installTurnstileFetchStub() {
-  const originalFetch = globalThis.fetch;
-
-  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
-    const url = String(input);
-    if (url === 'https://challenges.cloudflare.com/turnstile/v0/siteverify') {
-      return new Response(JSON.stringify({ success: true }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    return originalFetch(input, init);
-  }) as typeof fetch;
-
-  return () => {
-    globalThis.fetch = originalFetch;
-  };
 }
 
 function geoHeaders(geo: ScenarioGeo): Record<string, string> {
@@ -362,8 +341,7 @@ async function preparePreview(
   const formStartToken = await createFormStartToken(env, Date.now() - formStartAgeSeconds * 1000);
   const expectedResult = calculateSettlement(data);
   const response = await previewPost(jsonRequest('/api/estimate/preview', {
-    calculatorData: data,
-    turnstileToken: 'dev-turnstile-token'
+    calculatorData: data
   }, {
     ...geoHeaders(scenario.geo),
     cookie: `${FORM_START_COOKIE_NAME}=${formStartToken}`
@@ -494,7 +472,6 @@ async function runScenario(scenario: LeadScenario, state: ScenarioState): Promis
   const data = scenarioData(scenario);
   const env = envFor(scenario, data);
   setCloudflareEnv(env);
-  const restoreFetch = installTurnstileFetchStub();
 
   try {
     if (scenario.seedDuplicatePhone) {
@@ -549,7 +526,6 @@ async function runScenario(scenario: LeadScenario, state: ScenarioState): Promis
     assertPayloadExpectations(scenario, state);
     return state;
   } finally {
-    restoreFetch();
     clearCloudflareEnv();
   }
 }

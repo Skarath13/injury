@@ -181,26 +181,6 @@ function clearCloudflareEnv() {
   delete (globalThis as Record<symbol, { env: WorkerEnv }>)[cloudflareContextSymbol];
 }
 
-function installTurnstileFetchStub() {
-  const originalFetch = globalThis.fetch;
-
-  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
-    const url = String(input);
-    if (url === 'https://challenges.cloudflare.com/turnstile/v0/siteverify') {
-      return new Response(JSON.stringify({ success: true }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    }
-
-    return originalFetch(input, init);
-  }) as typeof fetch;
-
-  return () => {
-    globalThis.fetch = originalFetch;
-  };
-}
-
 function testLeadContact(
   phone: string,
   overrides: Partial<{ firstName: string; lastName: string; email: string; phone: string }> = {}
@@ -1121,8 +1101,7 @@ test('preview endpoint does not return exact estimate values before OTP unlock',
   const request = new NextRequest('http://localhost/api/estimate/preview', {
     method: 'POST',
     body: JSON.stringify({
-      calculatorData,
-      turnstileToken: 'dev-turnstile-token'
+      calculatorData
     })
   });
 
@@ -1151,13 +1130,11 @@ test('preview endpoint does not return exact estimate values before OTP unlock',
 });
 
 test('preview endpoint falls back to estimate-only when production lead infrastructure is unavailable', async () => {
-  const restoreFetch = installTurnstileFetchStub();
   const originalWarn = console.warn;
   console.warn = () => {};
   setCloudflareEnv({
     NODE_ENV: 'production',
     SMS_PROVIDER: 'twilio_verify',
-    TURNSTILE_SECRET_KEY: 'test-turnstile-secret',
     ATTORNEY_ROUTING: {
       async get() {
         return {
@@ -1205,8 +1182,7 @@ test('preview endpoint falls back to estimate-only when production lead infrastr
             }],
             primaryInjury: 'Neck'
           }
-        }),
-        turnstileToken: 'verified-turnstile-token'
+        })
       })
     });
 
@@ -1222,7 +1198,6 @@ test('preview endpoint falls back to estimate-only when production lead infrastr
   } finally {
     clearCloudflareEnv();
     console.warn = originalWarn;
-    restoreFetch();
   }
 });
 
@@ -1253,8 +1228,7 @@ test('preview endpoint allows missing occupation and income when wage loss is no
   const request = new NextRequest('http://localhost/api/estimate/preview', {
     method: 'POST',
     body: JSON.stringify({
-      calculatorData,
-      turnstileToken: 'dev-turnstile-token'
+      calculatorData
     })
   });
 
@@ -1290,8 +1264,7 @@ test('preview endpoint defaults occupation and income when wage loss is yes', as
   const request = new NextRequest('http://localhost/api/estimate/preview', {
     method: 'POST',
     body: JSON.stringify({
-      calculatorData,
-      turnstileToken: 'dev-turnstile-token'
+      calculatorData
     })
   });
 
@@ -1323,8 +1296,7 @@ test('preview endpoint rejects future date of loss', async () => {
   const request = new NextRequest('http://localhost/api/estimate/preview', {
     method: 'POST',
     body: JSON.stringify({
-      calculatorData,
-      turnstileToken: 'dev-turnstile-token'
+      calculatorData
     })
   });
 
