@@ -8,18 +8,15 @@ NODE_ENV = "production"
 SMS_PROVIDER = "twilio"
 GEO_ACCESS_MODE = "california"
 
-# Replace placeholder IDs after creating Cloudflare resources:
-#   wrangler d1 create california-injury-leads
-#   wrangler kv namespace create ATTORNEY_ROUTING
 [[d1_databases]]
 binding = "LEADS_DB"
 database_name = "california-injury-leads"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "bf6fb57b-ab68-4a97-9cf7-b109eba1715e"
 migrations_dir = "migrations"
 
 [[kv_namespaces]]
 binding = "ATTORNEY_ROUTING"
-id = "00000000000000000000000000000000"
+id = "87faf8eb14cc4ece823a8af991fb721d"
 
 [build]
 command = "npm run build:cloudflare"
@@ -33,13 +30,13 @@ vars = { NODE_ENV = "production", SMS_PROVIDER = "twilio", GEO_ACCESS_MODE = "ca
 
 [[env.production.d1_databases]]
 binding = "LEADS_DB"
-database_name = "california-injury-leads-prod"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_name = "california-injury-leads"
+database_id = "bf6fb57b-ab68-4a97-9cf7-b109eba1715e"
 migrations_dir = "migrations"
 
 [[env.production.kv_namespaces]]
 binding = "ATTORNEY_ROUTING"
-id = "00000000000000000000000000000000"
+id = "87faf8eb14cc4ece823a8af991fb721d"
 
 [env.preview]
 name = "california-injury-calculator-preview"
