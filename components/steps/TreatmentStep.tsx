@@ -505,6 +505,7 @@ export default function TreatmentStep({ register, watch, setValue }: Props) {
 
   const anchorTreatmentCategory = useCallback((category: string) => {
     if (typeof window === 'undefined') return;
+    if (window.matchMedia('(min-width: 1024px)').matches) return;
 
     const scrollToCategory = () => {
       const categoryNode = treatmentCategoryRefs.current[category];

@@ -7,6 +7,7 @@ import { AnimatePresence, motion, useReducedMotion } from '@/components/motion/r
 import { cn } from '@/lib/utils';
 import { InjuryCalculatorData } from '@/types/calculator';
 import type { WorkLifeBooleanAnswers, WorkLifeBooleanField } from '@/lib/calculatorDraft';
+import { DEFAULT_WAGE_LOSS_ANNUAL_INCOME, DEFAULT_WAGE_LOSS_OCCUPATION } from '@/lib/wageLossDefaults';
 import InfoIcon from '@/components/InfoIcon';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { NativeSelect } from '@/components/ui/native-select';
@@ -221,6 +222,23 @@ export default function WorkLifeStep({
       shouldTouch: true,
       shouldValidate: false
     });
+
+    if (enabled) {
+      if (!watch('demographics.occupation')) {
+        setValue('demographics.occupation', DEFAULT_WAGE_LOSS_OCCUPATION, {
+          shouldDirty: true,
+          shouldTouch: true,
+          shouldValidate: false
+        });
+      }
+      if (Number(watch('demographics.annualIncome') || 0) <= 0) {
+        setValue('demographics.annualIncome', DEFAULT_WAGE_LOSS_ANNUAL_INCOME, {
+          shouldDirty: true,
+          shouldTouch: true,
+          shouldValidate: false
+        });
+      }
+    }
   };
 
   const handlePermanentImpairmentChange = (enabled: boolean) => {
@@ -294,9 +312,7 @@ export default function WorkLifeStep({
                   <FieldLabel htmlFor="occupation">Occupation</FieldLabel>
                   <NativeSelect
                     id="occupation"
-                    {...register('demographics.occupation', {
-                      validate: (value) => !hasWageLoss || Boolean(value) || 'Select an occupation'
-                    })}
+                    {...register('demographics.occupation')}
                     aria-invalid={Boolean(errors.demographics?.occupation)}
                     className="w-full"
                   >
@@ -318,9 +334,7 @@ export default function WorkLifeStep({
                   <FieldLabel htmlFor="annual-income">Income range</FieldLabel>
                   <NativeSelect
                     id="annual-income"
-                    {...register('demographics.annualIncome', {
-                      validate: (value) => !hasWageLoss || Number(value) > 0 || 'Select an income range'
-                    })}
+                    {...register('demographics.annualIncome')}
                     aria-invalid={Boolean(errors.demographics?.annualIncome)}
                     className="w-full"
                   >
@@ -346,8 +360,9 @@ export default function WorkLifeStep({
         description="These signals are weighted against the injury and treatment details already selected."
         icon={Heart}
         iconClassName="bg-rose-100 text-rose-700"
+        className="lg:col-span-2"
       >
-        <div className="flex flex-col gap-3">
+        <div className="grid gap-3 xl:grid-cols-3">
           <ToggleQuestion
             title="Emotional distress"
             description="Anxiety, sleep disruption, depression, PTSD symptoms, or similar distress."
@@ -382,17 +397,18 @@ export default function WorkLifeStep({
         description="California comparative fault can reduce an estimate by the reported fault share."
         icon={Gauge}
         iconClassName="bg-amber-100 text-amber-700"
+        className="lg:col-span-2"
       >
         <FieldGroup>
-          <Field>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
+          <Field className="lg:grid lg:grid-cols-[minmax(12rem,18rem)_minmax(0,1fr)_auto] lg:items-center lg:gap-x-4 lg:gap-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 lg:contents">
+              <div className="flex items-center gap-2 lg:col-start-1 lg:row-start-1">
                 <FieldLabel htmlFor="fault-percentage">Your estimated fault</FieldLabel>
                 <InfoIcon content="Use your best estimate of your share of fault. A 20% fault share means the estimate is reduced by 20%." />
               </div>
               <motion.span
                 key={faultPercentage}
-                className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-semibold text-slate-950"
+                className="inline-flex items-center justify-center whitespace-nowrap rounded-lg border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-semibold text-slate-950 lg:col-start-3 lg:row-start-1 lg:min-w-16"
                 initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0.8, scale: 0.94 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={shouldReduceMotion ? { duration: 0.08 } : softSpring}
@@ -400,7 +416,7 @@ export default function WorkLifeStep({
                 {faultPercentage}%
               </motion.span>
             </div>
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-5">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-5 lg:col-start-2 lg:row-start-1">
               <Slider
                 id="fault-percentage"
                 value={[faultPercentage]}
@@ -417,7 +433,7 @@ export default function WorkLifeStep({
                 <span className="text-right">100%</span>
               </div>
             </div>
-            <FieldDescription>
+            <FieldDescription className="lg:col-span-2 lg:col-start-2">
               Set this to 0% if you do not believe you were at fault.
             </FieldDescription>
           </Field>

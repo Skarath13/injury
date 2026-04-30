@@ -76,6 +76,7 @@ import InfoIcon from './InfoIcon';
 import { fadeUpItem, gentleSpring, premiumEase, reducedMotionFade, softSpring, staggerContainer } from '@/components/motion/presets';
 import { cn } from '@/lib/utils';
 import { readBrowserPrivacyChoices } from '@/lib/privacyChoices';
+import { applyWageLossDefaults } from '@/lib/wageLossDefaults';
 import {
   CALCULATOR_DRAFT_NONE,
   CALCULATOR_DRAFT_PRESENT,
@@ -242,7 +243,7 @@ function createDefaultCalculatorData(): InjuryCalculatorData {
 }
 
 function prepareCalculatorDataForEstimate(data: InjuryCalculatorData): InjuryCalculatorData {
-  return {
+  return applyWageLossDefaults({
     ...data,
     demographics: {
       ...data.demographics,
@@ -263,7 +264,7 @@ function prepareCalculatorDataForEstimate(data: InjuryCalculatorData): InjuryCal
       policyLimits: undefined,
       attorneyContingency: undefined
     }
-  };
+  });
 }
 
 function clampStep(step: unknown) {
@@ -588,19 +589,46 @@ function unlockStatusMessage(status: string) {
   }
 }
 
+async function parseApiResponse<T>(response: Response, fallbackMessage: string): Promise<T> {
+  const rawText = await response.text();
+  let payload: (T & { error?: string }) | null = null;
+
+  if (rawText) {
+    try {
+      payload = JSON.parse(rawText) as T & { error?: string };
+    } catch {
+      payload = null;
+    }
+  }
+
+  if (!response.ok) {
+    const plainTextError = rawText.trim();
+    const safePlainTextError = plainTextError &&
+      !plainTextError.startsWith('<') &&
+      !/^internal server error$/i.test(plainTextError)
+      ? plainTextError.slice(0, 180)
+      : '';
+    const message = payload?.error ||
+      safePlainTextError ||
+      fallbackMessage;
+
+    throw new Error(message);
+  }
+
+  if (!payload) {
+    throw new Error(fallbackMessage);
+  }
+
+  return payload;
+}
+
 async function requestEstimateOnlyUnlock(sessionId: string): Promise<EstimateOnlyUnlockResponse> {
   const response = await fetch('/api/estimate/unlock/estimate-only', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ sessionId })
   });
-  const payload: EstimateOnlyUnlockResponse & { error?: string } = await response.json();
-
-  if (!response.ok) {
-    throw new Error(payload.error || 'Unable to unlock the estimate.');
-  }
-
-  return payload;
+  return parseApiResponse<EstimateOnlyUnlockResponse>(response, 'Unable to unlock the estimate.');
 }
 
 function LockedRangePreview({ preview }: { preview: EstimatePreviewResponse | null }) {
@@ -920,11 +948,10 @@ function UnlockActionPanel({
           phoneContactConsent: consent
         })
       });
-      const payload: UnlockStartResponse & { error?: string } = await response.json();
-
-      if (!response.ok) {
-        throw new Error(payload.error || 'Unable to send verification code.');
-      }
+      const payload = await parseApiResponse<UnlockStartResponse>(
+        response,
+        'Unable to send verification code.'
+      );
 
       if (payload.provider === 'skipped_duplicate_no_charge' || payload.otpLength === 0) {
         const unlocked = await requestEstimateOnlyUnlock(preview.sessionId);
@@ -955,11 +982,10 @@ function UnlockActionPanel({
           code
         })
       });
-      const payload: UnlockVerifyResponse & { error?: string } = await response.json();
-
-      if (!response.ok) {
-        throw new Error(payload.error || 'Unable to verify code.');
-      }
+      const payload = await parseApiResponse<UnlockVerifyResponse>(
+        response,
+        'Unable to verify code.'
+      );
 
       onUnlocked(payload.results, payload.responsibleAttorney, payload.leadDeliveryStatus);
     } catch (requestError) {
@@ -2312,12 +2338,10 @@ export default function SettlementCalculator({ initialEstimateSlug = null }: Set
           })
         });
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Unable to prepare the estimate preview.');
-        }
-
-        return response.json() as Promise<EstimatePreviewResponse>;
+        return parseApiResponse<EstimatePreviewResponse>(
+          response,
+          'Unable to prepare the estimate preview.'
+        );
       };
 
       const [previewResponse] = await Promise.all([
@@ -2392,12 +2416,6 @@ export default function SettlementCalculator({ initialEstimateSlug = null }: Set
         return true;
       case 4:
         {
-          const fields: Array<'demographics.occupation' | 'demographics.annualIncome'> = [];
-          if (watchData.impact.hasWageLoss) {
-            fields.push('demographics.occupation', 'demographics.annualIncome');
-          }
-
-          const stepFieldsAreValid = fields.length ? await trigger(fields) : true;
           const attorneyQuestionIsAnswered = typeof workLifeBooleanAnswers.hasAttorney === 'boolean';
 
           if (!attorneyQuestionIsAnswered) {
@@ -2409,12 +2427,23 @@ export default function SettlementCalculator({ initialEstimateSlug = null }: Set
             clearErrors('insurance.hasAttorney');
           }
 
-          const stepIsValid = stepFieldsAreValid && attorneyQuestionIsAnswered;
+          const stepIsValid = attorneyQuestionIsAnswered;
           if (stepIsValid) {
+            const dataWithWageDefaults = applyWageLossDefaults(getValues());
             setValue('demographics.age', calculatorAgeFromDemographics(watchData.demographics), {
               shouldDirty: true,
               shouldValidate: false
             });
+            if (watchData.impact.hasWageLoss) {
+              setValue('demographics.occupation', dataWithWageDefaults.demographics.occupation, {
+                shouldDirty: true,
+                shouldValidate: false
+              });
+              setValue('demographics.annualIncome', dataWithWageDefaults.demographics.annualIncome, {
+                shouldDirty: true,
+                shouldValidate: false
+              });
+            }
             setValue('impact.missedWorkDays', 0, {
               shouldDirty: true,
               shouldValidate: false

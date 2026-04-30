@@ -24,10 +24,15 @@ command = "npm run build:cloudflare"
 
 [assets]
 directory = ".vercel/output/static"
+binding = "ASSETS"
 
 [env.production]
 name = "california-injury-calculator-prod"
 vars = { NODE_ENV = "production", SMS_PROVIDER = "twilio_verify", GEO_ACCESS_MODE = "california", NEXT_PUBLIC_TURNSTILE_SITE_KEY = "0x4AAAAAADGELwvrsNKASo0O" }
+
+[env.production.assets]
+directory = ".vercel/output/static"
+binding = "ASSETS"
 
 [[env.production.d1_databases]]
 binding = "LEADS_DB"
@@ -42,6 +47,10 @@ id = "87faf8eb14cc4ece823a8af991fb721d"
 [env.preview]
 name = "california-injury-calculator-preview"
 vars = { NODE_ENV = "development", SMS_PROVIDER = "dev_stub", OTP_DEV_MODE = "true", GEO_ACCESS_MODE = "off", GEO_ALLOW_UNKNOWN = "true" }
+
+[env.preview.assets]
+directory = ".vercel/output/static"
+binding = "ASSETS"
 
 [[env.preview.d1_databases]]
 binding = "LEADS_DB"

@@ -270,3 +270,60 @@ test('progress guard allows unlock and stateful routes only when their state exi
     routeStateForSlug('success')
   );
 });
+
+test('progress guard does not block unlock for missing wage loss dropdowns', () => {
+  const wageLossProgress = {
+    data: baseData({
+      demographics: {
+        age: 35,
+        dateOfBirth: '1990-01-01',
+        occupation: '',
+        annualIncome: ''
+      },
+      accidentDetails: {
+        dateOfAccident: '2026-01-15',
+        county: 'Orange',
+        faultPercentage: 0,
+        priorAccidents: 0,
+        impactSeverity: 'moderate'
+      },
+      injuries: {
+        bodyMap: [neckSelection],
+        primaryInjury: 'Whiplash / Neck Strain',
+        secondaryInjuries: [],
+        preExistingConditions: [],
+        fractures: [],
+        tbi: false,
+        spinalIssues: {
+          herniation: false,
+          nerveRootCompression: false,
+          radiculopathy: false,
+          myelopathy: false,
+          preExistingDegeneration: false
+        }
+      },
+      impact: {
+        hasWageLoss: true,
+        missedWorkDays: 0,
+        lossOfConsortium: false,
+        emotionalDistress: false,
+        dylanVLeggClaim: false,
+        permanentImpairment: false
+      }
+    }),
+    bodyModel: 'female' as const,
+    workLifeBooleanAnswers: {
+      hasAttorney: false
+    }
+  };
+
+  assert.equal(firstReachableStep(wageLossProgress), 5);
+  assert.deepEqual(
+    guardCalculatorRoute(routeStateForStep(5), wageLossProgress, {
+      hasPreview: false,
+      isPreparing: false,
+      hasResults: false
+    }),
+    routeStateForStep(5)
+  );
+});

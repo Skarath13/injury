@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCountyRouting } from '@/lib/attorneyRouting';
 import { isCaliforniaCounty, normalizeCounty } from '@/lib/californiaCounties';
-import { getWorkerEnv } from '@/lib/cloudflareEnv';
+import { getWorkerEnv, isProductionRuntime } from '@/lib/cloudflareEnv';
 import { calculatorAgeFromDemographics, dateOnlyIsInFuture, dateOnlyIsValid } from '@/lib/demographics';
 import { normalizeGuidedInjuryData } from '@/lib/guidedInjurySignals';
 import { PrivacyChoiceSnapshot } from '@/lib/privacyChoices';
 import { calculateSettlement } from '@/lib/settlementEngine';
+import { applyWageLossDefaults } from '@/lib/wageLossDefaults';
 import {
   createLeadSession,
   encodeLocalSessionCookie,
@@ -100,9 +101,6 @@ function validateCalculatorData(data: InjuryCalculatorData): string | null {
   if (!data.demographics || !calculatorAgeFromDemographics(data.demographics)) {
     return 'Please enter a valid date of birth.';
   }
-  if (data.impact?.hasWageLoss && (!data.demographics.occupation || !data.demographics.annualIncome)) {
-    return 'Please complete occupation and income details for wage loss.';
-  }
   if (!data.accidentDetails?.dateOfAccident || !data.accidentDetails?.impactSeverity) {
     return 'Please complete the required accident details.';
   }
@@ -145,7 +143,7 @@ function prepareCalculatorDataForEstimate(data: InjuryCalculatorData): InjuryCal
     hasAttorney: false
   };
 
-  return {
+  return applyWageLossDefaults({
     ...data,
     demographics: {
       ...demographics,
@@ -166,7 +164,7 @@ function prepareCalculatorDataForEstimate(data: InjuryCalculatorData): InjuryCal
       policyLimits: undefined,
       attorneyContingency: undefined
     }
-  };
+  });
 }
 
 export async function POST(request: NextRequest) {
@@ -272,7 +270,7 @@ export async function POST(request: NextRequest) {
       nextResponse.cookies.set(localSessionCookieName(session.id), encodeLocalSessionCookie(session), {
         httpOnly: true,
         sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
+        secure: isProductionRuntime(env),
         path: '/',
         maxAge: 30 * 60
       });

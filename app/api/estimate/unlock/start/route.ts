@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getWorkerEnv } from '@/lib/cloudflareEnv';
+import { getWorkerEnv, isProductionRuntime } from '@/lib/cloudflareEnv';
 import { attorneyConsentCopyVersion, attorneyDeliveryConsentText } from '@/lib/leadConsent';
 import {
   decodeLocalSessionCookie,
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
         nextResponse.cookies.set(localSessionCookieName(body.sessionId), encodeLocalSessionCookie(updatedSession), {
           httpOnly: true,
           sameSite: 'lax',
-          secure: process.env.NODE_ENV === 'production',
+          secure: isProductionRuntime(env),
           path: '/',
           maxAge: 30 * 60
         });

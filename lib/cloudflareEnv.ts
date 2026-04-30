@@ -51,5 +51,13 @@ export function getWorkerEnv(): WorkerEnv {
     // Local Next.js development does not provide a Cloudflare request context.
   }
 
-  return process.env as WorkerEnv;
+  const processEnv = (globalThis as typeof globalThis & {
+    process?: { env?: WorkerEnv };
+  }).process?.env;
+
+  return processEnv || {};
+}
+
+export function isProductionRuntime(env: WorkerEnv = getWorkerEnv()): boolean {
+  return env.NODE_ENV === 'production';
 }

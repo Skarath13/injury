@@ -1147,7 +1147,7 @@ test('preview endpoint allows missing occupation and income when wage loss is no
   assert.equal(response.status, 200);
 });
 
-test('preview endpoint requires occupation and income when wage loss is yes', async () => {
+test('preview endpoint defaults occupation and income when wage loss is yes', async () => {
   const calculatorData = baseCase({
     demographics: {
       age: 0,
@@ -1180,10 +1180,8 @@ test('preview endpoint requires occupation and income when wage loss is yes', as
   });
 
   const response = await previewPost(request);
-  const payload = await response.json();
 
-  assert.equal(response.status, 400);
-  assert.equal(payload.error, 'Please complete occupation and income details for wage loss.');
+  assert.equal(response.status, 200);
 });
 
 test('preview endpoint rejects future date of loss', async () => {

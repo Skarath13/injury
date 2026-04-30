@@ -189,12 +189,6 @@ export function injuryMapIsComplete(input: CalculatorProgressInput): boolean {
 }
 
 export function workLifeIsComplete(input: CalculatorProgressInput): boolean {
-  if (input.data.impact?.hasWageLoss) {
-    const hasOccupation = Boolean(input.data.demographics?.occupation);
-    const hasAnnualIncome = Boolean(input.data.demographics?.annualIncome);
-    if (!hasOccupation || !hasAnnualIncome) return false;
-  }
-
   return typeof input.workLifeBooleanAnswers?.hasAttorney === 'boolean';
 }
 

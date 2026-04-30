@@ -93,16 +93,9 @@ async function logGeoAccess(request, env, geo, decision) {
 
 export default {
   async fetch(request, env, ctx) {
-    // Create a mock ASSETS binding if it doesn't exist
     if (!env.ASSETS) {
-      env.ASSETS = {
-        fetch: async (req) => {
-          // For worker deployment, we need to handle static assets differently
-          const url = new URL(req.url || req);
-          const response = await fetch(url);
-          return response;
-        }
-      };
+      console.error('Missing Cloudflare static assets binding: ASSETS');
+      return new Response('Static asset binding is not configured.', { status: 503 });
     }
 
     const url = new URL(request.url);
