@@ -21,7 +21,6 @@ import {
   Phone,
   RotateCcw,
   ShieldCheck,
-  Sparkles,
   Stethoscope,
   User,
   X
@@ -996,21 +995,7 @@ function UnlockActionPanel({
   };
 
   if (!preview) {
-    return (
-      <motion.div {...panelMotion}>
-        <Card className="border-slate-200 bg-slate-50/70 shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Sparkles data-icon="inline-start" className="text-amber-600" />
-              Prepare preview
-            </CardTitle>
-            <CardDescription>
-              Complete the security check, then prepare the secure preview to unlock your educational estimate.
-            </CardDescription>
-          </CardHeader>
-        </Card>
-      </motion.div>
-    );
+    return null;
   }
 
   if (preview.unlockMode === 'estimate_only') {

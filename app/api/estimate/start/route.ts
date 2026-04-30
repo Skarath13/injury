@@ -1,9 +1,4 @@
 import { NextResponse } from 'next/server';
-import {
-  createFormStartToken,
-  FORM_START_COOKIE_NAME,
-  formStartCookieMaxAgeSeconds
-} from '@/lib/leadGate';
 import { getWorkerEnv, isProductionRuntime } from '@/lib/cloudflareEnv';
 
 export const runtime = 'edge';
@@ -11,6 +6,11 @@ export const runtime = 'edge';
 export async function POST() {
   try {
     const env = getWorkerEnv();
+    const {
+      createFormStartToken,
+      FORM_START_COOKIE_NAME,
+      formStartCookieMaxAgeSeconds
+    } = await import('@/lib/leadGate');
     const token = await createFormStartToken(env);
     const response = NextResponse.json({ ok: true });
 

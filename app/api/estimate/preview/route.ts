@@ -1,25 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCountyRouting } from '@/lib/attorneyRouting';
 import { isCaliforniaCounty, normalizeCounty } from '@/lib/californiaCounties';
-import { getWorkerEnv, isProductionRuntime } from '@/lib/cloudflareEnv';
+import { getWorkerEnv, isProductionRuntime, type WorkerEnv } from '@/lib/cloudflareEnv';
 import { calculatorAgeFromDemographics, dateOnlyIsInFuture, dateOnlyIsValid } from '@/lib/demographics';
 import { normalizeGuidedInjuryData } from '@/lib/guidedInjurySignals';
 import { PrivacyChoiceSnapshot } from '@/lib/privacyChoices';
 import { calculateSettlement } from '@/lib/settlementEngine';
 import { applyWageLossDefaults } from '@/lib/wageLossDefaults';
-import {
-  createLeadSession,
-  encodeLocalSessionCookie,
-  FORM_START_COOKIE_NAME,
-  FORM_START_MIN_SECONDS,
-  formStartElapsedSeconds,
-  hashForAudit,
-  localSessionCookieName,
-  verifyTurnstileToken
-} from '@/lib/leadGate';
 import { EstimatePreviewResponse, InjuryCalculatorData } from '@/types/calculator';
 
 export const runtime = 'edge';
+
+type LeadGateModule = typeof import('@/lib/leadGate');
+type CreateLeadSessionInput = Parameters<LeadGateModule['createLeadSession']>[0];
+
+const LEAD_INFRASTRUCTURE_UNAVAILABLE_STATUS = 'lead_infrastructure_unavailable_no_delivery';
+const AUDIT_HASH_UNAVAILABLE = 'unavailable';
+const FORM_START_MIN_SECONDS = 120;
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 function clientIp(request: NextRequest): string {
   return request.headers.get('cf-connecting-ip') ||
@@ -89,6 +90,25 @@ function estimateOnlyReason(data: InjuryCalculatorData, attorneyAvailable: boole
   if (geoStatus) return geoStatus;
 
   if (elapsedSeconds === null || elapsedSeconds < FORM_START_MIN_SECONDS) return 'too_fast_no_delivery';
+
+  return null;
+}
+
+function leadInfrastructureNoDeliveryStatus(env: WorkerEnv): string | null {
+  if (!isProductionRuntime(env)) return null;
+
+  const smsProvider = env.SMS_PROVIDER || 'dev_stub';
+  const expectsTwilioVerify = smsProvider === 'twilio' || smsProvider === 'twilio_verify';
+  const twilioVerifyReady = Boolean(
+    env.TWILIO_ACCOUNT_SID &&
+    env.TWILIO_AUTH_TOKEN &&
+    env.TWILIO_VERIFY_SERVICE_SID
+  );
+
+  if (!env.LEADS_DB) return LEAD_INFRASTRUCTURE_UNAVAILABLE_STATUS;
+  if (!env.LEAD_HASH_SALT) return LEAD_INFRASTRUCTURE_UNAVAILABLE_STATUS;
+  if (!env.LEAD_ENCRYPTION_KEY) return LEAD_INFRASTRUCTURE_UNAVAILABLE_STATUS;
+  if (expectsTwilioVerify && !twilioVerifyReady) return LEAD_INFRASTRUCTURE_UNAVAILABLE_STATUS;
 
   return null;
 }
@@ -167,9 +187,54 @@ function prepareCalculatorDataForEstimate(data: InjuryCalculatorData): InjuryCal
   });
 }
 
+async function hashForAuditOrUnavailable(
+  value: string,
+  env: WorkerEnv,
+  hashForAudit: LeadGateModule['hashForAudit'],
+  label: string
+): Promise<string> {
+  try {
+    return await hashForAudit(value, env);
+  } catch (error) {
+    console.warn(`Estimate preview ${label} hash unavailable: ${errorMessage(error)}`);
+    return AUDIT_HASH_UNAVAILABLE;
+  }
+}
+
+async function createLeadSessionWithFallback(
+  input: CreateLeadSessionInput,
+  env: WorkerEnv,
+  createLeadSession: LeadGateModule['createLeadSession']
+) {
+  try {
+    return {
+      session: await createLeadSession(input, env),
+      sessionEnv: env,
+      usedFallback: false
+    };
+  } catch (error) {
+    console.error(`Estimate preview lead session persistence unavailable: ${errorMessage(error)}`);
+    const fallbackEnv = {
+      ...env,
+      LEADS_DB: undefined
+    };
+
+    return {
+      session: await createLeadSession({
+        ...input,
+        attorney: null,
+        initialLeadDeliveryStatus: LEAD_INFRASTRUCTURE_UNAVAILABLE_STATUS
+      }, fallbackEnv),
+      sessionEnv: fallbackEnv,
+      usedFallback: true
+    };
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const env = getWorkerEnv();
+    const leadGate = await import('@/lib/leadGate');
     const body = await request.json() as {
       calculatorData?: InjuryCalculatorData;
       turnstileToken?: string;
@@ -189,7 +254,7 @@ export async function POST(request: NextRequest) {
     }
 
     const ip = clientIp(request);
-    const turnstile = await verifyTurnstileToken(body.turnstileToken, ip, env);
+    const turnstile = await leadGate.verifyTurnstileToken(body.turnstileToken, ip, env);
     if (!turnstile.ok) {
       return NextResponse.json(
         { error: 'Verification failed. Please refresh and try again.', details: turnstile.errors },
@@ -200,11 +265,12 @@ export async function POST(request: NextRequest) {
     const county = normalizeCounty(data.accidentDetails.county);
     const geo = requestGeo(request);
     const routing = await getCountyRouting(county, env);
-    const elapsedSeconds = await formStartElapsedSeconds(
-      request.cookies.get(FORM_START_COOKIE_NAME)?.value,
+    const infrastructureStatus = routing.responsibleAttorney ? leadInfrastructureNoDeliveryStatus(env) : null;
+    const elapsedSeconds = await leadGate.formStartElapsedSeconds(
+      request.cookies.get(leadGate.FORM_START_COOKIE_NAME)?.value,
       env
     );
-    const estimateOnlyStatus = estimateOnlyReason(
+    const estimateOnlyStatus = infrastructureStatus || estimateOnlyReason(
       data,
       Boolean(routing.responsibleAttorney),
       geo.geoEligibilityStatus,
@@ -227,7 +293,7 @@ export async function POST(request: NextRequest) {
         ? 'Your settlement estimate is ready. Verify your phone to unlock the full range.'
         : 'Your settlement estimate is ready to unlock.'
     };
-    const session = await createLeadSession({
+    const leadSessionInput: CreateLeadSessionInput = {
       county,
       logicVersion: result.logicVersion,
       logicHash: result.logicHash,
@@ -238,15 +304,28 @@ export async function POST(request: NextRequest) {
       preview,
       attorney: responsibleAttorney,
       initialLeadDeliveryStatus: isSmsLead ? 'preview_attorney_available' : estimateOnlyStatus || undefined,
-      ipHash: await hashForAudit(ip, env),
-      userAgentHash: await hashForAudit(userAgent(request), env),
+      ipHash: await hashForAuditOrUnavailable(ip, env, leadGate.hashForAudit, 'IP'),
+      userAgentHash: await hashForAuditOrUnavailable(userAgent(request), env, leadGate.hashForAudit, 'user-agent'),
       privacyChoiceSnapshot: body.privacyChoiceSnapshot,
       visitorCountry: geo.country,
       visitorRegionCode: geo.regionCode,
       visitorRegion: geo.region,
       visitorCity: geo.city,
       geoEligibilityStatus: geo.geoEligibilityStatus
-    }, env);
+    };
+    const { session, sessionEnv, usedFallback } = await createLeadSessionWithFallback(
+      leadSessionInput,
+      env,
+      leadGate.createLeadSession
+    );
+    const effectiveUnlockMode = usedFallback ? 'estimate_only' : (isSmsLead ? 'sms_lead' : 'estimate_only');
+    const effectiveResponsibleAttorney = usedFallback ? null : responsibleAttorney;
+    const effectiveLeadDeliveryStatus = usedFallback
+      ? LEAD_INFRASTRUCTURE_UNAVAILABLE_STATUS
+      : session.leadDeliveryStatus;
+    const effectiveSummary = effectiveUnlockMode === 'sms_lead'
+      ? preview.summary
+      : 'Your settlement estimate is ready to unlock.';
 
     const response: EstimatePreviewResponse = {
       sessionId: session.id,
@@ -255,22 +334,22 @@ export async function POST(request: NextRequest) {
       severityBand: result.severityBand,
       caseTier: result.caseTier,
       blurredRangeLabel: preview.blurredRangeLabel,
-      summary: preview.summary,
+      summary: effectiveSummary,
       logicVersion: result.logicVersion,
       logicHash: result.logicHash,
       routingVersion: routing.routingVersion,
-      responsibleAttorney,
-      requiresAttorneyConsent: isSmsLead,
-      unlockMode: isSmsLead ? 'sms_lead' : 'estimate_only',
-      leadDeliveryStatus: session.leadDeliveryStatus
+      responsibleAttorney: effectiveResponsibleAttorney,
+      requiresAttorneyConsent: effectiveUnlockMode === 'sms_lead',
+      unlockMode: effectiveUnlockMode,
+      leadDeliveryStatus: effectiveLeadDeliveryStatus
     };
 
     const nextResponse = NextResponse.json(response);
-    if (!env.LEADS_DB) {
-      nextResponse.cookies.set(localSessionCookieName(session.id), encodeLocalSessionCookie(session), {
+    if (!sessionEnv.LEADS_DB) {
+      nextResponse.cookies.set(leadGate.localSessionCookieName(session.id), leadGate.encodeLocalSessionCookie(session), {
         httpOnly: true,
         sameSite: 'lax',
-        secure: isProductionRuntime(env),
+        secure: isProductionRuntime(sessionEnv),
         path: '/',
         maxAge: 30 * 60
       });

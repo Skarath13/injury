@@ -60,7 +60,8 @@ import {
 import type { CreateLeadSessionInput } from '../lib/leadGate';
 import { createDefaultPrivacyChoices, createPrivacyChoiceSnapshot } from '../lib/privacyChoices';
 import { calculateSettlement, estimateMedicalCostRange, SETTLEMENT_LOGIC } from '../lib/settlementEngine';
-import { BodyMapSelection, InjuryCalculatorData, ResponsibleAttorney } from '../types/calculator';
+import { BodyMapSelection, EstimatePreviewResponse, InjuryCalculatorData, ResponsibleAttorney } from '../types/calculator';
+import type { WorkerEnv } from '../lib/cloudflareEnv';
 
 function baseCase(overrides: Partial<InjuryCalculatorData> = {}): InjuryCalculatorData {
   const data: InjuryCalculatorData = {
@@ -169,6 +170,36 @@ const testAttorney: ResponsibleAttorney = {
   disclosure: 'Test Injury Law is responsible for this attorney advertisement.',
   consentCopyVersion: 'test-attorney-consent-v1'
 };
+
+const cloudflareContextSymbol = Symbol.for('__cloudflare-request-context__');
+
+function setCloudflareEnv(env: WorkerEnv) {
+  (globalThis as Record<symbol, { env: WorkerEnv }>)[cloudflareContextSymbol] = { env };
+}
+
+function clearCloudflareEnv() {
+  delete (globalThis as Record<symbol, { env: WorkerEnv }>)[cloudflareContextSymbol];
+}
+
+function installTurnstileFetchStub() {
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (url === 'https://challenges.cloudflare.com/turnstile/v0/siteverify') {
+      return new Response(JSON.stringify({ success: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    return originalFetch(input, init);
+  }) as typeof fetch;
+
+  return () => {
+    globalThis.fetch = originalFetch;
+  };
+}
 
 function testLeadContact(
   phone: string,
@@ -1099,15 +1130,100 @@ test('preview endpoint does not return exact estimate values before OTP unlock',
   const text = await response.text();
 
   assert.equal(response.status, 200);
-  assert.ok(!text.includes(String(expectedResult.lowEstimate)));
-  assert.ok(!text.includes(String(expectedResult.midEstimate)));
-  assert.ok(!text.includes(String(expectedResult.highEstimate)));
   const payload = JSON.parse(text);
+  const visiblePayloadText = JSON.stringify({
+    ...payload,
+    sessionId: '',
+    expiresAt: ''
+  });
+
+  assert.ok(!('lowEstimate' in payload));
+  assert.ok(!('midEstimate' in payload));
+  assert.ok(!('highEstimate' in payload));
+  assert.ok(!visiblePayloadText.includes(String(expectedResult.lowEstimate)));
+  assert.ok(!visiblePayloadText.includes(String(expectedResult.midEstimate)));
+  assert.ok(!visiblePayloadText.includes(String(expectedResult.highEstimate)));
 
   assert.ok(payload.sessionId);
   assert.equal(payload.responsibleAttorney, null);
   assert.equal(payload.requiresAttorneyConsent, false);
   assert.ok(text.includes('$••,••• - $•••,•••'));
+});
+
+test('preview endpoint falls back to estimate-only when production lead infrastructure is unavailable', async () => {
+  const restoreFetch = installTurnstileFetchStub();
+  const originalWarn = console.warn;
+  console.warn = () => {};
+  setCloudflareEnv({
+    NODE_ENV: 'production',
+    SMS_PROVIDER: 'twilio_verify',
+    TURNSTILE_SECRET_KEY: 'test-turnstile-secret',
+    ATTORNEY_ROUTING: {
+      async get() {
+        return {
+          version: 'test-routing-with-attorney',
+          disclosureCopyVersion: 'test-disclosure',
+          panelDisclosure: 'Test attorney routing.',
+          attorneys: [{
+            id: testAttorney.id,
+            name: testAttorney.name,
+            barNumber: testAttorney.barNumber,
+            officeLocation: testAttorney.officeLocation,
+            active: true,
+            approvedCounties: ['Orange'],
+            disclosure: testAttorney.disclosure,
+            consentCopyVersion: testAttorney.consentCopyVersion
+          }],
+          countyRoutes: {
+            orange: testAttorney.id
+          }
+        };
+      }
+    }
+  });
+
+  try {
+    const request = new NextRequest('http://localhost/api/estimate/preview', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-injury-geo-country': 'US',
+        'x-injury-geo-region-code': 'CA',
+        'x-injury-geo-region': 'California',
+        'x-injury-geo-eligibility': 'california'
+      },
+      body: JSON.stringify({
+        calculatorData: baseCase({
+          injuries: {
+            ...baseCase().injuries,
+            bodyMap: [{
+              slug: 'neck',
+              side: 'common',
+              view: 'front',
+              severity: 2,
+              label: 'Neck'
+            }],
+            primaryInjury: 'Neck'
+          }
+        }),
+        turnstileToken: 'verified-turnstile-token'
+      })
+    });
+
+    const response = await previewPost(request);
+    const text = await response.text();
+    const payload = JSON.parse(text) as EstimatePreviewResponse;
+
+    assert.equal(response.status, 200, text);
+    assert.equal(payload.unlockMode, 'estimate_only');
+    assert.equal(payload.requiresAttorneyConsent, false);
+    assert.equal(payload.responsibleAttorney, null);
+    assert.equal(payload.leadDeliveryStatus, 'lead_infrastructure_unavailable_no_delivery');
+  } finally {
+    clearCloudflareEnv();
+    console.warn = originalWarn;
+    restoreFetch();
+  }
 });
 
 test('preview endpoint allows missing occupation and income when wage loss is no', async () => {

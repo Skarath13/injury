@@ -114,7 +114,8 @@ function ToggleQuestion({
   ariaLabel,
   info,
   invalid,
-  errorMessage
+  errorMessage,
+  equalHeightOnDesktop
 }: {
   title: string;
   description: string;
@@ -125,15 +126,20 @@ function ToggleQuestion({
   info?: string;
   invalid?: boolean;
   errorMessage?: string;
+  equalHeightOnDesktop?: boolean;
 }) {
   const shouldReduceMotion = Boolean(useReducedMotion());
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className={cn('flex flex-col gap-2', equalHeightOnDesktop && 'xl:h-full')}>
       <motion.div
         data-invalid={invalid || undefined}
+        data-equal-height-card={equalHeightOnDesktop ? 'true' : undefined}
         className={cn(
-          'grid gap-3 rounded-lg border border-slate-200 bg-slate-50/80 p-3 2xl:grid-cols-[minmax(0,1fr)_14rem] 2xl:items-center',
+          'grid gap-3 rounded-lg border border-slate-200 bg-slate-50/80 p-3',
+          equalHeightOnDesktop
+            ? 'xl:h-full xl:grid-rows-[1fr_auto]'
+            : '2xl:grid-cols-[minmax(0,1fr)_14rem] 2xl:items-center',
           invalid && 'border-destructive bg-destructive/5'
         )}
         animate={shouldReduceMotion ? undefined : {
@@ -362,7 +368,7 @@ export default function WorkLifeStep({
         iconClassName="bg-rose-100 text-rose-700"
         className="lg:col-span-2"
       >
-        <div className="grid gap-3 xl:grid-cols-3">
+        <div className="grid gap-3 xl:auto-rows-fr xl:grid-cols-3">
           <ToggleQuestion
             title="Emotional distress"
             description="Anxiety, sleep disruption, depression, PTSD symptoms, or similar distress."
@@ -370,6 +376,7 @@ export default function WorkLifeStep({
             value={booleanAnswers.emotionalDistress}
             onChange={(value) => setBooleanValue('impact.emotionalDistress', value)}
             ariaLabel="Emotional distress"
+            equalHeightOnDesktop
           />
 
           <ToggleQuestion
@@ -379,6 +386,7 @@ export default function WorkLifeStep({
             value={booleanAnswers.lossOfConsortium}
             onChange={(value) => setBooleanValue('impact.lossOfConsortium', value)}
             ariaLabel="Relationship or household impact"
+            equalHeightOnDesktop
           />
 
           <ToggleQuestion
@@ -388,6 +396,7 @@ export default function WorkLifeStep({
             value={booleanAnswers.permanentImpairment}
             onChange={handlePermanentImpairmentChange}
             ariaLabel="Permanent impairment"
+            equalHeightOnDesktop
           />
         </div>
       </SectionPanel>
