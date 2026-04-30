@@ -196,7 +196,7 @@ async function hashForAuditOrUnavailable(
   try {
     return await hashForAudit(value, env);
   } catch (error) {
-    console.warn(`Estimate preview ${label} hash unavailable: ${errorMessage(error)}`);
+    console.info(`Estimate preview ${label} hash unavailable: ${errorMessage(error)}`);
     return AUDIT_HASH_UNAVAILABLE;
   }
 }

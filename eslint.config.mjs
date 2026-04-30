@@ -38,6 +38,7 @@ const eslintConfig = defineConfig([
     '.next/**',
     '.next-dev/**',
     '.vercel/**',
+    '.wrangler/**',
     'dist/**',
     'out/**',
     'build/**',

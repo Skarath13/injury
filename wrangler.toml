@@ -2,6 +2,12 @@ name = "california-injury-calculator"
 main = "worker.js"
 compatibility_date = "2024-01-01"
 compatibility_flags = ["nodejs_compat"]
+find_additional_modules = true
+base_dir = ".vercel/output/static/_worker.js"
+
+rules = [
+  { type = "ESModule", globs = ["__next-on-pages-dist__/**/*.js"] }
+]
 
 [vars]
 NODE_ENV = "production"
