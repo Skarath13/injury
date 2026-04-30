@@ -7,6 +7,7 @@ compatibility_flags = ["nodejs_compat"]
 NODE_ENV = "production"
 SMS_PROVIDER = "twilio"
 GEO_ACCESS_MODE = "california"
+NEXT_PUBLIC_TURNSTILE_SITE_KEY = "0x4AAAAAADGELwvrsNKASo0O"
 
 [[d1_databases]]
 binding = "LEADS_DB"
@@ -26,7 +27,7 @@ directory = ".vercel/output/static"
 
 [env.production]
 name = "california-injury-calculator-prod"
-vars = { NODE_ENV = "production", SMS_PROVIDER = "twilio", GEO_ACCESS_MODE = "california" }
+vars = { NODE_ENV = "production", SMS_PROVIDER = "twilio", GEO_ACCESS_MODE = "california", NEXT_PUBLIC_TURNSTILE_SITE_KEY = "0x4AAAAAADGELwvrsNKASo0O" }
 
 [[env.production.d1_databases]]
 binding = "LEADS_DB"
