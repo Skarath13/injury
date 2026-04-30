@@ -48,6 +48,9 @@ interface LeadScenario {
   seedDuplicatePhone?: boolean;
   unlock: {
     mode: ScenarioUnlockMode;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
     phone?: string;
     code?: string;
     consent?: boolean;
@@ -68,6 +71,7 @@ interface LeadScenario {
     payload?: {
       maskedPhone?: string;
       encryptedPhoneRefPrefix?: string;
+      encryptedContactRefPrefix?: string;
       attorneyId?: string;
       omitsDateOfBirth?: boolean;
     };
@@ -375,13 +379,12 @@ async function preparePreview(
   }
 
   assert.equal(response.status, 200, `${id}: preview status ${response.status}: ${previewText}`);
-  assertPreviewOmitsExactValues(id, previewText, preview, expectedResult);
+  assertPreviewOmitsExactValues(id, preview, expectedResult);
   return preview;
 }
 
 function assertPreviewOmitsExactValues(
   scenarioId: string,
-  previewText: string,
   preview: EstimatePreviewResponse,
   expectedResult: ReturnType<typeof calculateSettlement>
 ) {
@@ -391,11 +394,37 @@ function assertPreviewOmitsExactValues(
 
   for (const value of [expectedResult.lowEstimate, expectedResult.midEstimate, expectedResult.highEstimate]) {
     assert.equal(
-      previewText.includes(String(value)),
+      previewContainsNumericValue(preview, value),
       false,
-      `${scenarioId}: preview must not include exact estimate value ${value}`
+      `${scenarioId}: preview must not expose exact numeric estimate value ${value}`
+    );
+    assert.equal(
+      userVisiblePreviewText(preview).includes(String(value)),
+      false,
+      `${scenarioId}: preview user-facing text must not include exact estimate value ${value}`
     );
   }
+}
+
+function previewContainsNumericValue(value: unknown, estimateValue: number): boolean {
+  if (typeof value === 'number') return value === estimateValue;
+  if (!value || typeof value !== 'object') return false;
+
+  if (Array.isArray(value)) {
+    return value.some((item) => previewContainsNumericValue(item, estimateValue));
+  }
+
+  return Object.values(value).some((item) => previewContainsNumericValue(item, estimateValue));
+}
+
+function userVisiblePreviewText(preview: EstimatePreviewResponse): string {
+  return [
+    preview.blurredRangeLabel,
+    preview.summary,
+    preview.responsibleAttorney?.name,
+    preview.responsibleAttorney?.officeLocation,
+    preview.responsibleAttorney?.disclosure
+  ].filter(Boolean).join(' ');
 }
 
 async function startSmsUnlock(
@@ -405,8 +434,14 @@ async function startSmsUnlock(
   id = scenario.id
 ): Promise<UnlockStartResponse> {
   assert.ok(scenario.unlock.phone, `${id}: SMS unlock scenarios require a phone`);
+  assert.ok(scenario.unlock.firstName, `${id}: SMS unlock scenarios require a first name`);
+  assert.ok(scenario.unlock.lastName, `${id}: SMS unlock scenarios require a last name`);
+  assert.ok(scenario.unlock.email, `${id}: SMS unlock scenarios require an email`);
   const response = await unlockStartPost(jsonRequest('/api/estimate/unlock/start', {
     sessionId,
+    firstName: scenario.unlock.firstName,
+    lastName: scenario.unlock.lastName,
+    email: scenario.unlock.email,
     phone: scenario.unlock.phone,
     consentToAttorneyShare: scenario.unlock.consent,
     phoneContactConsent: scenario.unlock.consent
@@ -484,7 +519,11 @@ async function runScenario(scenario: LeadScenario, state: ScenarioState): Promis
         );
       }
 
-      await verifySmsUnlock(scenario, preview.sessionId, state);
+      if (unlockStart.provider === 'skipped_duplicate_no_charge' || unlockStart.otpLength === 0) {
+        await unlockEstimateOnly(scenario, preview.sessionId, state);
+      } else {
+        await verifySmsUnlock(scenario, preview.sessionId, state);
+      }
     } else {
       await unlockEstimateOnly(scenario, preview.sessionId, state);
     }
@@ -533,6 +572,13 @@ function assertPayloadExpectations(scenario: LeadScenario, state: ScenarioState)
     );
   }
 
+  if (expectedPayload.encryptedContactRefPrefix) {
+    assert.ok(
+      queuedPayload.leadContact.encryptedContactRef?.startsWith(expectedPayload.encryptedContactRefPrefix),
+      `${scenario.id}: payload encrypted contact ref prefix`
+    );
+  }
+
   if (expectedPayload.attorneyId) {
     assert.equal(queuedPayload.recipient.attorneyId, expectedPayload.attorneyId, `${scenario.id}: payload recipient`);
   }
@@ -571,6 +617,7 @@ function scenarioFailureMessage(scenario: LeadScenario, state: ScenarioState, er
       lead: state.queueItems[0].payload.lead,
       recipient: state.queueItems[0].payload.recipient,
       phoneContact: state.queueItems[0].payload.phoneContact,
+      leadContact: state.queueItems[0].payload.leadContact,
       eligibility: state.queueItems[0].payload.eligibility
     }
   };

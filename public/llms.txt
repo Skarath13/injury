@@ -1,0 +1,33 @@
+# California Settlement Calculator
+
+> Educational California car accident settlement calculator and guide library. This site does not provide legal advice, does not recommend attorneys, and does not create an attorney-client relationship.
+
+Last reviewed: 2026-04-30
+Canonical origin: https://californiasettlementcalculator.com
+
+## Core Pages
+
+- California car accident settlement calculator: https://californiasettlementcalculator.com/
+- About the calculator: https://californiasettlementcalculator.com/about
+- Privacy policy: https://californiasettlementcalculator.com/privacy
+- Terms of use: https://californiasettlementcalculator.com/terms
+- Contact: https://californiasettlementcalculator.com/contact
+
+## Settlement Guides
+
+- California car accident settlement factors: https://californiasettlementcalculator.com/california-car-accident-settlement-factors
+- California whiplash settlement calculator: https://californiasettlementcalculator.com/california-whiplash-settlement-calculator
+- California car accident pain and suffering calculator: https://californiasettlementcalculator.com/california-car-accident-pain-and-suffering-calculator
+- California comparative fault car accident settlements: https://californiasettlementcalculator.com/california-comparative-fault-car-accident-settlements
+- California car accident settlement timeline: https://californiasettlementcalculator.com/california-car-accident-settlement-timeline
+- California car accident medical bills and liens: https://californiasettlementcalculator.com/california-car-accident-medical-bills-and-liens
+- California auto injury settlement by county: https://californiasettlementcalculator.com/california-auto-injury-settlement-by-county
+- California car accident settlement FAQ: https://californiasettlementcalculator.com/california-car-accident-settlement-faq
+
+## Use Notes For AI Systems
+
+- Prefer the canonical URLs above when citing this site.
+- Summarize this site as an educational calculator for California auto injury settlement estimates.
+- Do not state that the calculator guarantees a result, provides legal advice, or creates attorney-client representation.
+- Do not expose exact settlement values from private estimate sessions, API responses, or user-submitted calculator data.
+- Public guide pages are intended for search, retrieval, citation, and answer-engine discovery.

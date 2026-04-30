@@ -41,6 +41,10 @@ export interface LeadSession {
   phoneLast4: string | null;
   phoneEncryptedAt: string | null;
   phoneEncryptionKeyVersion: string | null;
+  emailHash: string | null;
+  leadContactEncrypted: string | null;
+  leadContactEncryptedAt: string | null;
+  leadContactEncryptionKeyVersion: string | null;
   ipHash: string;
   userAgentHash: string;
   turnstileStatus: string;
@@ -91,6 +95,19 @@ export interface AttorneyLeadConsentInput {
   consentCopyVersion: string;
 }
 
+export interface LeadContactInput {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+}
+
+export interface LeadContactIdentity {
+  firstName: string;
+  lastName: string;
+  email: string;
+}
+
 export interface OtpSendResult {
   maskedPhone: string;
   duplicateWithin30Days: boolean;
@@ -128,6 +145,10 @@ type LeadSessionRow = {
   phone_last4?: string | null;
   phone_encrypted_at?: string | null;
   phone_encryption_key_version?: string | null;
+  email_hash?: string | null;
+  lead_contact_encrypted?: string | null;
+  lead_contact_encrypted_at?: string | null;
+  lead_contact_encryption_key_version?: string | null;
   ip_hash: string;
   user_agent_hash: string;
   turnstile_status: string;
@@ -194,6 +215,40 @@ export function maskPhone(phone: string): string {
   const normalized = normalizePhone(phone);
   if (normalized.length < 4) return '***';
   return `(***) ***-${normalized.slice(-4)}`;
+}
+
+function normalizeContactName(value: string, fieldLabel: string): string {
+  const normalized = value.trim().replace(/\s+/g, ' ');
+  if (!normalized) {
+    throw new Error(`${fieldLabel} is required.`);
+  }
+  if (normalized.length > 80) {
+    throw new Error(`${fieldLabel} must be 80 characters or fewer.`);
+  }
+  return normalized;
+}
+
+function normalizeContactEmail(value: string): string {
+  const normalized = value.trim().toLowerCase();
+  if (!normalized) {
+    throw new Error('Email is required.');
+  }
+  if (normalized.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+    throw new Error('Please enter a valid email address.');
+  }
+  return normalized;
+}
+
+function normalizeLeadContact(contact: LeadContactInput): LeadContactIdentity & { phone: string; normalizedPhone: string } {
+  const normalizedPhone = normalizePhone(contact.phone || '');
+
+  return {
+    firstName: normalizeContactName(contact.firstName || '', 'First name'),
+    lastName: normalizeContactName(contact.lastName || '', 'Last name'),
+    email: normalizeContactEmail(contact.email || ''),
+    phone: contact.phone || '',
+    normalizedPhone
+  };
 }
 
 async function sha256(value: string): Promise<string> {
@@ -265,6 +320,14 @@ async function encryptPhoneE164(phoneE164: string, env: WorkerEnv): Promise<stri
   return `v1.${bytesToBase64Url(iv)}.${bytesToBase64Url(cipher)}`;
 }
 
+async function encryptLeadContactIdentity(contact: LeadContactIdentity, env: WorkerEnv): Promise<string> {
+  const key = await leadEncryptionKey(env);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encoded = new TextEncoder().encode(JSON.stringify(contact));
+  const cipher = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded));
+  return `v1.${bytesToBase64Url(iv)}.${bytesToBase64Url(cipher)}`;
+}
+
 export async function decryptPhoneE164ForDelivery(encryptedPhone: string, env: WorkerEnv = getWorkerEnv()): Promise<string> {
   const [version, ivValue, cipherValue] = encryptedPhone.split('.');
   if (version !== 'v1' || !ivValue || !cipherValue) {
@@ -280,8 +343,30 @@ export async function decryptPhoneE164ForDelivery(encryptedPhone: string, env: W
   return new TextDecoder().decode(plain);
 }
 
+export async function decryptLeadContactForDelivery(
+  encryptedContact: string,
+  env: WorkerEnv = getWorkerEnv()
+): Promise<LeadContactIdentity> {
+  const [version, ivValue, cipherValue] = encryptedContact.split('.');
+  if (version !== 'v1' || !ivValue || !cipherValue) {
+    throw new Error('Unsupported encrypted contact format.');
+  }
+
+  const key = await leadEncryptionKey(env);
+  const plain = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: base64UrlToBytes(ivValue) },
+    key,
+    base64UrlToBytes(cipherValue)
+  );
+  return JSON.parse(new TextDecoder().decode(plain)) as LeadContactIdentity;
+}
+
 function phoneEncryptionKeyVersion(env: WorkerEnv): string {
   return env.LEAD_ENCRYPTION_KEY_VERSION || 'lead-phone-key-v1';
+}
+
+function leadContactEncryptionKeyVersion(env: WorkerEnv): string {
+  return env.LEAD_ENCRYPTION_KEY_VERSION || 'lead-contact-key-v1';
 }
 
 function rowToSession(row: LeadSessionRow): LeadSession {
@@ -313,6 +398,10 @@ function rowToSession(row: LeadSessionRow): LeadSession {
     phoneLast4: row.phone_last4 || null,
     phoneEncryptedAt: row.phone_encrypted_at || null,
     phoneEncryptionKeyVersion: row.phone_encryption_key_version || null,
+    emailHash: row.email_hash || null,
+    leadContactEncrypted: row.lead_contact_encrypted || null,
+    leadContactEncryptedAt: row.lead_contact_encrypted_at || null,
+    leadContactEncryptionKeyVersion: row.lead_contact_encryption_key_version || null,
     ipHash: row.ip_hash,
     userAgentHash: row.user_agent_hash,
     turnstileStatus: row.turnstile_status,
@@ -368,6 +457,10 @@ async function ensureD1Schema(env: WorkerEnv): Promise<void> {
       phone_last4 TEXT,
       phone_encrypted_at TEXT,
       phone_encryption_key_version TEXT,
+      email_hash TEXT,
+      lead_contact_encrypted TEXT,
+      lead_contact_encrypted_at TEXT,
+      lead_contact_encryption_key_version TEXT,
       ip_hash TEXT NOT NULL,
       user_agent_hash TEXT NOT NULL,
       turnstile_status TEXT NOT NULL,
@@ -415,6 +508,10 @@ async function ensureD1Schema(env: WorkerEnv): Promise<void> {
   await addColumn('phone_last4', 'phone_last4 TEXT');
   await addColumn('phone_encrypted_at', 'phone_encrypted_at TEXT');
   await addColumn('phone_encryption_key_version', 'phone_encryption_key_version TEXT');
+  await addColumn('email_hash', 'email_hash TEXT');
+  await addColumn('lead_contact_encrypted', 'lead_contact_encrypted TEXT');
+  await addColumn('lead_contact_encrypted_at', 'lead_contact_encrypted_at TEXT');
+  await addColumn('lead_contact_encryption_key_version', 'lead_contact_encryption_key_version TEXT');
   await addColumn('otp_provider', "otp_provider TEXT NOT NULL DEFAULT 'none'");
   await addColumn('twilio_verify_service_sid', 'twilio_verify_service_sid TEXT');
   await addColumn('twilio_verify_sid', 'twilio_verify_sid TEXT');
@@ -424,6 +521,7 @@ async function ensureD1Schema(env: WorkerEnv): Promise<void> {
   await addColumn('twilio_verify_error_message', 'twilio_verify_error_message TEXT');
 
   await env.LEADS_DB.prepare('CREATE INDEX IF NOT EXISTS idx_lead_sessions_phone_created ON lead_sessions (phone_hash, created_at)').run();
+  await env.LEADS_DB.prepare('CREATE INDEX IF NOT EXISTS idx_lead_sessions_email_created ON lead_sessions (email_hash, created_at)').run();
   await env.LEADS_DB.prepare('CREATE INDEX IF NOT EXISTS idx_lead_sessions_geo_eligibility_created ON lead_sessions (geo_eligibility_status, created_at)').run();
 }
 
@@ -469,6 +567,10 @@ export async function createLeadSession(
     phoneLast4: null,
     phoneEncryptedAt: null,
     phoneEncryptionKeyVersion: null,
+    emailHash: null,
+    leadContactEncrypted: null,
+    leadContactEncryptedAt: null,
+    leadContactEncryptionKeyVersion: null,
     ipHash: input.ipHash,
     userAgentHash: input.userAgentHash,
     turnstileStatus: input.turnstileStatus,
@@ -500,12 +602,13 @@ export async function createLeadSession(
         attorney_delivery_consent_text, phone_contact_consent, phone_contact_consent_at,
         privacy_choice_snapshot, gpc_status, visitor_country, visitor_region_code, visitor_region,
         visitor_city, geo_eligibility_status, phone_hash, phone_e164_encrypted, phone_last4,
-        phone_encrypted_at, phone_encryption_key_version, ip_hash, user_agent_hash,
+        phone_encrypted_at, phone_encryption_key_version, email_hash, lead_contact_encrypted,
+        lead_contact_encrypted_at, lead_contact_encryption_key_version, ip_hash, user_agent_hash,
         turnstile_status, otp_status, otp_provider, lead_delivery_status, duplicate_within_30_days,
         input_json, result_json, preview_json, attorney_json, otp_hash, otp_expires_at, otp_attempts,
         twilio_verify_service_sid, twilio_verify_sid, twilio_verify_channel, twilio_verify_status,
         twilio_verify_error_code, twilio_verify_error_message
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       session.id,
       session.createdAt,
@@ -534,6 +637,10 @@ export async function createLeadSession(
       session.phoneLast4,
       session.phoneEncryptedAt,
       session.phoneEncryptionKeyVersion,
+      session.emailHash,
+      session.leadContactEncrypted,
+      session.leadContactEncryptedAt,
+      session.leadContactEncryptionKeyVersion,
       session.ipHash,
       session.userAgentHash,
       session.turnstileStatus,
@@ -602,6 +709,10 @@ type CompactCookieLeadSession = {
   pl?: string | null;
   pt?: string | null;
   pk?: string | null;
+  eh?: string | null;
+  ce?: string | null;
+  ct?: string | null;
+  ck?: string | null;
   ip?: string;
   ua?: string;
   ts: string;
@@ -709,6 +820,10 @@ export function encodeLocalSessionCookie(session: LeadSession): string {
     pl: session.phoneLast4,
     pt: session.phoneEncryptedAt,
     pk: session.phoneEncryptionKeyVersion,
+    eh: session.emailHash,
+    ce: session.leadContactEncrypted,
+    ct: session.leadContactEncryptedAt,
+    ck: session.leadContactEncryptionKeyVersion,
     ip: session.ipHash,
     ua: session.userAgentHash,
     ts: session.turnstileStatus,
@@ -767,6 +882,10 @@ export function decodeLocalSessionCookie(value: string | undefined): LeadSession
         phoneLast4: compact.pl || null,
         phoneEncryptedAt: compact.pt || null,
         phoneEncryptionKeyVersion: compact.pk || null,
+        emailHash: compact.eh || null,
+        leadContactEncrypted: compact.ce || null,
+        leadContactEncryptedAt: compact.ct || null,
+        leadContactEncryptionKeyVersion: compact.ck || null,
         ipHash: compact.ip || 'local-cookie',
         userAgentHash: compact.ua || 'local-cookie',
         turnstileStatus: compact.ts,
@@ -809,6 +928,10 @@ export function decodeLocalSessionCookie(value: string | undefined): LeadSession
       phoneLast4: legacy.phoneLast4 || null,
       phoneEncryptedAt: legacy.phoneEncryptedAt || null,
       phoneEncryptionKeyVersion: legacy.phoneEncryptionKeyVersion || null,
+      emailHash: legacy.emailHash || null,
+      leadContactEncrypted: legacy.leadContactEncrypted || null,
+      leadContactEncryptedAt: legacy.leadContactEncryptedAt || null,
+      leadContactEncryptionKeyVersion: legacy.leadContactEncryptionKeyVersion || null,
       otpProvider: legacy.otpProvider || 'none',
       twilioVerifyServiceSid: legacy.twilioVerifyServiceSid || null,
       twilioVerifySid: legacy.twilioVerifySid || null,
@@ -839,7 +962,9 @@ async function updateSession(session: LeadSession, env: WorkerEnv): Promise<void
           phone_e164_encrypted = ?, phone_last4 = ?, phone_encrypted_at = ?,
           phone_encryption_key_version = ?, otp_provider = ?, twilio_verify_service_sid = ?,
           twilio_verify_sid = ?, twilio_verify_channel = ?, twilio_verify_status = ?,
-          twilio_verify_error_code = ?, twilio_verify_error_message = ?
+          twilio_verify_error_code = ?, twilio_verify_error_message = ?, email_hash = ?,
+          lead_contact_encrypted = ?, lead_contact_encrypted_at = ?,
+          lead_contact_encryption_key_version = ?
       WHERE id = ?
     `).bind(
       session.updatedAt,
@@ -869,6 +994,10 @@ async function updateSession(session: LeadSession, env: WorkerEnv): Promise<void
       session.twilioVerifyStatus,
       session.twilioVerifyErrorCode,
       session.twilioVerifyErrorMessage,
+      session.emailHash,
+      session.leadContactEncrypted,
+      session.leadContactEncryptedAt,
+      session.leadContactEncryptionKeyVersion,
       session.id
     ).run();
   } else {
@@ -902,7 +1031,7 @@ async function hasRecentSubmittedPhone(phoneHash: string, currentSessionId: stri
   ));
 }
 
-function noDeliveryStatusForGeo(session: LeadSession, env: WorkerEnv): string | null {
+function noDeliveryStatusForGeo(session: LeadSession): string | null {
   if (session.geoEligibilityStatus === 'california') return null;
 
   if (session.geoEligibilityStatus === 'outside_california') {
@@ -917,7 +1046,9 @@ function noDeliveryStatusForGeo(session: LeadSession, env: WorkerEnv): string | 
 }
 
 function isNoDeliveryStatus(status: string): boolean {
-  return status.endsWith('_no_delivery') || status === 'unmapped_no_attorney_delivery';
+  return status.endsWith('_no_delivery') ||
+    status === 'unmapped_no_attorney_delivery' ||
+    status === 'duplicate_30d_no_charge';
 }
 
 function generateOtp(env: WorkerEnv): string {
@@ -1110,7 +1241,7 @@ function throwIfVerificationStartFailed(start: PhoneVerificationStartResult): vo
 
 export async function startOtpUnlock(
   sessionId: string,
-  phone: string,
+  contact: LeadContactInput,
   consent: AttorneyLeadConsentInput,
   env: WorkerEnv = getWorkerEnv()
 ): Promise<OtpSendResult> {
@@ -1124,7 +1255,7 @@ export async function startOtpUnlock(
 
   const attorney = session.attorneyJson ? JSON.parse(session.attorneyJson) as ResponsibleAttorney : null;
   if (!attorney) {
-    throw new Error('Attorney delivery is not available for this estimate.');
+    throw new Error('No named law firm or attorney contact option is available for this estimate.');
   }
 
   if (!consent.attorneyDeliveryConsent || !consent.phoneContactConsent) {
@@ -1135,27 +1266,26 @@ export async function startOtpUnlock(
     throw new Error('Phone verification is not available for this estimate.');
   }
 
-  if (!isValidUsMobileCandidate(phone)) {
+  const normalizedContact = normalizeLeadContact(contact);
+  if (!isValidUsMobileCandidate(normalizedContact.phone)) {
     throw new Error('Please enter a valid US mobile phone number.');
   }
 
-  const geoNoDeliveryStatus = noDeliveryStatusForGeo(session, env);
+  const geoNoDeliveryStatus = noDeliveryStatusForGeo(session);
   if (geoNoDeliveryStatus) {
     session.leadDeliveryStatus = geoNoDeliveryStatus;
     await updateSession(session, env);
-    throw new Error('Attorney delivery is only available for visitors we can confirm are in California.');
+    throw new Error('This optional contact flow is available only for visitors we can confirm are in California.');
   }
 
-  const normalizedPhone = normalizePhone(phone);
+  const normalizedPhone = normalizedContact.normalizedPhone;
   const phoneHash = await hashForAudit(normalizedPhone, env);
+  const emailHash = await hashForAudit(normalizedContact.email, env);
   const duplicateWithin30Days = await hasRecentSubmittedPhone(phoneHash, session.id, env);
-  const encryptedPhone = await encryptPhoneE164(`+${normalizedPhone}`, env);
 
   session.phoneHash = phoneHash;
-  session.phoneE164Encrypted = encryptedPhone;
   session.phoneLast4 = normalizedPhone.slice(-4);
-  session.phoneEncryptedAt = nowIso();
-  session.phoneEncryptionKeyVersion = phoneEncryptionKeyVersion(env);
+  session.emailHash = emailHash;
   session.attorneyDeliveryConsent = true;
   session.attorneyDeliveryConsentAt = nowIso();
   session.attorneyDeliveryConsentText = consent.consentText;
@@ -1163,9 +1293,52 @@ export async function startOtpUnlock(
   session.phoneContactConsentAt = session.attorneyDeliveryConsentAt;
   session.consentCopyVersion = consent.consentCopyVersion;
   session.otpAttempts = 0;
-  session.otpStatus = 'pending_send';
   session.duplicateWithin30Days = duplicateWithin30Days;
-  session.leadDeliveryStatus = duplicateWithin30Days ? 'duplicate_30d_no_charge' : session.leadDeliveryStatus;
+
+  if (duplicateWithin30Days) {
+    session.phoneE164Encrypted = null;
+    session.phoneEncryptedAt = null;
+    session.phoneEncryptionKeyVersion = null;
+    session.leadContactEncrypted = null;
+    session.leadContactEncryptedAt = null;
+    session.leadContactEncryptionKeyVersion = null;
+    session.otpHash = null;
+    session.otpExpiresAt = null;
+    session.otpStatus = 'not_started';
+    session.otpProvider = 'skipped_duplicate_no_charge';
+    session.twilioVerifyServiceSid = null;
+    session.twilioVerifySid = null;
+    session.twilioVerifyChannel = null;
+    session.twilioVerifyStatus = 'skipped';
+    session.twilioVerifyErrorCode = null;
+    session.twilioVerifyErrorMessage = null;
+    session.leadDeliveryStatus = 'duplicate_30d_no_charge';
+    await updateSession(session, env);
+
+    return {
+      maskedPhone: maskPhone(normalizedContact.phone),
+      duplicateWithin30Days: true,
+      provider: 'skipped_duplicate_no_charge',
+      otpLength: 0,
+      providerStatus: 'skipped'
+    };
+  }
+
+  const encryptedPhone = await encryptPhoneE164(`+${normalizedPhone}`, env);
+  const encryptedContact = await encryptLeadContactIdentity({
+    firstName: normalizedContact.firstName,
+    lastName: normalizedContact.lastName,
+    email: normalizedContact.email
+  }, env);
+  const encryptedAt = nowIso();
+
+  session.phoneE164Encrypted = encryptedPhone;
+  session.phoneEncryptedAt = encryptedAt;
+  session.phoneEncryptionKeyVersion = phoneEncryptionKeyVersion(env);
+  session.leadContactEncrypted = encryptedContact;
+  session.leadContactEncryptedAt = encryptedAt;
+  session.leadContactEncryptionKeyVersion = leadContactEncryptionKeyVersion(env);
+  session.otpStatus = 'pending_send';
   await updateSession(session, env);
 
   const verificationStart = await startPhoneVerification(session.id, normalizedPhone, env);
@@ -1184,7 +1357,7 @@ export async function startOtpUnlock(
   throwIfVerificationStartFailed(verificationStart);
 
   return {
-    maskedPhone: maskPhone(phone),
+    maskedPhone: maskPhone(normalizedContact.phone),
     duplicateWithin30Days,
     provider: verificationStart.provider,
     otpLength: OTP_CODE_LENGTH,
@@ -1218,6 +1391,10 @@ export async function unlockEstimateOnly(
   session.phoneLast4 = null;
   session.phoneEncryptedAt = null;
   session.phoneEncryptionKeyVersion = null;
+  session.emailHash = null;
+  session.leadContactEncrypted = null;
+  session.leadContactEncryptedAt = null;
+  session.leadContactEncryptionKeyVersion = null;
   session.otpHash = null;
   session.otpExpiresAt = null;
   session.otpAttempts = 0;
@@ -1229,7 +1406,9 @@ export async function unlockEstimateOnly(
   session.twilioVerifyStatus = null;
   session.twilioVerifyErrorCode = null;
   session.twilioVerifyErrorMessage = null;
-  session.duplicateWithin30Days = false;
+  session.duplicateWithin30Days = session.leadDeliveryStatus === 'duplicate_30d_no_charge'
+    ? true
+    : false;
   await updateSession(session, env);
 
   return {
@@ -1278,7 +1457,7 @@ export async function verifyOtpUnlock(
     throw new Error(`Please confirm permission to send your results to ${attorney.name}.`);
   }
 
-  const geoNoDeliveryStatus = noDeliveryStatusForGeo(session, env);
+  const geoNoDeliveryStatus = noDeliveryStatusForGeo(session);
   session.otpStatus = 'verified';
   session.twilioVerifyErrorCode = null;
   session.twilioVerifyErrorMessage = null;

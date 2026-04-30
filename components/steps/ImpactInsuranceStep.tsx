@@ -33,7 +33,7 @@ export default function ImpactInsuranceStep({ register, watch, errors }: Props) 
           <div className="flex items-center text-sm font-medium text-slate-700 mb-2">
             <Briefcase className="w-4 h-4 mr-2 text-slate-400" />
             Total Work Days Missed
-            <InfoIcon content="Recorded for context and attorney review. Missed work days no longer change the estimate calculation." />
+            <InfoIcon content="Recorded for claim context. Missed work days no longer change the estimate calculation." />
           </div>
           <input
             type="number"
@@ -147,7 +147,7 @@ export default function ImpactInsuranceStep({ register, watch, errors }: Props) 
           <h4 className="text-sm font-semibold text-slate-700 mb-3 flex items-center">
             <Shield className="w-4 h-4 mr-2 text-blue-600" />
             Insurance Policy Limits
-            <InfoIcon content="Policy limits are recorded for context and attorney review. They no longer cap this educational estimate." />
+            <InfoIcon content="Policy limits are recorded for claim context. They no longer cap this educational estimate." />
           </h4>
           
           <label className="flex items-start space-x-3 cursor-pointer mb-4">

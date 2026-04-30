@@ -5,52 +5,33 @@ import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { CALCULATOR_DRAFT_NONE } from "@/lib/calculatorDraft";
-import { DEFAULT_OPEN_GRAPH_IMAGE, DEFAULT_TWITTER_IMAGE } from "@/lib/seo";
+import {
+  GOOGLE_SITE_VERIFICATION,
+  SITE_DESCRIPTION,
+  SITE_LEGAL_NAME,
+  SITE_NAME,
+  SITE_ORIGIN,
+  buildPageMetadata
+} from "@/lib/seo";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
-  title: "California Auto Injury Settlement Calculator",
-  description: "Build a California auto injury case profile and unlock an educational insurance settlement estimate after phone verification.",
-  keywords: "California auto injury settlement calculator, car accident settlement, personal injury calculator, California car accident lawyer, settlement estimate, auto accident compensation",
-  authors: [{ name: "CA Injury Settlement Calculator" }],
-  creator: "CA Injury Settlement Calculator",
-  publisher: "CA Injury Settlement Calculator",
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
-    },
-  },
-  verification: {
-    google: 'google-site-verification-code', // Replace with actual Google Search Console verification
-  },
-  openGraph: {
-    type: 'website',
-    locale: 'en_US',
-    url: 'https://californiasettlementcalculator.com',
-    siteName: 'California Auto Injury Settlement Calculator',
-    title: 'California Auto Injury Settlement Calculator',
-    description: 'Build a California auto injury case profile and unlock an educational insurance settlement estimate after phone verification.',
-    images: [DEFAULT_OPEN_GRAPH_IMAGE],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'California Auto Injury Settlement Calculator',
-    description: 'Build a California auto injury case profile and unlock an educational insurance settlement estimate after phone verification.',
-    images: [DEFAULT_TWITTER_IMAGE],
-    creator: '@CAInjuryCalc',
-  },
-  alternates: {
-    canonical: 'https://californiasettlementcalculator.com',
-  },
-  category: 'Legal Services',
-  metadataBase: new URL('https://californiasettlementcalculator.com'),
+  ...buildPageMetadata({
+    title: 'California Car Accident Settlement Calculator',
+    description: SITE_DESCRIPTION,
+    path: '/',
+    keywords: [
+      'California car accident settlement calculator',
+      'California auto injury settlement calculator',
+      'car accident settlement calculator California',
+      'personal injury settlement estimate California',
+      'auto accident compensation calculator'
+    ]
+  }),
+  ...(GOOGLE_SITE_VERIFICATION ? { verification: { google: GOOGLE_SITE_VERIFICATION } } : {}),
+  category: 'Education',
+  metadataBase: new URL(SITE_ORIGIN),
   manifest: '/manifest.json',
   icons: {
     icon: [
@@ -68,7 +49,8 @@ export const metadata: Metadata = {
     telephone: false,
   },
   other: {
-    'google-site-verification': 'google-site-verification-code', // Replace with actual verification code
+    'application-name': SITE_LEGAL_NAME,
+    'apple-mobile-web-app-title': SITE_NAME,
     'apple-mobile-web-app-capable': 'yes',
   },
 };

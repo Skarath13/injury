@@ -1,23 +1,19 @@
-import type { Metadata } from 'next'
 import { Calculator, Shield, Scale, Target } from 'lucide-react'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-import { DEFAULT_OPEN_GRAPH_IMAGE } from '@/lib/seo'
+import { buildPageMetadata } from '@/lib/seo'
 
-export const metadata: Metadata = {
+export const metadata = buildPageMetadata({
   title: 'About Our CA Auto Injury Calculator',
-  description: 'Learn how the California auto injury settlement calculator builds an educational case profile and phone-verified estimate.',
-  keywords: 'about settlement calculator, California auto injury estimates, how settlement calculator works, realistic settlement estimates',
-  openGraph: {
-    title: 'About Our CA Auto Injury Calculator',
-    description: 'Learn how the California auto injury settlement calculator builds an educational case profile and phone-verified estimate.',
-    url: 'https://californiasettlementcalculator.com/about',
-    images: [DEFAULT_OPEN_GRAPH_IMAGE],
-  },
-  alternates: {
-    canonical: 'https://californiasettlementcalculator.com/about',
-  },
-}
+  description: 'Learn how the California auto injury settlement calculator builds an educational case profile and estimate.',
+  path: '/about',
+  keywords: [
+    'about settlement calculator',
+    'California auto injury estimates',
+    'how settlement calculator works',
+    'realistic settlement estimates'
+  ]
+});
 
 export default function About() {
   return (
@@ -55,10 +51,10 @@ export default function About() {
             <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
               <div className="flex items-center mb-3">
                 <Shield className="w-6 h-6 text-green-600 mr-3" />
-                <h3 className="text-lg font-semibold text-slate-800">Phone Verification</h3>
+                <h3 className="text-lg font-semibold text-slate-800">Secure Estimate Unlock</h3>
               </div>
               <p className="text-slate-600">
-                Exact estimate values are prepared server-side and shown after verification to reduce duplicate submissions.
+                Exact estimate values are prepared server-side and unlocked through a protected estimate session.
               </p>
             </div>
             
@@ -68,7 +64,7 @@ export default function About() {
                 <h3 className="text-lg font-semibold text-slate-800">Claim Factors</h3>
               </div>
               <p className="text-slate-600">
-                The calculator includes California comparative fault, attorney-fee context when an attorney is involved, and county venue context.
+                The calculator includes California comparative fault, treatment and medical-cost context, and county venue context.
               </p>
             </div>
             
@@ -78,7 +74,7 @@ export default function About() {
                 <h3 className="text-lg font-semibold text-slate-800">Reviewed Copy</h3>
               </div>
               <p className="text-slate-600">
-                The copy avoids guarantees, automatic attorney assignment language, and promises about specific outcomes.
+                The copy avoids guarantees, attorney matching, referral, routing, assignment, and promises about specific outcomes.
               </p>
             </div>
           </div>
@@ -87,7 +83,7 @@ export default function About() {
         <section className="mb-12">
           <h2 className="text-2xl font-semibold text-slate-800 mb-4">Limits</h2>
           <p className="rounded-lg border border-slate-200 bg-white p-5 text-sm leading-6 text-slate-600">
-            Estimates are educational, case outcomes vary, and filing deadlines still apply. The calculator does not provide legal advice or automatically assign attorneys.
+            Estimates are educational, case outcomes vary, and filing deadlines still apply. The calculator does not provide legal advice, recommend attorneys, or route users to attorneys.
           </p>
         </section>
 

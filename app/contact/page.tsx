@@ -1,23 +1,19 @@
-import type { Metadata } from 'next'
 import { Mail, MessageSquare, FileText } from 'lucide-react'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-import { DEFAULT_OPEN_GRAPH_IMAGE } from '@/lib/seo'
+import { buildPageMetadata } from '@/lib/seo'
 
-export const metadata: Metadata = {
+export const metadata = buildPageMetadata({
   title: 'Contact Us | CA Auto Injury Settlement Calculator Support',
   description: 'Contact the California auto injury settlement calculator team for calculator questions, privacy requests, or feedback.',
-  keywords: 'contact auto injury calculator, California settlement help, auto accident support, settlement calculator questions',
-  openGraph: {
-    title: 'Contact Us | CA Auto Injury Settlement Calculator Support',
-    description: 'Contact our California auto injury settlement calculator team. Get help with settlement estimates and calculator questions.',
-    url: 'https://californiasettlementcalculator.com/contact',
-    images: [DEFAULT_OPEN_GRAPH_IMAGE],
-  },
-  alternates: {
-    canonical: 'https://californiasettlementcalculator.com/contact',
-  },
-}
+  path: '/contact',
+  keywords: [
+    'contact auto injury calculator',
+    'California settlement help',
+    'auto accident support',
+    'settlement calculator questions'
+  ]
+});
 
 export default function Contact() {
   return (
@@ -64,7 +60,7 @@ export default function Contact() {
               <div>
                 <h3 className="font-semibold text-slate-800 mb-2">Can you recommend an attorney?</h3>
                 <p className="text-slate-600">
-                  We do not automatically recommend or assign attorneys. If a responsible attorney advertiser is available for your accident county, the calculator may ask whether you want to send results to that specifically named attorney.
+                  No. We do not recommend, match, assign, or route users to attorneys. No law firm or attorney contact option is currently active.
                 </p>
               </div>
               

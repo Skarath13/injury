@@ -1,8 +1,14 @@
 [
   {
     "id": "valid_cold_attorney_lead",
-    "description": "California visitor with an attorney route verifies by SMS and queues a cold lead.",
+    "description": "California visitor with an aged minor-impact injury verifies by SMS and queues a cold lead.",
     "base": "soft_tissue",
+    "overrides": {
+      "accidentDetails": {
+        "dateOfAccident": "2025-01-15",
+        "impactSeverity": "low"
+      }
+    },
     "geo": "california",
     "formStartAgeSeconds": 180,
     "routing": "attorney_available",
@@ -10,7 +16,10 @@
       "mode": "sms_lead",
       "phone": "(949) 555-0101",
       "code": "123456",
-      "consent": true
+      "consent": true,
+      "firstName": "Scenario",
+      "lastName": "Lead",
+      "email": "valid.cold.attorney.lead@example.com"
     },
     "expect": {
       "preview": {
@@ -27,7 +36,8 @@
         "maskedPhone": "(***) ***-0101",
         "encryptedPhoneRefPrefix": "v1.",
         "attorneyId": "scenario-attorney",
-        "omitsDateOfBirth": true
+        "omitsDateOfBirth": true,
+        "encryptedContactRefPrefix": "v1."
       }
     }
   },
@@ -52,7 +62,9 @@
       "verificationStatus": "unverified",
       "temperature": "not_lead",
       "queueCount": 0,
-      "reasonsInclude": ["too_fast_no_delivery"]
+      "reasonsInclude": [
+        "too_fast_no_delivery"
+      ]
     }
   },
   {
@@ -76,7 +88,9 @@
       "verificationStatus": "unverified",
       "temperature": "not_lead",
       "queueCount": 0,
-      "reasonsInclude": ["unmapped_no_attorney_delivery"]
+      "reasonsInclude": [
+        "unmapped_no_attorney_delivery"
+      ]
     }
   },
   {
@@ -105,7 +119,10 @@
       "verificationStatus": "unverified",
       "temperature": "not_lead",
       "queueCount": 0,
-      "reasonsInclude": ["existing_or_planned_attorney", "own_attorney_no_delivery"]
+      "reasonsInclude": [
+        "existing_or_planned_attorney",
+        "own_attorney_no_delivery"
+      ]
     }
   },
   {
@@ -129,7 +146,10 @@
       "verificationStatus": "unverified",
       "temperature": "not_lead",
       "queueCount": 0,
-      "reasonsInclude": ["geo_outside_california", "outside_california_no_delivery"]
+      "reasonsInclude": [
+        "geo_outside_california",
+        "outside_california_no_delivery"
+      ]
     }
   },
   {
@@ -144,7 +164,10 @@
       "mode": "sms_lead",
       "phone": "(949) 555-0202",
       "code": "123456",
-      "consent": true
+      "consent": true,
+      "firstName": "Scenario",
+      "lastName": "Lead",
+      "email": "duplicate.phone.no.charge@example.com"
     },
     "expect": {
       "preview": {
@@ -155,10 +178,12 @@
       "unlockStartDuplicateWithin30Days": true,
       "deliveryStatus": "duplicate_30d_no_charge",
       "qualificationStatus": "no_sale",
-      "verificationStatus": "verified",
+      "verificationStatus": "unverified",
       "temperature": "not_lead",
       "queueCount": 0,
-      "reasonsInclude": ["duplicate_30d_no_charge"]
+      "reasonsInclude": [
+        "duplicate_30d_no_charge"
+      ]
     }
   },
   {
@@ -172,7 +197,10 @@
       "mode": "sms_lead",
       "phone": "(949) 555-0303",
       "code": "123456",
-      "consent": true
+      "consent": true,
+      "firstName": "Scenario",
+      "lastName": "Lead",
+      "email": "warm.treatment.lead@example.com"
     },
     "expect": {
       "preview": {
@@ -189,7 +217,90 @@
         "maskedPhone": "(***) ***-0303",
         "encryptedPhoneRefPrefix": "v1.",
         "attorneyId": "scenario-attorney",
-        "omitsDateOfBirth": true
+        "omitsDateOfBirth": true,
+        "encryptedContactRefPrefix": "v1."
+      }
+    }
+  },
+  {
+    "id": "major_impact_hot_lead",
+    "description": "A Major vehicle impact with any injury and no existing attorney queues as hot without advanced treatment.",
+    "base": "soft_tissue",
+    "overrides": {
+      "accidentDetails": {
+        "impactSeverity": "severe"
+      }
+    },
+    "geo": "california",
+    "formStartAgeSeconds": 180,
+    "routing": "attorney_available",
+    "unlock": {
+      "mode": "sms_lead",
+      "phone": "(949) 555-0505",
+      "code": "123456",
+      "consent": true,
+      "firstName": "Scenario",
+      "lastName": "Lead",
+      "email": "major.impact.hot.lead@example.com"
+    },
+    "expect": {
+      "preview": {
+        "unlockMode": "sms_lead",
+        "requiresAttorneyConsent": true,
+        "leadDeliveryStatus": "preview_attorney_available"
+      },
+      "deliveryStatus": "ready_for_delivery",
+      "qualificationStatus": "valid",
+      "verificationStatus": "verified",
+      "temperature": "hot",
+      "queueCount": 1,
+      "payload": {
+        "maskedPhone": "(***) ***-0505",
+        "encryptedPhoneRefPrefix": "v1.",
+        "attorneyId": "scenario-attorney",
+        "omitsDateOfBirth": true,
+        "encryptedContactRefPrefix": "v1."
+      }
+    }
+  },
+  {
+    "id": "extreme_impact_hot_lead",
+    "description": "An Extreme vehicle impact with any injury and no existing attorney queues as hot without advanced treatment.",
+    "base": "soft_tissue",
+    "overrides": {
+      "accidentDetails": {
+        "impactSeverity": "catastrophic"
+      }
+    },
+    "geo": "california",
+    "formStartAgeSeconds": 180,
+    "routing": "attorney_available",
+    "unlock": {
+      "mode": "sms_lead",
+      "phone": "(949) 555-0606",
+      "code": "123456",
+      "consent": true,
+      "firstName": "Scenario",
+      "lastName": "Lead",
+      "email": "extreme.impact.hot.lead@example.com"
+    },
+    "expect": {
+      "preview": {
+        "unlockMode": "sms_lead",
+        "requiresAttorneyConsent": true,
+        "leadDeliveryStatus": "preview_attorney_available"
+      },
+      "deliveryStatus": "ready_for_delivery",
+      "qualificationStatus": "valid",
+      "verificationStatus": "verified",
+      "temperature": "hot",
+      "queueCount": 1,
+      "payload": {
+        "maskedPhone": "(***) ***-0606",
+        "encryptedPhoneRefPrefix": "v1.",
+        "attorneyId": "scenario-attorney",
+        "omitsDateOfBirth": true,
+        "encryptedContactRefPrefix": "v1."
       }
     }
   },
@@ -204,7 +315,10 @@
       "mode": "sms_lead",
       "phone": "(949) 555-0404",
       "code": "123456",
-      "consent": true
+      "consent": true,
+      "firstName": "Scenario",
+      "lastName": "Lead",
+      "email": "surgery.hot.lead@example.com"
     },
     "expect": {
       "preview": {
@@ -221,7 +335,8 @@
         "maskedPhone": "(***) ***-0404",
         "encryptedPhoneRefPrefix": "v1.",
         "attorneyId": "scenario-attorney",
-        "omitsDateOfBirth": true
+        "omitsDateOfBirth": true,
+        "encryptedContactRefPrefix": "v1."
       }
     }
   }

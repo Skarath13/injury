@@ -15,6 +15,8 @@ export default function Footer() {
           </div>
 
           <nav aria-label="Footer" className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-300">
+            <Link href="/california-car-accident-settlement-factors" className="transition-colors hover:text-amber-300">Guides</Link>
+            <Link href="/california-car-accident-settlement-faq" className="transition-colors hover:text-amber-300">FAQ</Link>
             <Link href="/privacy" className="transition-colors hover:text-amber-300">Privacy</Link>
             <Link href="/terms" className="transition-colors hover:text-amber-300">Terms</Link>
             <a href="#privacy-choices" className="transition-colors hover:text-amber-300">Your Privacy Choices</a>
@@ -24,7 +26,7 @@ export default function Footer() {
 
         <div className="mt-6 border-t border-slate-800 pt-5 text-xs text-slate-500">
           <details>
-            <summary className="cursor-pointer text-slate-400 transition-colors hover:text-white">Attorney advertiser disclosure</summary>
+            <summary className="cursor-pointer text-slate-400 transition-colors hover:text-white">Calculator notice</summary>
             <p className="mt-2 leading-5">{panelDisclosure}</p>
           </details>
           <p className="mt-4">© {currentYear} California Settlement Calculator.</p>

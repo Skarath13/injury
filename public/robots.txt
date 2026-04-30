@@ -1,21 +1,6 @@
 User-agent: *
 Allow: /
-
-# Important pages for crawling
-Allow: /about
-Allow: /contact
-Allow: /privacy
-Allow: /terms
-
-# Block unnecessary paths to optimize crawl budget
-Disallow: /api/
-Disallow: /_next/
-Disallow: /admin/
-Disallow: /wp-admin/
-Disallow: /wp-login.php
-
-# Allow Google to index images and assets
-User-agent: Googlebot
+Allow: /_next/static/
 Allow: /*.css$
 Allow: /*.js$
 Allow: /*.png$
@@ -25,6 +10,56 @@ Allow: /*.gif$
 Allow: /*.webp$
 Allow: /*.svg$
 Allow: /*.ico$
+Allow: /*.txt$
+Disallow: /api/
+Disallow: /admin/
+Disallow: /wp-admin/
+Disallow: /wp-login.php
 
-# Sitemap location - must be absolute URL
+# Maximum public search and answer-engine exposure.
+User-agent: Googlebot
+Allow: /
+Disallow: /api/
+
+User-agent: Googlebot-Image
+Allow: /
+Disallow: /api/
+
+User-agent: Bingbot
+Allow: /
+Disallow: /api/
+
+User-agent: OAI-SearchBot
+Allow: /
+Disallow: /api/
+
+User-agent: ChatGPT-User
+Allow: /
+Disallow: /api/
+
+User-agent: GPTBot
+Allow: /
+Disallow: /api/
+
+User-agent: Google-Extended
+Allow: /
+Disallow: /api/
+
+User-agent: ClaudeBot
+Allow: /
+Disallow: /api/
+
+User-agent: Claude-SearchBot
+Allow: /
+Disallow: /api/
+
+User-agent: Claude-User
+Allow: /
+Disallow: /api/
+
+User-agent: PerplexityBot
+Allow: /
+Disallow: /api/
+
 Sitemap: https://californiasettlementcalculator.com/sitemap.xml
+Sitemap: https://californiasettlementcalculator.com/image-sitemap.xml

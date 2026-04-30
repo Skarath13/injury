@@ -426,7 +426,7 @@ export default function WorkLifeStep({
 
       <SectionPanel
         title="Attorney"
-        description="This only changes attorney-fee context in the final explanation."
+        description="This only changes net-recovery context in the final explanation."
         icon={Scale}
         iconClassName="bg-sky-100 text-sky-700"
         className="border-sky-200 bg-sky-50/70 lg:col-span-2"

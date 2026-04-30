@@ -1,6 +1,6 @@
 {
   "version": "settlement-logic-2026-04-29-v11-lift-minor-floor",
-  "approvalStatus": "draft_attorney_review_required",
+  "approvalStatus": "draft_review_required",
   "rangeMultipliers": {
     "low": 0.75,
     "mid": 0.88,

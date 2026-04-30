@@ -1,9 +1,5 @@
 import { deriveBodyMapOnlyInjuryFields } from '@/lib/bodyMapInjuries';
-import type {
-  BodyMapSelection,
-  GuidedInjurySignals,
-  InjuryCalculatorData
-} from '@/types/calculator';
+import type { GuidedInjurySignals, InjuryCalculatorData } from '@/types/calculator';
 
 export function createDefaultGuidedInjurySignals(): GuidedInjurySignals {
   return {
@@ -60,8 +56,7 @@ export function withDefaultGuidedInjurySignals(
 }
 
 export function defaultUnansweredGuidedInjurySignals(
-  signals: GuidedInjurySignals | undefined,
-  _bodyMap: BodyMapSelection[] = []
+  signals: GuidedInjurySignals | undefined
 ): GuidedInjurySignals {
   return withDefaultGuidedInjurySignals(signals);
 }

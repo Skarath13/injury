@@ -1,22 +1,19 @@
-import type { Metadata } from 'next'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
-import { DEFAULT_OPEN_GRAPH_IMAGE } from '@/lib/seo'
+import { buildPageMetadata } from '@/lib/seo'
 
-export const metadata: Metadata = {
+export const metadata = buildPageMetadata({
   title: 'Terms & Conditions | CA Auto Injury Calculator Legal Terms',
   description: 'Terms of use for California auto injury settlement calculator. Legal disclaimers, user responsibilities, and important limitations. Read before using our calculator.',
-  keywords: 'terms of service, legal disclaimers, settlement calculator terms, California auto injury legal, user agreement',
-  openGraph: {
-    title: 'Terms & Conditions | CA Auto Injury Calculator Legal Terms',
-    description: 'Terms of use and legal disclaimers for our California auto injury settlement calculator service.',
-    url: 'https://californiasettlementcalculator.com/terms',
-    images: [DEFAULT_OPEN_GRAPH_IMAGE],
-  },
-  alternates: {
-    canonical: 'https://californiasettlementcalculator.com/terms',
-  },
-}
+  path: '/terms',
+  keywords: [
+    'terms of service',
+    'legal disclaimers',
+    'settlement calculator terms',
+    'California auto injury legal',
+    'user agreement'
+  ]
+});
 
 export default function TermsAndConditions() {
   return (
@@ -63,7 +60,7 @@ export default function TermsAndConditions() {
               <li>Offers educational content about auto injury claims</li>
             </ul>
             <p className="text-slate-600 mb-4">
-              The Service is intended for California auto injury claims and California-eligible visitors. We may use coarse IP-based location signals to limit access to the website and attorney-delivery flow.
+              The Service is intended for California auto injury claims and California-eligible visitors. We may use coarse IP-based location signals to support California-specific estimate logic and security checks.
             </p>
 
             <h3 className="text-lg font-semibold text-slate-700 mb-3">2.2 What We DON'T Provide</h3>
@@ -72,7 +69,7 @@ export default function TermsAndConditions() {
               <li>Guaranteed or exact settlement amounts</li>
               <li>Medical advice or diagnosis</li>
               <li>Insurance claim filing services</li>
-              <li>Automatic attorney referrals or recommendations without your separate consent</li>
+              <li>Attorney referrals, matching, recommendations, routing, assignment, or representation</li>
             </ul>
           </section>
 
@@ -86,15 +83,15 @@ export default function TermsAndConditions() {
               </p>
             </div>
 
-            <h3 className="text-lg font-semibold text-slate-700 mb-3">3.0 Attorney Advertising and Optional Data Delivery</h3>
+            <h3 className="text-lg font-semibold text-slate-700 mb-3">3.0 Named Attorney Sponsor and No Referral Service</h3>
             <p className="text-slate-600 mb-3">
-              This website may operate as a legal advertisement where a California attorney or law firm is specifically identified as responsible for a county or territory. If an attorney is shown for your accident county, you may choose whether to view your estimate only or send your results to that named attorney. We do not automatically assign you to an attorney, and you are free to contact any lawyer or no lawyer.
+              The calculator provides educational estimates and does not recommend, match, refer, route, or assign users to attorneys. If a named California law firm or attorney sponsor is shown for your accident county, that sponsor is specifically identified before any optional contact submission.
             </p>
             <p className="text-slate-600 mb-4">
-              Sending calculator results to a named attorney requires your affirmative consent, phone verification, and permission for the attorney or law firm to contact you about your inquiry. We may be compensated for qualified attorney leads. Sending calculator results does not create an attorney-client relationship. An attorney-client relationship can only be formed through a separate agreement with the attorney or law firm.
+              You may choose whether to view your estimate only or send your results, name, email, and phone number to that named sponsor. Sending calculator results to a named sponsor requires your affirmative consent, SMS verification, and permission for the sponsor to contact you about your inquiry. It does not create an attorney-client relationship.
             </p>
             <p className="text-slate-600 mb-4">
-              Repeat submissions for the same hashed phone number and sessions outside California visitor eligibility are not treated as new qualified attorney leads.
+              An attorney-client relationship can only be formed through a separate agreement with a law firm or attorney. You are free to contact any lawyer or no lawyer.
             </p>
 
             <h3 className="text-lg font-semibold text-slate-700 mb-3">3.1 No Legal Advice</h3>

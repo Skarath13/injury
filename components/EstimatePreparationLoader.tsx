@@ -14,7 +14,7 @@ const STAGES = [
   { at: 0, message: 'Checking the required profile details' },
   { at: 650, message: 'Applying California settlement logic' },
   { at: 1250, message: 'Preparing the protected preview' },
-  { at: 1900, message: 'Setting up phone verification' }
+  { at: 1900, message: 'Preparing the secure unlock' }
 ];
 
 export default function EstimatePreparationLoader() {
@@ -76,7 +76,7 @@ export default function EstimatePreparationLoader() {
         </motion.div>
 
         <motion.p className="text-xs text-muted-foreground" variants={fadeUpItem}>
-          Exact numbers stay hidden until phone verification succeeds.
+          Exact numbers stay hidden until the secure unlock is ready.
         </motion.p>
       </CardContent>
     </Card>

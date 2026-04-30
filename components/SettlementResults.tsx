@@ -43,20 +43,20 @@ const formatCurrency = (amount: number) => (
 const getNoDeliveryMessage = (leadDeliveryStatus?: string | null) => {
   switch (leadDeliveryStatus) {
     case 'estimate_only_no_delivery':
-      return 'Estimate-only view. Results were not sent to an attorney.';
+      return 'Estimate-only view. Results were not sent to any law firm or attorney.';
     case 'duplicate_30d_no_charge':
-      return 'This is not treated as a new attorney request.';
+      return 'This is an estimate-only view for this session.';
     case 'outside_california_no_delivery':
     case 'outside_us_no_delivery':
-      return 'Attorney delivery is limited to eligible California visitors.';
+      return 'Estimate-only view is available for this session.';
     case 'unknown_location_no_delivery':
-      return 'We could not confirm attorney-delivery eligibility.';
+      return 'Estimate-only view is available for this session.';
     case 'too_fast_no_delivery':
-      return 'Estimate-only view. Phone verification was skipped.';
+      return 'Estimate-only view is available for this session.';
     case 'own_attorney_no_delivery':
-      return 'Results were not sent to an attorney because you indicated you already have or plan to hire one.';
+      return 'Estimate-only view. You indicated an attorney is already involved or planned.';
     case 'unmapped_no_attorney_delivery':
-      return 'No active attorney advertiser is configured for this county; results were not sent to an attorney.';
+      return 'No named law firm or attorney sponsor is currently configured for this county; results were not sent to any law firm or attorney.';
     default:
       return null;
   }
@@ -118,12 +118,12 @@ export default function SettlementResults({
         <Alert>
           <AlertCircle />
           <AlertTitle>
-            {hasAttorneyDisclosure ? 'Attorney Advertiser Disclosure' : 'Attorney Delivery Notice'}
+            {hasAttorneyDisclosure ? 'Named Sponsor Disclosure' : 'Estimate Notice'}
           </AlertTitle>
           <AlertDescription>
             {hasAttorneyDisclosure
               ? responsibleAttorney?.disclosure
-              : noDeliveryMessage || 'No active attorney advertiser is configured for this county; results were not sent to an attorney.'}
+              : noDeliveryMessage || 'Estimate-only view. Results were not sent to any law firm or attorney.'}
           </AlertDescription>
         </Alert>
       </motion.div>

@@ -223,7 +223,7 @@ export function BodyHighlighter({
         {renderedBodyData.map((part) => {
           const { slug, path } = part;
           const partInteractive = interactive && !disabledSlugSet.has(slug);
-          const partStroke = slug === "hair" ? "#FFFFFF" : "none";
+          const partStroke = slug === "hair" ? defaultStroke : "none";
           const partStrokeWidth = slug === "hair" ? Math.max(strokeWidth, 1.4) : strokeWidth;
 
           // Render common paths

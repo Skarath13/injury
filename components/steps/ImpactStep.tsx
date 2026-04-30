@@ -2,7 +2,7 @@ import { UseFormRegister, UseFormWatch, FieldErrors } from 'react-hook-form';
 import { InjuryCalculatorData } from '@/types/calculator';
 import { 
   Briefcase, Heart, Brain, Scale, 
-  AlertTriangle, Calendar
+  AlertTriangle
 } from 'lucide-react';
 import InfoIcon from '@/components/InfoIcon';
 
@@ -28,7 +28,7 @@ export default function ImpactStep({ register, watch, errors }: Props) {
           <div className="flex items-center text-sm font-medium text-slate-700 mb-2">
             <Briefcase className="w-4 h-4 mr-2 text-slate-400" />
             Total Work Days Missed
-            <InfoIcon content="Recorded for context and attorney review. Missed work days no longer change the estimate calculation." />
+            <InfoIcon content="Recorded for claim context. Missed work days no longer change the estimate calculation." />
           </div>
           <input
             type="number"

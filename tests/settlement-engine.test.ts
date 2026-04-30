@@ -46,6 +46,7 @@ import {
   createFormStartToken,
   createLeadSession,
   decodeLocalSessionCookie,
+  decryptLeadContactForDelivery,
   decryptPhoneE164ForDelivery,
   encodeLocalSessionCookie,
   FORM_START_MIN_SECONDS,
@@ -168,6 +169,19 @@ const testAttorney: ResponsibleAttorney = {
   disclosure: 'Test Injury Law is responsible for this attorney advertisement.',
   consentCopyVersion: 'test-attorney-consent-v1'
 };
+
+function testLeadContact(
+  phone: string,
+  overrides: Partial<{ firstName: string; lastName: string; email: string; phone: string }> = {}
+) {
+  return {
+    firstName: 'Test',
+    lastName: 'Lead',
+    email: 'test.lead@example.com',
+    phone,
+    ...overrides
+  };
+}
 
 async function createTestLeadSession(
   attorney: ResponsibleAttorney | null = testAttorney,
@@ -472,6 +486,8 @@ test('estimate-only unlock returns full results without phone hash or OTP state'
   assert.equal(updated?.otpStatus, 'not_started');
   assert.equal(updated?.attorneyDeliveryConsent, false);
   assert.equal(updated?.phoneContactConsent, false);
+  assert.equal(updated?.emailHash, null);
+  assert.equal(updated?.leadContactEncrypted, null);
 });
 
 test('attorney delivery start rejects missing consent', async () => {
@@ -481,6 +497,9 @@ test('attorney delivery start rejects missing consent', async () => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       sessionId: session.id,
+      firstName: 'Test',
+      lastName: 'Lead',
+      email: 'test.lead@example.com',
       phone: '(949) 555-1212'
     })
   }));
@@ -490,10 +509,29 @@ test('attorney delivery start rejects missing consent', async () => {
   assert.match(payload.error || '', /confirm permission/i);
 });
 
+test('attorney delivery start rejects missing lead name or email', async () => {
+  const session = await createTestLeadSession();
+  const consent = {
+    attorneyDeliveryConsent: true,
+    phoneContactConsent: true,
+    consentCopyVersion: attorneyConsentCopyVersion(testAttorney),
+    consentText: attorneyDeliveryConsentText(testAttorney)
+  };
+
+  await assert.rejects(
+    () => startOtpUnlock(session.id, testLeadContact('(949) 555-1212', { firstName: '' }), consent, testLeadEnv),
+    /First name is required/
+  );
+  await assert.rejects(
+    () => startOtpUnlock(session.id, testLeadContact('(949) 555-1212', { email: '' }), consent, testLeadEnv),
+    /Email is required/
+  );
+});
+
 test('attorney delivery start records consent metadata before OTP verification', async () => {
   const session = await createTestLeadSession();
   const consentText = attorneyDeliveryConsentText(testAttorney);
-  const otp = await startOtpUnlock(session.id, '(949) 555-1212', {
+  const otp = await startOtpUnlock(session.id, testLeadContact('(949) 555-1212'), {
     attorneyDeliveryConsent: true,
     phoneContactConsent: true,
     consentCopyVersion: attorneyConsentCopyVersion(testAttorney),
@@ -511,9 +549,17 @@ test('attorney delivery start records consent metadata before OTP verification',
   assert.ok(updated?.attorneyDeliveryConsentAt);
   assert.ok(updated?.phoneContactConsentAt);
   assert.ok(updated?.phoneHash);
+  assert.ok(updated?.emailHash);
   assert.equal(updated?.phoneLast4, '1212');
   assert.ok(updated?.phoneE164Encrypted?.startsWith('v1.'));
   assert.equal(await decryptPhoneE164ForDelivery(updated?.phoneE164Encrypted || '', testLeadEnv), '+19495551212');
+  assert.ok(updated?.leadContactEncrypted?.startsWith('v1.'));
+  assert.equal(updated?.leadContactEncryptionKeyVersion, 'lead-contact-key-v1');
+  assert.deepEqual(await decryptLeadContactForDelivery(updated?.leadContactEncrypted || '', testLeadEnv), {
+    firstName: 'Test',
+    lastName: 'Lead',
+    email: 'test.lead@example.com'
+  });
   assert.equal(updated?.otpStatus, 'sent');
   assert.equal(updated?.otpProvider, 'dev_stub');
 });
@@ -529,12 +575,20 @@ test('prior attorney-delivery submission marks repeat phone no-charge before OTP
     consentText
   };
 
-  await startOtpUnlock(firstSession.id, '(949) 555-3434', consent, testLeadEnv);
-  const otp = await startOtpUnlock(secondSession.id, '(949) 555-3434', consent, testLeadEnv);
+  await startOtpUnlock(firstSession.id, testLeadContact('(949) 555-3434'), consent, testLeadEnv);
+  const otp = await startOtpUnlock(secondSession.id, testLeadContact('(949) 555-3434'), consent, testLeadEnv);
   const updated = await getLeadSession(secondSession.id, testLeadEnv);
 
   assert.equal(otp.duplicateWithin30Days, true);
+  assert.equal(otp.provider, 'skipped_duplicate_no_charge');
+  assert.equal(otp.providerStatus, 'skipped');
+  assert.equal(otp.otpLength, 0);
+  assert.equal(otp.devCode, undefined);
   assert.equal(updated?.leadDeliveryStatus, 'duplicate_30d_no_charge');
+  assert.equal(updated?.otpStatus, 'not_started');
+  assert.equal(updated?.otpProvider, 'skipped_duplicate_no_charge');
+  assert.equal(updated?.phoneE164Encrypted, null);
+  assert.equal(updated?.leadContactEncrypted, null);
 });
 
 test('outside-California session cannot start attorney delivery', async () => {
@@ -546,7 +600,7 @@ test('outside-California session cannot start attorney delivery', async () => {
   });
 
   await assert.rejects(
-    () => startOtpUnlock(session.id, '(949) 555-4545', {
+    () => startOtpUnlock(session.id, testLeadContact('(949) 555-4545'), {
       attorneyDeliveryConsent: true,
       phoneContactConsent: true,
       consentCopyVersion: attorneyConsentCopyVersion(testAttorney),
@@ -561,7 +615,7 @@ test('outside-California session cannot start attorney delivery', async () => {
 
 test('outside-California verified OTP never becomes a deliverable attorney lead', async () => {
   const session = await createTestLeadSession();
-  await startOtpUnlock(session.id, '(949) 555-5656', {
+  await startOtpUnlock(session.id, testLeadContact('(949) 555-5656'), {
     attorneyDeliveryConsent: true,
     phoneContactConsent: true,
     consentCopyVersion: attorneyConsentCopyVersion(testAttorney),
@@ -586,6 +640,8 @@ test('no-attorney preview can unlock without SMS', async () => {
   assert.equal(updated?.attorneyId, null);
   assert.equal(updated?.phoneHash, null);
   assert.equal(updated?.otpStatus, 'not_started');
+  assert.equal(updated?.emailHash, null);
+  assert.equal(updated?.leadContactEncrypted, null);
 });
 
 test('lead qualification starts as candidate and estimate-only becomes no-sale', async () => {
@@ -609,7 +665,7 @@ test('lead qualification starts as candidate and estimate-only becomes no-sale',
 
 test('verified valid lead is queued with readable payload and encrypted phone reference', async () => {
   const session = await createTestLeadSession();
-  await startOtpUnlock(session.id, '(949) 555-7777', {
+  await startOtpUnlock(session.id, testLeadContact('(949) 555-7777'), {
     attorneyDeliveryConsent: true,
     phoneContactConsent: true,
     consentCopyVersion: attorneyConsentCopyVersion(testAttorney),
@@ -623,19 +679,29 @@ test('verified valid lead is queued with readable payload and encrypted phone re
   assert.equal(unlocked.session.leadDeliveryStatus, 'ready_for_delivery');
   assert.equal(qualification?.qualificationStatus, 'valid');
   assert.equal(qualification?.verificationStatus, 'verified');
-  assert.equal(qualification?.temperature, 'cold');
+  assert.equal(qualification?.temperature, 'warm');
   assert.equal(queued.length, 1);
   assert.equal(queued[0].status, 'queued');
   assert.equal(queued[0].payload.schemaVersion, 'lead-delivery-2026-04-30-v1');
   assert.equal(queued[0].payload.phoneContact.maskedPhone, '(***) ***-7777');
   assert.ok(queued[0].payload.phoneContact.encryptedPhoneRef?.startsWith('v1.'));
+  assert.equal(queued[0].payload.leadContact.maskedName, 'Stored securely');
+  assert.equal(queued[0].payload.leadContact.maskedEmail, 'Stored securely');
+  assert.ok(queued[0].payload.leadContact.emailHash);
+  assert.ok(queued[0].payload.leadContact.encryptedContactRef?.startsWith('v1.'));
   assert.equal(queued[0].payload.caseSummary.age, 35);
   assert.ok(queued[0].payload.caseSummary.readableSections.some((section) => section.title === 'Case snapshot'));
   assert.equal(JSON.stringify(queued[0].payload).includes('1990-01-01'), false);
 });
 
 test('qualification temperature maps cold warm and hot leads', async () => {
-  const coldSession = await createTestLeadSession();
+  const coldData = baseCase({
+    accidentDetails: {
+      ...baseCase().accidentDetails,
+      dateOfAccident: '2025-01-15',
+      impactSeverity: 'low'
+    }
+  });
   const moderateData = baseCase({
     injuries: {
       ...baseCase().injuries,
@@ -649,6 +715,18 @@ test('qualification temperature maps cold warm and hot leads', async () => {
       primaryInjury: 'Knee Injury'
     }
   });
+  const majorImpactData = baseCase({
+    accidentDetails: {
+      ...baseCase().accidentDetails,
+      impactSeverity: 'severe'
+    }
+  });
+  const extremeImpactData = baseCase({
+    accidentDetails: {
+      ...baseCase().accidentDetails,
+      impactSeverity: 'catastrophic'
+    }
+  });
   const hotData = baseCase({
     treatment: {
       ...baseCase().treatment,
@@ -656,11 +734,14 @@ test('qualification temperature maps cold warm and hot leads', async () => {
       surgeryType: 'moderate'
     }
   });
+  const coldSession = await createTestLeadSessionForData(coldData);
   const warmSession = await createTestLeadSessionForData(moderateData);
+  const majorImpactSession = await createTestLeadSessionForData(majorImpactData);
+  const extremeImpactSession = await createTestLeadSessionForData(extremeImpactData);
   const hotSession = await createTestLeadSessionForData(hotData);
 
-  for (const session of [coldSession, warmSession, hotSession]) {
-    await startOtpUnlock(session.id, '(949) 555-8888', {
+  for (const session of [coldSession, warmSession, majorImpactSession, extremeImpactSession, hotSession]) {
+    await startOtpUnlock(session.id, testLeadContact('(949) 555-8888'), {
       attorneyDeliveryConsent: true,
       phoneContactConsent: true,
       consentCopyVersion: attorneyConsentCopyVersion(testAttorney),
@@ -677,6 +758,8 @@ test('qualification temperature maps cold warm and hot leads', async () => {
 
   assert.equal((await getLeadQualification(coldSession.id, testLeadEnv))?.temperature, 'cold');
   assert.equal((await getLeadQualification(warmSession.id, testLeadEnv))?.temperature, 'warm');
+  assert.equal((await getLeadQualification(majorImpactSession.id, testLeadEnv))?.temperature, 'hot');
+  assert.equal((await getLeadQualification(extremeImpactSession.id, testLeadEnv))?.temperature, 'hot');
   assert.equal((await getLeadQualification(hotSession.id, testLeadEnv))?.temperature, 'hot');
 });
 
@@ -690,14 +773,15 @@ test('duplicate and non-California verified sessions never queue', async () => {
     consentText: attorneyDeliveryConsentText(testAttorney)
   };
 
-  await startOtpUnlock(firstSession.id, '(949) 555-9090', consent, testLeadEnv);
-  await startOtpUnlock(secondSession.id, '(949) 555-9090', consent, testLeadEnv);
-  await verifyOtpUnlock(secondSession.id, '123456', testLeadEnv);
+  await startOtpUnlock(firstSession.id, testLeadContact('(949) 555-9090'), consent, testLeadEnv);
+  await startOtpUnlock(secondSession.id, testLeadContact('(949) 555-9090'), consent, testLeadEnv);
+  await unlockEstimateOnly(secondSession.id, testLeadEnv);
 
   const duplicateQualification = await getLeadQualification(secondSession.id, testLeadEnv);
   const duplicateQueue = await getLeadDeliveryQueueItems(secondSession.id, testLeadEnv);
 
   assert.equal(duplicateQualification?.qualificationStatus, 'no_sale');
+  assert.equal(duplicateQualification?.verificationStatus, 'unverified');
   assert.equal(duplicateQualification?.temperature, 'not_lead');
   assert.equal(duplicateQueue.length, 0);
 
@@ -706,14 +790,14 @@ test('duplicate and non-California verified sessions never queue', async () => {
     visitorRegionCode: 'NV',
     visitorRegion: 'Nevada'
   });
-  await assert.rejects(() => startOtpUnlock(outsideSession.id, '(949) 555-9191', consent, testLeadEnv));
+  await assert.rejects(() => startOtpUnlock(outsideSession.id, testLeadContact('(949) 555-9191'), consent, testLeadEnv));
 
   assert.equal((await getLeadDeliveryQueueItems(outsideSession.id, testLeadEnv)).length, 0);
 });
 
 test('payload builder is human-readable and omits exact date of birth', async () => {
   const session = await createTestLeadSession();
-  await startOtpUnlock(session.id, '(949) 555-8080', {
+  await startOtpUnlock(session.id, testLeadContact('(949) 555-8080'), {
     attorneyDeliveryConsent: true,
     phoneContactConsent: true,
     consentCopyVersion: attorneyConsentCopyVersion(testAttorney),
@@ -727,8 +811,10 @@ test('payload builder is human-readable and omits exact date of birth', async ()
   assert.equal(payload.generatedAt, '2026-04-30T00:00:00.000Z');
   assert.equal(payload.caseSummary.accidentCounty, 'Orange');
   assert.equal(payload.caseSummary.age, 35);
+  assert.ok(payload.leadContact.encryptedContactRef?.startsWith('v1.'));
   assert.ok(payload.caseSummary.readableSections.length >= 3);
   assert.equal(payloadText.includes('1990-01-01'), false);
+  assert.equal(payloadText.includes('test.lead@example.com'), false);
 });
 
 test('Twilio Verify start and check use Verify endpoints without returning a dev code', async () => {
@@ -764,7 +850,7 @@ test('Twilio Verify start and check use Verify endpoints without returning a dev
   }) as typeof fetch;
 
   try {
-    const otp = await startOtpUnlock(session.id, '(949) 555-6060', {
+    const otp = await startOtpUnlock(session.id, testLeadContact('(949) 555-6060'), {
       attorneyDeliveryConsent: true,
       phoneContactConsent: true,
       consentCopyVersion: attorneyConsentCopyVersion(testAttorney),
@@ -787,6 +873,44 @@ test('Twilio Verify start and check use Verify endpoints without returning a dev
     assert.equal(calls[1].url, 'https://verify.twilio.com/v2/Services/VAservice/VerificationCheck');
     assert.match(calls[1].body, /VerificationSid=VEverification/);
     assert.match(calls[1].body, /Code=111111/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('duplicate phone skips Twilio Verify start to avoid no-sale SMS cost', async () => {
+  const firstSession = await createTestLeadSession();
+  const secondSession = await createTestLeadSession();
+  const consent = {
+    attorneyDeliveryConsent: true,
+    phoneContactConsent: true,
+    consentCopyVersion: attorneyConsentCopyVersion(testAttorney),
+    consentText: attorneyDeliveryConsentText(testAttorney)
+  };
+  const twilioEnv = {
+    ...testLeadEnv,
+    SMS_PROVIDER: 'twilio_verify',
+    TWILIO_ACCOUNT_SID: 'ACtest',
+    TWILIO_AUTH_TOKEN: 'auth-token',
+    TWILIO_VERIFY_SERVICE_SID: 'VAservice',
+    OTP_DEV_CODE: undefined
+  };
+  const originalFetch = globalThis.fetch;
+  const calls: string[] = [];
+
+  await startOtpUnlock(firstSession.id, testLeadContact('(949) 555-6161'), consent, testLeadEnv);
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    calls.push(String(input));
+    return originalFetch(input, init);
+  }) as typeof fetch;
+
+  try {
+    const otp = await startOtpUnlock(secondSession.id, testLeadContact('(949) 555-6161'), consent, twilioEnv);
+
+    assert.equal(otp.duplicateWithin30Days, true);
+    assert.equal(otp.provider, 'skipped_duplicate_no_charge');
+    assert.equal(otp.otpLength, 0);
+    assert.deepEqual(calls, []);
   } finally {
     globalThis.fetch = originalFetch;
   }

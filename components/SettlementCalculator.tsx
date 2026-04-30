@@ -15,6 +15,7 @@ import {
   FileLock2,
   KeyRound,
   Lock,
+  Mail,
   MapPin,
   MessageSquare,
   Phone,
@@ -22,6 +23,7 @@ import {
   ShieldCheck,
   Sparkles,
   Stethoscope,
+  User,
   X
 } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from '@/components/motion/react';
@@ -85,6 +87,16 @@ import {
   type WorkLifeBooleanAnswers,
   type WorkLifeBooleanField
 } from '@/lib/calculatorDraft';
+import {
+  appendCampaignSearchParams,
+  calculatorPathForRoute,
+  guardCalculatorRoute,
+  parseEstimatePath,
+  parseEstimateSlug,
+  routeStateForSlug,
+  routeStateForStep,
+  type CalculatorRouteState
+} from '@/lib/calculatorRoutes';
 
 const STEPS = [
   { id: 1, name: 'Quick Facts', shortName: 'Facts', icon: MapPin },
@@ -356,19 +368,49 @@ function clearCalculatorDraft() {
   setCalculatorDraftDocumentStatus(CALCULATOR_DRAFT_NONE);
 }
 
-function writeCalculatorHistoryState(method: 'pushState' | 'replaceState', state: unknown) {
+function writeCalculatorHistoryState(method: 'pushState' | 'replaceState', state: unknown, url?: string) {
   if (typeof window === 'undefined') return;
 
   const historyMethod = Object.getPrototypeOf(window.history)?.[method] as
-    | ((data: unknown, unused: string) => void)
+    | ((data: unknown, unused: string, url?: string) => void)
     | undefined;
 
   if (typeof historyMethod === 'function') {
-    historyMethod.call(window.history, state, '');
+    historyMethod.call(window.history, state, '', url);
     return;
   }
 
-  window.history[method](state, '');
+  window.history[method](state, '', url);
+}
+
+function calculatorHistoryState(route: CalculatorRouteState) {
+  if (route.kind === 'step') {
+    return {
+      [HISTORY_STATE_KEY]: {
+        view: 'step',
+        step: route.step,
+        slug: route.slug
+      }
+    };
+  }
+
+  return {
+    [HISTORY_STATE_KEY]: {
+      view: route.kind,
+      slug: route.slug
+    }
+  };
+}
+
+function calculatorRoutesMatch(left: CalculatorRouteState, right: CalculatorRouteState) {
+  if (left.kind !== right.kind) return false;
+  if (left.kind === 'step' && right.kind === 'step') return left.step === right.step;
+  return left.slug === right.slug;
+}
+
+function routeUrlWithCurrentCampaignParams(route: CalculatorRouteState) {
+  if (typeof window === 'undefined') return calculatorPathForRoute(route);
+  return appendCampaignSearchParams(calculatorPathForRoute(route), window.location.search);
 }
 
 function hasTreatmentSignal(data: InjuryCalculatorData) {
@@ -529,20 +571,20 @@ function ProfileStrengthCard({ data, turnstileToken, currentStep }: {
 function unlockStatusMessage(status: string) {
   switch (status) {
     case 'too_fast_no_delivery':
-      return 'Estimate-only unlock is available. Phone verification is skipped because this form was completed before the 120-second lead-quality window.';
+      return 'Estimate-only unlock is available for this session.';
     case 'own_attorney_no_delivery':
       return 'Estimate-only unlock is available because you indicated you already have or plan to hire an attorney.';
     case 'unmapped_no_attorney_delivery':
     case 'preview_no_attorney':
-      return 'Estimate-only unlock is available because no active attorney advertiser is configured for this county.';
+      return 'Estimate-only unlock is available because no named law firm or attorney sponsor is currently configured for this county.';
     case 'outside_california_no_delivery':
-      return 'Estimate-only unlock is available. Attorney delivery is limited to California visitors.';
+      return 'Estimate-only unlock is available for this session.';
     case 'outside_us_no_delivery':
-      return 'Estimate-only unlock is available. Attorney delivery is limited to visitors in the United States and California.';
+      return 'Estimate-only unlock is available for this session.';
     case 'unknown_location_no_delivery':
-      return 'Estimate-only unlock is available. We could not confirm California visitor eligibility for attorney delivery.';
+      return 'Estimate-only unlock is available for this session.';
     default:
-      return 'Estimate-only unlock is available without phone verification.';
+      return 'Estimate-only unlock is available.';
   }
 }
 
@@ -809,6 +851,9 @@ function UnlockActionPanel({
   onUnlocked: (results: SettlementResult, attorney: ResponsibleAttorney | null, leadDeliveryStatus: string) => void;
   onResetPreview: () => void;
 }) {
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
   const [consent, setConsent] = useState(false);
@@ -820,8 +865,18 @@ function UnlockActionPanel({
   const shouldReduceMotion = Boolean(useReducedMotion());
   const panelMotion = reducedMotionFade(shouldReduceMotion);
   const otpLength = otpSent?.otpLength || 6;
+  const contactReady = Boolean(
+    firstName.trim() &&
+    lastName.trim() &&
+    email.trim() &&
+    phone.trim() &&
+    consent
+  );
 
   useEffect(() => {
+    setFirstName('');
+    setLastName('');
+    setEmail('');
     setPhone('');
     setCode('');
     setConsent(false);
@@ -857,6 +912,9 @@ function UnlockActionPanel({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId: preview.sessionId,
+          firstName,
+          lastName,
+          email,
           phone,
           consentToAttorneyShare: consent,
           phoneContactConsent: consent
@@ -866,6 +924,12 @@ function UnlockActionPanel({
 
       if (!response.ok) {
         throw new Error(payload.error || 'Unable to send verification code.');
+      }
+
+      if (payload.provider === 'skipped_duplicate_no_charge' || payload.otpLength === 0) {
+        const unlocked = await requestEstimateOnlyUnlock(preview.sessionId);
+        onUnlocked(unlocked.results, unlocked.responsibleAttorney, unlocked.leadDeliveryStatus);
+        return;
       }
 
       setOtpSent(payload);
@@ -915,7 +979,7 @@ function UnlockActionPanel({
               Prepare preview
             </CardTitle>
             <CardDescription>
-              Complete the security check, then prepare the secure preview to choose the right unlock path.
+              Complete the security check, then prepare the secure preview to unlock your educational estimate.
             </CardDescription>
           </CardHeader>
         </Card>
@@ -987,17 +1051,17 @@ function UnlockActionPanel({
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <MessageSquare data-icon="inline-start" className="text-sky-700" />
-          Phone verification
+          Contact verification
         </CardTitle>
         <CardDescription>
-          Verify your phone to unlock the range and send the inquiry to the listed attorney advertiser.
+          Verify your phone to unlock the range and, only if you consent, send the inquiry to the named law firm or attorney shown below.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-5">
         {attorney && (
           <Card className="border-amber-200 bg-amber-50 shadow-none">
             <CardHeader>
-              <CardTitle className="text-sm">Attorney advertising disclosure</CardTitle>
+              <CardTitle className="text-sm">Named sponsor disclosure</CardTitle>
               <CardDescription>{attorney.disclosure}</CardDescription>
             </CardHeader>
             <CardContent>
@@ -1009,10 +1073,10 @@ function UnlockActionPanel({
                 />
                 <FieldContent>
                   <FieldLabel htmlFor="attorney-consent">
-                    Send my results to {attorney.name}
+                    I choose to send my results and contact information to {attorney.name}
                   </FieldLabel>
                   <FieldDescription>
-                    I give permission to send my calculator results and contact information to {attorney.name}, State Bar No. {attorney.barNumber}. I also agree that {attorney.name} or the responsible law firm may call or text me about this auto injury inquiry, including by automated technology. This does not create an attorney-client relationship.
+                    I give permission to send my calculator results, name, email, and phone number to {attorney.name}, State Bar No. {attorney.barNumber}. I also agree that {attorney.name} or the responsible law firm may call, text, or email me about this auto injury inquiry, including by automated technology. Consent is not required to view my estimate, this does not create an attorney-client relationship, and the firm may decline representation.
                   </FieldDescription>
                 </FieldContent>
               </Field>
@@ -1021,6 +1085,51 @@ function UnlockActionPanel({
         )}
 
         <FieldGroup>
+          <div className="grid gap-3 md:grid-cols-2">
+            <Field>
+              <FieldLabel htmlFor="unlock-first-name">
+                <User data-icon="inline-start" />
+                First name
+              </FieldLabel>
+              <Input
+                id="unlock-first-name"
+                value={firstName}
+                onChange={(event) => setFirstName(event.target.value)}
+                autoComplete="given-name"
+                placeholder="First name"
+              />
+            </Field>
+
+            <Field>
+              <FieldLabel htmlFor="unlock-last-name">
+                <User data-icon="inline-start" />
+                Last name
+              </FieldLabel>
+              <Input
+                id="unlock-last-name"
+                value={lastName}
+                onChange={(event) => setLastName(event.target.value)}
+                autoComplete="family-name"
+                placeholder="Last name"
+              />
+            </Field>
+          </div>
+
+          <Field>
+            <FieldLabel htmlFor="unlock-email">
+              <Mail data-icon="inline-start" />
+              Email
+            </FieldLabel>
+            <Input
+              id="unlock-email"
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              autoComplete="email"
+              placeholder="you@example.com"
+            />
+          </Field>
+
           <Field>
             <FieldLabel htmlFor="unlock-phone">
               <Phone data-icon="inline-start" />
@@ -1032,19 +1141,20 @@ function UnlockActionPanel({
                 type="tel"
                 value={phone}
                 onChange={(event) => setPhone(event.target.value)}
+                autoComplete="tel"
                 placeholder="(555) 555-5555"
               />
               <Button
                 type="button"
                 onClick={startUnlock}
-                disabled={isSending || !phone || !consent}
+                disabled={isSending || !contactReady}
                 className="h-10 bg-emerald-700 text-white hover:bg-emerald-600"
               >
                 {isSending ? 'Sending...' : 'Send code'}
               </Button>
             </div>
             <FieldDescription>
-              We use this number for a one-time SMS verification code and, only with your consent, attorney follow-up. Message and data rates may apply. See the <a href="/terms" className="font-medium text-sky-700 underline">Terms</a> and <a href="/privacy" className="font-medium text-sky-700 underline">Privacy Policy</a>.
+              We use this number for a one-time SMS verification code and, only with your consent, follow-up by the named law firm or attorney shown above. Your name and email are sent only with this attorney inquiry. Message and data rates may apply. See the <a href="/terms" className="font-medium text-sky-700 underline">Terms</a> and <a href="/privacy" className="font-medium text-sky-700 underline">Privacy Policy</a>.
             </FieldDescription>
           </Field>
 
@@ -1058,7 +1168,7 @@ function UnlockActionPanel({
                   </FieldLabel>
                   <FieldDescription>
                     Code sent to {otpSent.maskedPhone}.
-                    {otpSent.duplicateWithin30Days && ' This phone was already used for a recent attorney-delivery request, so any attorney lead is marked duplicate/no-charge.'}
+                    {otpSent.duplicateWithin30Days && ' This phone was already used for a recent sponsored-contact request, so this session is estimate-only.'}
                     {otpSent.devCode && ` Development code: ${otpSent.devCode}.`}
                   </FieldDescription>
                   <div className="grid gap-3 md:grid-cols-[1fr_auto]">
@@ -1148,7 +1258,7 @@ function ReviewUnlockStep({ data, register, setValue, errors, turnstileToken, on
               <CardTitle className="flex items-center gap-2 text-base">
                 <MapPin data-icon="inline-start" className="text-sky-700" />
                 Accident county <span className="text-amber-600">*</span>
-                <InfoIcon content="County is used for California-specific venue context, routing, and disclosure. It applies only a small estimate adjustment." />
+                <InfoIcon content="County is used for California-specific venue context and estimate assumptions. It applies only a small estimate adjustment." />
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -1421,7 +1531,7 @@ function StartCalculatorScreen({
       <motion.div className="aspect-[16/17] w-full overflow-hidden bg-slate-100 lg:hidden" variants={fadeUpItem}>
         <img
           src="/marketing/settlement-hero.webp"
-          alt="Relieved California auto accident claimant holding a phone and settlement cash near a parked car"
+          alt="California auto accident claimant reviewing an estimate on a phone near a parked car"
           width={1080}
           height={1920}
           fetchPriority="high"
@@ -1507,7 +1617,7 @@ function StartCalculatorScreen({
         <motion.div className="min-h-0 overflow-hidden rounded-lg bg-slate-100 shadow-sm ring-1 ring-slate-200" variants={fadeUpItem}>
           <img
             src="/marketing/settlement-hero.webp"
-            alt="Relieved California auto accident claimant holding a phone and settlement cash near a parked car"
+            alt="California auto accident claimant reviewing an estimate on a phone near a parked car"
             width={1080}
             height={1920}
             fetchPriority="high"
@@ -1649,8 +1759,14 @@ function AbandonResetDialog({
   );
 }
 
-export default function SettlementCalculator() {
-  const [hasStarted, setHasStarted] = useState(false);
+interface SettlementCalculatorProps {
+  initialEstimateSlug?: string | null;
+}
+
+export default function SettlementCalculator({ initialEstimateSlug = null }: SettlementCalculatorProps) {
+  const initialEstimateRoute = useMemo(() => parseEstimateSlug(initialEstimateSlug || undefined), [initialEstimateSlug]);
+  const initialEstimateRouteRef = useRef(initialEstimateRoute);
+  const [hasStarted, setHasStarted] = useState(() => Boolean(initialEstimateRoute && initialEstimateRoute.kind !== 'start'));
   const [currentStep, setCurrentStep] = useState(1);
   const [savedDraft, setSavedDraft] = useState<CalculatorDraft | null>(null);
   const [hasHydratedDraft, setHasHydratedDraft] = useState(false);
@@ -1678,6 +1794,13 @@ export default function SettlementCalculator() {
   const stepTransitionLockedRef = useRef(false);
   const currentStepRef = useRef(currentStep);
   const hasStartedRef = useRef(hasStarted);
+  const previewRef = useRef(preview);
+  const resultsRef = useRef(results);
+  const showResultsRef = useRef(showResults);
+  const isCalculatingRef = useRef(isCalculating);
+  const bodyModelRef = useRef(bodyModel);
+  const workLifeBooleanAnswersRef = useRef(workLifeBooleanAnswers);
+  const hasHandledInitialRouteRef = useRef(false);
 
   const { register, handleSubmit, watch, setValue, trigger, setError, clearErrors, reset, getValues, formState: { errors } } = useForm<InjuryCalculatorData>({
     defaultValues: createDefaultCalculatorData()
@@ -1718,14 +1841,32 @@ export default function SettlementCalculator() {
   const replaceHistoryWithLanding = useCallback(() => {
     if (typeof window === 'undefined') return;
 
-    writeCalculatorHistoryState('replaceState', { [HISTORY_STATE_KEY]: { view: 'landing' } });
+    const startRoute = routeStateForSlug('start');
+    const shouldUseEstimateUrl = window.location.pathname.startsWith('/estimate');
+    writeCalculatorHistoryState(
+      'replaceState',
+      calculatorHistoryState(startRoute),
+      shouldUseEstimateUrl ? routeUrlWithCurrentCampaignParams(startRoute) : undefined
+    );
+  }, []);
+
+  const writeCalculatorRouteHistory = useCallback((method: 'pushState' | 'replaceState', route: CalculatorRouteState) => {
+    if (typeof window === 'undefined') return;
+
+    writeCalculatorHistoryState(
+      method,
+      calculatorHistoryState(route),
+      routeUrlWithCurrentCampaignParams(route)
+    );
   }, []);
 
   const pushStepHistory = useCallback((step: number) => {
-    if (typeof window === 'undefined') return;
+    writeCalculatorRouteHistory('pushState', routeStateForStep(clampStep(step)));
+  }, [writeCalculatorRouteHistory]);
 
-    writeCalculatorHistoryState('pushState', { [HISTORY_STATE_KEY]: { step: clampStep(step) } });
-  }, []);
+  const replaceStepHistory = useCallback((step: number) => {
+    writeCalculatorRouteHistory('replaceState', routeStateForStep(clampStep(step)));
+  }, [writeCalculatorRouteHistory]);
 
   const seedStepHistory = useCallback((step: number) => {
     replaceHistoryWithLanding();
@@ -1745,6 +1886,11 @@ export default function SettlementCalculator() {
     setBodyModelError(null);
     clearErrors();
   }, [clearErrors]);
+
+  const showTemporaryValidationError = useCallback(() => {
+    setShowValidationError(true);
+    window.setTimeout(() => setShowValidationError(false), 3000);
+  }, []);
 
   const requestAbandonReset = useCallback(() => {
     setIsAbandonDialogOpen(true);
@@ -1829,18 +1975,44 @@ export default function SettlementCalculator() {
     reset(draftToResume.data);
     clearTransientState();
     await beginLeadQualityTimer();
-    const restoredStep = clampStep(draftToResume.currentStep);
-    setBodyModel(draftToResume.bodyModel);
-    setWorkLifeBooleanAnswers({
+    const draftWorkLifeAnswers = {
       ...workLifeBooleanAnswersFromData(draftToResume.data),
       ...draftToResume.workLifeBooleanAnswers
-    });
+    };
+    const requestedRoute = routeStateForStep(clampStep(draftToResume.currentStep));
+    const restoredRoute = guardCalculatorRoute(
+      requestedRoute,
+      {
+        data: draftToResume.data,
+        bodyModel: draftToResume.bodyModel,
+        workLifeBooleanAnswers: draftWorkLifeAnswers
+      },
+      {
+        hasPreview: false,
+        isPreparing: false,
+        hasResults: false
+      }
+    );
+    const restoredStep = restoredRoute.kind === 'step' ? restoredRoute.step : 1;
+    setBodyModel(draftToResume.bodyModel);
+    setWorkLifeBooleanAnswers(draftWorkLifeAnswers);
     setCurrentStep(restoredStep);
     setHasStarted(true);
     setSavedDraft(null);
     seedStepHistory(restoredStep);
+    if (!calculatorRoutesMatch(requestedRoute, restoredRoute)) {
+      showTemporaryValidationError();
+    }
     scrollToTop();
-  }, [beginLeadQualityTimer, clearTransientState, reset, savedDraft, scrollToTop, seedStepHistory]);
+  }, [
+    beginLeadQualityTimer,
+    clearTransientState,
+    reset,
+    savedDraft,
+    scrollToTop,
+    seedStepHistory,
+    showTemporaryValidationError
+  ]);
 
   const startCalculator = useCallback(async () => {
     clearTransientState();
@@ -1855,6 +2027,30 @@ export default function SettlementCalculator() {
   useEffect(() => {
     currentStepRef.current = currentStep;
   }, [currentStep]);
+
+  useEffect(() => {
+    previewRef.current = preview;
+  }, [preview]);
+
+  useEffect(() => {
+    resultsRef.current = results;
+  }, [results]);
+
+  useEffect(() => {
+    showResultsRef.current = showResults;
+  }, [showResults]);
+
+  useEffect(() => {
+    isCalculatingRef.current = isCalculating;
+  }, [isCalculating]);
+
+  useEffect(() => {
+    bodyModelRef.current = bodyModel;
+  }, [bodyModel]);
+
+  useEffect(() => {
+    workLifeBooleanAnswersRef.current = workLifeBooleanAnswers;
+  }, [workLifeBooleanAnswers]);
 
   useEffect(() => {
     if (!hasStarted || preview || showResults) return;
@@ -1905,10 +2101,68 @@ export default function SettlementCalculator() {
   }, [hasStarted]);
 
   useEffect(() => {
-    replaceHistoryWithLanding();
-    setSavedDraft(readCalculatorDraft());
+    if (hasHandledInitialRouteRef.current) return;
+    hasHandledInitialRouteRef.current = true;
+
+    const requestedRoute = parseEstimatePath(window.location.pathname) || initialEstimateRouteRef.current;
+    const draft = readCalculatorDraft();
+    setSavedDraft(draft);
     setHasHydratedDraft(true);
-  }, [replaceHistoryWithLanding]);
+
+    if (!requestedRoute) {
+      replaceHistoryWithLanding();
+      return;
+    }
+
+    if (requestedRoute.kind === 'start') {
+      writeCalculatorRouteHistory('replaceState', requestedRoute);
+      return;
+    }
+
+    const draftData = draft?.data ?? getValues();
+    const draftBodyModel = draft?.bodyModel ?? bodyModelRef.current;
+    const draftWorkLifeAnswers = {
+      ...workLifeBooleanAnswersFromData(draftData),
+      ...draft?.workLifeBooleanAnswers
+    };
+    const guardedRoute = guardCalculatorRoute(
+      requestedRoute,
+      {
+        data: draftData,
+        bodyModel: draftBodyModel,
+        workLifeBooleanAnswers: draftWorkLifeAnswers
+      },
+      {
+        hasPreview: false,
+        isPreparing: false,
+        hasResults: false
+      }
+    );
+
+    reset(draftData);
+    clearTransientState();
+    setBodyModel(draftBodyModel);
+    setWorkLifeBooleanAnswers(draftWorkLifeAnswers);
+    setHasStarted(true);
+    setSavedDraft(null);
+    setCurrentStep(guardedRoute.kind === 'step' ? guardedRoute.step : 1);
+    writeCalculatorRouteHistory('replaceState', guardedRoute);
+    void beginLeadQualityTimer();
+    scrollToTop();
+
+    if (!calculatorRoutesMatch(requestedRoute, guardedRoute)) {
+      showTemporaryValidationError();
+    }
+  }, [
+    beginLeadQualityTimer,
+    clearTransientState,
+    getValues,
+    replaceHistoryWithLanding,
+    reset,
+    scrollToTop,
+    showTemporaryValidationError,
+    writeCalculatorRouteHistory
+  ]);
 
   useEffect(() => {
     if (!hasHydratedDraft) return;
@@ -1938,27 +2192,101 @@ export default function SettlementCalculator() {
     if (typeof window === 'undefined') return;
 
     const handlePopState = () => {
-      if (!hasStartedRef.current) return;
+      const requestedRoute = parseEstimatePath(window.location.pathname);
 
-      const activeStep = currentStepRef.current;
+      if (!requestedRoute) {
+        if (!hasStartedRef.current) return;
 
-      if (activeStep > 1) {
-        const previousStep = activeStep - 1;
-        setCurrentStep(previousStep);
-        setShowValidationError(false);
+        if (currentStepRef.current > 1) {
+          const previousStep = currentStepRef.current - 1;
+          setCurrentStep(previousStep);
+          replaceStepHistory(previousStep);
+          setShowValidationError(false);
+          setCalculationError(null);
+          scrollToTop();
+          return;
+        }
+
+        requestAbandonReset();
+        pushStepHistory(currentStepRef.current);
+        return;
+      }
+
+      if (requestedRoute.kind === 'start') {
+        if (hasStartedRef.current) {
+          requestAbandonReset();
+          if (showResultsRef.current && resultsRef.current) {
+            writeCalculatorRouteHistory('pushState', routeStateForSlug('success'));
+            return;
+          }
+          pushStepHistory(currentStepRef.current);
+        }
+        return;
+      }
+
+      const guardedRoute = guardCalculatorRoute(
+        requestedRoute,
+        {
+          data: getValues(),
+          bodyModel: bodyModelRef.current,
+          workLifeBooleanAnswers: workLifeBooleanAnswersRef.current
+        },
+        {
+          hasPreview: Boolean(previewRef.current),
+          isPreparing: isCalculatingRef.current,
+          hasResults: Boolean(showResultsRef.current && resultsRef.current)
+        }
+      );
+
+      const wasRouteRedirected = !calculatorRoutesMatch(requestedRoute, guardedRoute);
+
+      if (wasRouteRedirected) {
+        writeCalculatorRouteHistory('replaceState', guardedRoute);
+        showTemporaryValidationError();
+      }
+
+      if (guardedRoute.kind === 'step') {
+        setHasStarted(true);
+        setShowResults(false);
+        if (previewRef.current) {
+          setPreview(null);
+        }
+        setCurrentStep(guardedRoute.step);
+        if (!wasRouteRedirected) {
+          setShowValidationError(false);
+        }
         setCalculationError(null);
-        pushStepHistory(previousStep);
         scrollToTop();
         return;
       }
 
-      requestAbandonReset();
-      pushStepHistory(currentStepRef.current);
+      if (guardedRoute.kind === 'preview') {
+        setHasStarted(true);
+        setShowResults(false);
+        setCurrentStep(5);
+        scrollToTop();
+        return;
+      }
+
+      if (guardedRoute.kind === 'success') {
+        setHasStarted(true);
+        setPreview(null);
+        setShowResults(true);
+        scrollToTop();
+      }
     };
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [pushStepHistory, requestAbandonReset, scrollToTop]);
+  }, [
+    getValues,
+    pushStepHistory,
+    replaceStepHistory,
+    requestAbandonReset,
+    scrollToTop,
+    showTemporaryValidationError,
+    writeCalculatorRouteHistory
+  ]);
 
   const onSubmit = async (data: InjuryCalculatorData) => {
     setCalculationError(null);
@@ -1969,6 +2297,7 @@ export default function SettlementCalculator() {
         throw new Error('Please complete the security check before preparing your estimate.');
       }
 
+      writeCalculatorRouteHistory('pushState', routeStateForSlug('preparing'));
       setIsCalculating(true);
       const requestPreview = async () => {
         const response = await fetch('/api/estimate/preview', {
@@ -2007,24 +2336,22 @@ export default function SettlementCalculator() {
         setLeadDeliveryStatus(unlocked.leadDeliveryStatus);
         setPreview(null);
         setShowResults(true);
+        writeCalculatorRouteHistory('replaceState', routeStateForSlug('success'));
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       }
 
       setPreview(previewResponse);
+      writeCalculatorRouteHistory('replaceState', routeStateForSlug('preview'));
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
       console.error('Calculation error:', error);
       setCalculationError(error instanceof Error ? error.message : 'Unable to prepare your estimate. Please try again.');
+      writeCalculatorRouteHistory('replaceState', routeStateForStep(5));
     } finally {
       setIsCalculating(false);
     }
   };
-
-  const showTemporaryValidationError = useCallback(() => {
-    setShowValidationError(true);
-    window.setTimeout(() => setShowValidationError(false), 3000);
-  }, []);
 
   const validateStep = async (step: number) => {
     switch (step) {
@@ -2160,7 +2487,7 @@ export default function SettlementCalculator() {
       }
       stepTransitionLockedRef.current = true;
       const targetStep = currentStep - 1;
-      writeCalculatorHistoryState('replaceState', { [HISTORY_STATE_KEY]: { step: targetStep } });
+      replaceStepHistory(targetStep);
       void runStepTransition(targetStep, 'back', 'Loading previous section');
     }
   };
@@ -2179,7 +2506,7 @@ export default function SettlementCalculator() {
       }
       setShowValidationError(false);
       stepTransitionLockedRef.current = true;
-      writeCalculatorHistoryState('replaceState', { [HISTORY_STATE_KEY]: { step: targetStep } });
+      replaceStepHistory(targetStep);
       await runStepTransition(targetStep, 'back', 'Loading previous section');
       return;
     }
@@ -2489,6 +2816,7 @@ export default function SettlementCalculator() {
                     onResetPreview={() => {
                       setPreview(null);
                       setCalculationError(null);
+                      replaceStepHistory(5);
                     }}
                     onUnlocked={(unlockedResults, attorney, deliveryStatus) => {
                       setResults(unlockedResults);
@@ -2496,6 +2824,7 @@ export default function SettlementCalculator() {
                       setLeadDeliveryStatus(deliveryStatus);
                       setPreview(null);
                       setShowResults(true);
+                      writeCalculatorRouteHistory('pushState', routeStateForSlug('success'));
                       window.scrollTo({ top: 0, behavior: 'smooth' });
                     }}
                   />

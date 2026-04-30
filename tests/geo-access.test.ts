@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   decideGeoAccess,
+  isTrustedCrawlerUserAgent,
   leadGeoEligibility,
   shouldBypassGeoAccess
 } from '../lib/geoAccess.mjs';
@@ -65,6 +66,18 @@ test('lead geo eligibility distinguishes California from broader US access', () 
 test('static asset paths bypass geo gate', () => {
   assert.equal(shouldBypassGeoAccess('/_next/static/app.js'), true);
   assert.equal(shouldBypassGeoAccess('/vehicle-damage/example.webp'), true);
+  assert.equal(shouldBypassGeoAccess('/llms.txt'), true);
+  assert.equal(shouldBypassGeoAccess('/image-sitemap.xml'), true);
   assert.equal(shouldBypassGeoAccess('/api/estimate/preview'), false);
   assert.equal(shouldBypassGeoAccess('/'), false);
+});
+
+test('trusted crawlers can reach public SEO pages but not APIs or estimate routes', () => {
+  const googlebot = 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)';
+
+  assert.equal(isTrustedCrawlerUserAgent(googlebot), true);
+  assert.equal(shouldBypassGeoAccess('/', googlebot), true);
+  assert.equal(shouldBypassGeoAccess('/california-car-accident-settlement-factors', 'OAI-SearchBot'), true);
+  assert.equal(shouldBypassGeoAccess('/api/estimate/preview', googlebot), false);
+  assert.equal(shouldBypassGeoAccess('/estimate/start', googlebot), false);
 });

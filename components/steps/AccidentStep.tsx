@@ -48,7 +48,7 @@ export default function AccidentStep({ register, watch, errors }: Props) {
           <div className="flex items-center text-sm font-medium text-slate-700 mb-2">
             <MapPin className="w-4 h-4 mr-2 text-slate-400" />
             Accident County <span className="text-red-500">*</span>
-            <InfoIcon content="County is used for California-specific venue context, routing, and disclosure. It applies only a small estimate adjustment." />
+            <InfoIcon content="County is used for California-specific venue context and estimate assumptions. It applies only a small estimate adjustment." />
           </div>
           <select
             {...register('accidentDetails.county', { required: 'Please select the accident county' })}

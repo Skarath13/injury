@@ -292,6 +292,12 @@ export interface LeadDeliveryPayload {
     phoneLast4: string | null;
     encryptedPhoneRef: string | null;
   };
+  leadContact: {
+    maskedName: string | null;
+    maskedEmail: string | null;
+    emailHash: string | null;
+    encryptedContactRef: string | null;
+  };
   eligibility: {
     californiaVisitor: boolean;
     geoEligibilityStatus: string;

@@ -1,18 +1,16 @@
 'use client';
 
-import { UseFormRegister, UseFormSetValue, UseFormWatch, FieldErrors } from 'react-hook-form';
+import { UseFormRegister, FieldErrors } from 'react-hook-form';
 import { InjuryCalculatorData } from '@/types/calculator';
 import { User, Briefcase, DollarSign } from 'lucide-react';
 import InfoIcon from '@/components/InfoIcon';
 
 interface Props {
   register: UseFormRegister<InjuryCalculatorData>;
-  setValue: UseFormSetValue<InjuryCalculatorData>;
-  watch: UseFormWatch<InjuryCalculatorData>;
   errors: FieldErrors<InjuryCalculatorData>;
 }
 
-export default function DemographicsStep({ register, setValue, watch, errors }: Props) {
+export default function DemographicsStep({ register, errors }: Props) {
   return (
     <div className="space-y-6">
       <div>
@@ -51,7 +49,7 @@ export default function DemographicsStep({ register, setValue, watch, errors }: 
           <div className="flex items-center text-sm font-medium text-slate-700 mb-2">
             <Briefcase className="w-4 h-4 mr-2 text-slate-400" />
             Occupation <span className="text-red-500">*</span>
-            <InfoIcon content="Occupation is recorded for context and attorney review. It no longer changes the estimate by itself." />
+            <InfoIcon content="Occupation is recorded for claim context. It no longer changes the estimate by itself." />
           </div>
           <select
             {...register('demographics.occupation', { required: 'Occupation is required' })}
@@ -77,7 +75,7 @@ export default function DemographicsStep({ register, setValue, watch, errors }: 
           <div className="flex items-center text-sm font-medium text-slate-700 mb-2">
             <DollarSign className="w-4 h-4 mr-2 text-slate-400" />
             Annual Income (Before Taxes) <span className="text-red-500">*</span>
-            <InfoIcon content="Income is recorded for context and attorney review. Wage loss no longer changes the estimate calculation." />
+            <InfoIcon content="Income is recorded for claim context. Wage loss no longer changes the estimate calculation." />
           </div>
           <select
             {...register('demographics.annualIncome', { 

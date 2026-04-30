@@ -18,13 +18,16 @@ export async function POST(request: NextRequest) {
     const env = getWorkerEnv();
     const body = await request.json() as {
       sessionId?: string;
+      firstName?: string;
+      lastName?: string;
+      email?: string;
       phone?: string;
       consentToAttorneyShare?: boolean;
       phoneContactConsent?: boolean;
     };
 
-    if (!body.sessionId || !body.phone) {
-      return NextResponse.json({ error: 'Session and phone number are required.' }, { status: 400 });
+    if (!body.sessionId || !body.firstName || !body.lastName || !body.email || !body.phone) {
+      return NextResponse.json({ error: 'Session, name, email, and phone number are required.' }, { status: 400 });
     }
 
     let session = await getLeadSession(body.sessionId, env);
@@ -42,7 +45,7 @@ export async function POST(request: NextRequest) {
     const attorney = session.attorneyJson ? JSON.parse(session.attorneyJson) as ResponsibleAttorney : null;
     if (!attorney) {
       return NextResponse.json(
-        { error: 'Attorney delivery is not available for this estimate.' },
+        { error: 'No named law firm or attorney contact option is available for this estimate.' },
         { status: 400 }
       );
     }
@@ -54,7 +57,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const otp = await startOtpUnlock(body.sessionId, body.phone, {
+    const otp = await startOtpUnlock(body.sessionId, {
+      firstName: body.firstName,
+      lastName: body.lastName,
+      email: body.email,
+      phone: body.phone
+    }, {
       attorneyDeliveryConsent: true,
       phoneContactConsent: true,
       consentCopyVersion: attorneyConsentCopyVersion(attorney),

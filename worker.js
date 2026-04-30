@@ -106,7 +106,7 @@ export default {
     }
 
     const url = new URL(request.url);
-    if (!shouldBypassGeoAccess(url.pathname)) {
+    if (!shouldBypassGeoAccess(url.pathname, request.headers.get('user-agent') || '')) {
       const geo = readRequestGeo(request);
       const decision = decideGeoAccess(geo, env);
       ctx.waitUntil(logGeoAccess(request, env, geo, decision));

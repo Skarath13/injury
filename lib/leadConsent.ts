@@ -8,9 +8,9 @@ export function attorneyConsentCopyVersion(attorney: ResponsibleAttorney): strin
 
 export function attorneyDeliveryConsentText(attorney: ResponsibleAttorney): string {
   return [
-    `I authorize California Settlement Calculator to send my calculator inputs, estimate results, and contact information to ${attorney.name}, State Bar No. ${attorney.barNumber}.`,
-    `I authorize ${attorney.name} or the law firm responsible for this attorney advertisement to call or text me at the phone number I provide about my auto injury inquiry, including by automated technology.`,
+    `I authorize California Settlement Calculator to send my calculator inputs, estimate results, name, email, and phone number to the named law firm or attorney sponsor shown in the unlock flow: ${attorney.name}, State Bar No. ${attorney.barNumber}.`,
+    `I authorize ${attorney.name} or the responsible law firm shown in the unlock flow to call, text, or email me about my auto injury inquiry, including by automated technology.`,
     'I agree to receive a one-time SMS verification code for this unlock, and I understand message and data rates may apply.',
-    'I understand consent is not required to view my estimate, this does not create an attorney-client relationship, and California Settlement Calculator may be compensated for a qualified lead.'
+    'I understand consent is not required to view my estimate, this does not create an attorney-client relationship, the firm may decline representation, and California Settlement Calculator may be compensated for a sponsored contact submission.'
   ].join(' ');
 }

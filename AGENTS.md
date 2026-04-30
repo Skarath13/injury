@@ -63,6 +63,15 @@ npm run build
 # Run linting
 npm run lint
 
+# Run all unit tests
+npm test
+
+# Run local JSON lead scenario harness only
+npm run test:lead-scenarios
+
+# Launch-prep test sweep: full tests plus lead scenario harness
+npm run test:launch
+
 # Deploy to Cloudflare Workers (PREFERRED - NOT Pages)
 wrangler deploy
 ```
@@ -107,6 +116,9 @@ wrangler deploy
 - PWA features work on mobile devices
 - Responsive design tested on various screen sizes
 - Attorney conditional logic properly toggles features
+- **Lead scenario CLI**: Use `npm run test:lead-scenarios` to replay local-only JSON scenarios from `tests/fixtures/lead-scenarios.json` through the real estimate preview/unlock route handlers. This uses dev OTP, fake attorney routing, fake geo headers, a Turnstile success stub, and no production D1/KV or real SMS.
+- **Launch testing**: Use `npm run test:launch` before launch-oriented changes. The scenario harness verifies preview locking, estimate-only paths, SMS unlock paths, duplicate phone handling, outside-California no-delivery, qualification status, lead temperature, delivery queue counts, and payload privacy checks.
+- **Estimate values**: Scenario previews should not expose exact low/mid/high values. Full settlement values are expected only after estimate-only unlock or successful SMS verification.
 
 ## Data Sources
 

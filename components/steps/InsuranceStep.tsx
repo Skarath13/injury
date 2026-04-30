@@ -1,6 +1,6 @@
 import { UseFormRegister, UseFormWatch, FieldErrors } from 'react-hook-form';
 import { InjuryCalculatorData } from '@/types/calculator';
-import { Shield, DollarSign, Scale, AlertCircle } from 'lucide-react';
+import { Shield, DollarSign, Scale } from 'lucide-react';
 import InfoIcon from '@/components/InfoIcon';
 
 interface Props {
@@ -9,7 +9,7 @@ interface Props {
   errors: FieldErrors<InjuryCalculatorData>;
 }
 
-export default function InsuranceStep({ register, watch, errors }: Props) {
+export default function InsuranceStep({ register, watch }: Props) {
   const policyLimitsKnown = watch('insurance.policyLimitsKnown');
   const hasAttorney = watch('insurance.hasAttorney');
   
@@ -28,7 +28,7 @@ export default function InsuranceStep({ register, watch, errors }: Props) {
           <h3 className="text-sm font-semibold text-slate-700 mb-3 flex items-center">
             <Shield className="w-4 h-4 mr-2 text-blue-600" />
             Insurance Policy Limits
-            <InfoIcon content="Policy limits are recorded for context and attorney review. They no longer cap this educational estimate." />
+            <InfoIcon content="Policy limits are recorded for claim context. They no longer cap this educational estimate." />
           </h3>
           
           <label className="flex items-center space-x-2 cursor-pointer mb-3">

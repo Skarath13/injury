@@ -1,121 +1,19 @@
-import SettlementCalculator from '@/components/SettlementCalculator';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
-import { createCalculatorDraftBootstrapScript } from '@/lib/calculatorDraft';
+import CalculatorPageShell from '@/components/CalculatorPageShell';
+import { SITE_DESCRIPTION, buildPageMetadata } from '@/lib/seo';
 
-const structuredData = {
-  "@context": "https://schema.org",
-  "@type": "WebApplication",
-  "name": "California Auto Injury Settlement Calculator",
-  "description": "California auto injury settlement calculator providing educational insurance settlement estimates after phone verification",
-  "url": "https://californiasettlementcalculator.com",
-  "applicationCategory": "LegalService",
-  "operatingSystem": "Web Browser",
-  "creator": {
-    "@type": "Organization",
-    "name": "CA Injury Settlement Calculator",
-    "url": "https://californiasettlementcalculator.com"
-  },
-  "mainEntity": {
-    "@type": "Calculator",
-    "name": "Auto Injury Settlement Calculator",
-    "description": "Prepare an educational settlement estimate for California auto injury cases"
-  },
-  "audience": {
-    "@type": "Audience",
-    "audienceType": "Auto accident victims in California"
-  },
-  "featureList": [
-    "Settlement estimation based on injury type",
-    "Medical cost calculations",
-    "Pain and suffering estimates",
-    "Attorney fee calculations",
-    "California-specific legal considerations"
-  ],
-  "serviceArea": {
-    "@type": "State",
-    "name": "California"
-  }
-};
-
-const breadcrumbData = {
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  "itemListElement": [
-    {
-      "@type": "ListItem",
-      "position": 1,
-      "name": "Home",
-      "item": "https://californiasettlementcalculator.com"
-    }
+export const metadata = buildPageMetadata({
+  title: 'California Car Accident Settlement Calculator',
+  description: SITE_DESCRIPTION,
+  path: '/',
+  keywords: [
+    'California car accident settlement calculator',
+    'California auto injury settlement calculator',
+    'car accident settlement estimate California',
+    'whiplash settlement calculator California',
+    'pain and suffering calculator California'
   ]
-};
-
-const faqData = {
-  "@context": "https://schema.org",
-  "@type": "FAQPage",
-  "mainEntity": [
-    {
-      "@type": "Question",
-      "name": "How accurate is the California auto injury settlement calculator?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-      "text": "The calculator provides educational estimates based on configured insurance-claim factors. Every case is unique, and actual settlements can vary significantly based on facts, evidence, medical treatment, liability, insurance limits, and legal advice."
-      }
-    },
-    {
-      "@type": "Question", 
-      "name": "What factors affect auto injury settlement amounts in California?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "Key factors include body-map injury severity, vehicle impact severity, medical treatment progression, age, accident county venue context, life-impact signals, estimated wage loss when selected, pain and suffering, fault percentage, and whether you have legal representation. The estimate does not use policy limits or prior accidents as value caps."
-      }
-    },
-    {
-      "@type": "Question",
-      "name": "Do I need a lawyer for my California auto injury claim?",
-      "acceptedAnswer": {
-        "@type": "Answer",
-        "text": "A lawyer is not required to use this calculator. If a responsible attorney advertiser is available for your accident county, you may choose whether to send results to that specifically named attorney. This does not create an attorney-client relationship."
-      }
-    }
-  ]
-};
+});
 
 export default function Home() {
-  return (
-    <>
-      <script
-        id="calculator-draft-bootstrap"
-        dangerouslySetInnerHTML={{ __html: createCalculatorDraftBootstrapScript() }}
-      />
-      <script
-        id="structured-data"
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
-      />
-      <script
-        id="breadcrumb-data"
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbData) }}
-      />
-      <script
-        id="faq-data"
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqData) }}
-      />
-      
-      <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50">
-        <Header enableCalculatorReset />
-        <main className="container mx-auto px-4 py-5 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
-        <div className="mx-auto max-w-6xl">
-          <section aria-label="Settlement Calculator">
-            <SettlementCalculator />
-          </section>
-        </div>
-      </main>
-      <Footer />
-    </div>
-    </>
-  );
+  return <CalculatorPageShell />;
 }

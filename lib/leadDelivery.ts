@@ -274,6 +274,8 @@ async function ensureLeadDeliverySchema(env: WorkerEnv): Promise<void> {
           AND s.duplicate_within_30_days = 0
           AND s.lead_delivery_status = 'ready_for_delivery'
           AND s.attorney_id IS NOT NULL
+          AND s.email_hash IS NOT NULL
+          AND s.lead_contact_encrypted IS NOT NULL
           AND q.qualification_status = 'valid'
           AND q.verification_status = 'verified'
           AND r.active = 1
@@ -302,6 +304,54 @@ function hasAdvancedTreatment(input: Partial<InjuryCalculatorData>): boolean {
   );
 }
 
+function hasInjurySignal(input: Partial<InjuryCalculatorData>): boolean {
+  const injuries = input.injuries;
+  if (!injuries) return false;
+
+  return Boolean(
+    injuries.primaryInjury ||
+    injuries.bodyMap?.length ||
+    injuries.secondaryInjuries?.length ||
+    injuries.tbi ||
+    injuries.spinalIssues?.herniation ||
+    injuries.spinalIssues?.nerveRootCompression ||
+    injuries.spinalIssues?.radiculopathy ||
+    injuries.spinalIssues?.myelopathy
+  );
+}
+
+function isHighImpactNoAttorneyInjuryLead(input: Partial<InjuryCalculatorData>): boolean {
+  const impactSeverity = input.accidentDetails?.impactSeverity;
+  return Boolean(
+    (impactSeverity === 'severe' || impactSeverity === 'catastrophic') &&
+    input.insurance?.hasAttorney !== true &&
+    hasInjurySignal(input)
+  );
+}
+
+function daysSinceDateOfLoss(input: Partial<InjuryCalculatorData>, at = new Date()): number | null {
+  const value = input.accidentDetails?.dateOfAccident;
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+
+  const [year, month, day] = value.split('-').map(Number);
+  const dateOfLoss = Date.UTC(year, month - 1, day);
+  const reference = Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate());
+  const days = Math.floor((reference - dateOfLoss) / 86_400_000);
+
+  return Number.isFinite(days) ? days : null;
+}
+
+function isMinorAgedNoAttorneyInjuryLead(input: Partial<InjuryCalculatorData>): boolean {
+  const daysSinceLoss = daysSinceDateOfLoss(input);
+  return Boolean(
+    input.accidentDetails?.impactSeverity === 'low' &&
+    input.insurance?.hasAttorney !== true &&
+    hasInjurySignal(input) &&
+    daysSinceLoss !== null &&
+    daysSinceLoss >= 180
+  );
+}
+
 function leadTemperature(
   qualificationStatus: LeadQualificationStatus,
   result: SettlementResult | null,
@@ -311,15 +361,18 @@ function leadTemperature(
     return { temperature: 'not_lead', score: 0 };
   }
 
-  if (result.severityBand === 'high' || result.severityBand === 'severe' || hasAdvancedTreatment(input)) {
+  if (
+    result.severityBand === 'high' ||
+    result.severityBand === 'severe' ||
+    hasAdvancedTreatment(input) ||
+    isHighImpactNoAttorneyInjuryLead(input)
+  ) {
     return { temperature: 'hot', score: 90 };
   }
 
-  if (result.severityBand === 'moderate' || result.severityBand === 'elevated') {
-    return { temperature: 'warm', score: 70 };
-  }
+  if (isMinorAgedNoAttorneyInjuryLead(input)) return { temperature: 'cold', score: 50 };
 
-  return { temperature: 'cold', score: 50 };
+  return { temperature: 'warm', score: 70 };
 }
 
 function isNoDeliveryStatus(status: string): boolean {
@@ -357,6 +410,8 @@ export function qualifyLeadSession(session: LeadSession, at = nowIso()): LeadQua
   if (!otpVerified) reasons.add(`otp_${session.otpStatus || 'unknown'}`);
   if (duplicate) reasons.add('duplicate_30d_no_charge');
   if (!session.phoneHash && consented) reasons.add('phone_hash_missing');
+  if (!session.emailHash && consented) reasons.add('email_hash_missing');
+  if (!session.leadContactEncrypted && consented) reasons.add('lead_contact_missing');
   if (isNoDeliveryStatus(session.leadDeliveryStatus)) reasons.add(session.leadDeliveryStatus);
 
   const valid = readyForDelivery &&
@@ -367,7 +422,9 @@ export function qualifyLeadSession(session: LeadSession, at = nowIso()): LeadQua
     turnstileVerified &&
     otpVerified &&
     !duplicate &&
-    Boolean(session.phoneHash);
+    Boolean(session.phoneHash) &&
+    Boolean(session.emailHash) &&
+    Boolean(session.leadContactEncrypted);
 
   let qualificationStatus: LeadQualificationStatus;
   if (valid) {
@@ -652,6 +709,16 @@ function phoneMask(last4: string | null): string | null {
   return last4 ? `(***) ***-${last4}` : null;
 }
 
+function maskNameFromEncryptedContact(encryptedContact: string | null): string | null {
+  if (!encryptedContact) return null;
+  return 'Stored securely';
+}
+
+function maskEmailFromHash(emailHash: string | null): string | null {
+  if (!emailHash) return null;
+  return 'Stored securely';
+}
+
 export function buildLeadDeliveryPayload(
   session: LeadSession,
   qualification: LeadQualification,
@@ -710,6 +777,12 @@ export function buildLeadDeliveryPayload(
       phoneLast4: session.phoneLast4,
       encryptedPhoneRef: session.phoneE164Encrypted
     },
+    leadContact: {
+      maskedName: maskNameFromEncryptedContact(session.leadContactEncrypted),
+      maskedEmail: maskEmailFromHash(session.emailHash),
+      emailHash: session.emailHash,
+      encryptedContactRef: session.leadContactEncrypted
+    },
     eligibility: {
       californiaVisitor: session.geoEligibilityStatus === 'california',
       geoEligibilityStatus: session.geoEligibilityStatus,
@@ -744,6 +817,7 @@ export function buildLeadDeliveryPayload(
           lines: [
             `Attorney share consent: ${session.attorneyDeliveryConsent ? 'yes' : 'no'}`,
             `Phone contact consent: ${session.phoneContactConsent ? 'yes' : 'no'}`,
+            `Name/email: ${session.leadContactEncrypted ? 'stored securely' : 'not stored'}`,
             `Phone: ${phoneMask(session.phoneLast4) || 'not stored'}`
           ]
         },
@@ -775,7 +849,9 @@ export function leadIsDeliverable(session: LeadSession, qualification: LeadQuali
     session.otpStatus === 'verified' &&
     !session.duplicateWithin30Days &&
     session.leadDeliveryStatus === 'ready_for_delivery' &&
-    Boolean(session.attorneyId);
+    Boolean(session.attorneyId) &&
+    Boolean(session.emailHash) &&
+    Boolean(session.leadContactEncrypted);
 }
 
 export async function queueLeadDeliveryIfEligible(
