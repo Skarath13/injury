@@ -249,6 +249,8 @@ export interface UnlockStartResponse {
   maskedPhone: string;
   duplicateWithin30Days: boolean;
   provider: string;
+  otpLength: number;
+  providerStatus?: string;
   devCode?: string;
 }
 
@@ -256,6 +258,64 @@ export interface UnlockVerifyResponse {
   results: SettlementResult;
   responsibleAttorney: ResponsibleAttorney | null;
   leadDeliveryStatus: string;
+}
+
+export interface LeadDeliveryPayload {
+  schemaVersion: 'lead-delivery-2026-04-30-v1';
+  generatedAt: string;
+  lead: {
+    sessionId: string;
+    leadDeliveryStatus: string;
+    qualificationStatus: string;
+    verificationStatus: string;
+    temperature: string;
+    score: number;
+    reasons: string[];
+  };
+  recipient: {
+    attorneyId: string | null;
+    name: string | null;
+    barNumber: string | null;
+    officeLocation: string | null;
+  };
+  consent: {
+    attorneyDeliveryConsent: boolean;
+    attorneyDeliveryConsentAt: string | null;
+    phoneContactConsent: boolean;
+    phoneContactConsentAt: string | null;
+    consentCopyVersion: string;
+    consentText: string | null;
+    gpcStatus: string;
+  };
+  phoneContact: {
+    maskedPhone: string | null;
+    phoneLast4: string | null;
+    encryptedPhoneRef: string | null;
+  };
+  eligibility: {
+    californiaVisitor: boolean;
+    geoEligibilityStatus: string;
+    county: string;
+    hasExistingAttorney: boolean;
+    duplicateWithin30Days: boolean;
+  };
+  caseSummary: {
+    accidentCounty: string;
+    accidentDate: string | null;
+    age: number | null;
+    severityBand: SeverityBand;
+    estimateRange: {
+      low: number;
+      mid: number;
+      high: number;
+    };
+    injurySummary: string[];
+    treatmentSummary: string[];
+    readableSections: {
+      title: string;
+      lines: string[];
+    }[];
+  };
 }
 
 export interface EstimateOnlyUnlockResponse {

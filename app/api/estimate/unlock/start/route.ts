@@ -64,6 +64,8 @@ export async function POST(request: NextRequest) {
       maskedPhone: otp.maskedPhone,
       duplicateWithin30Days: otp.duplicateWithin30Days,
       provider: otp.provider,
+      otpLength: otp.otpLength,
+      providerStatus: otp.providerStatus,
       devCode: otp.devCode
     };
 

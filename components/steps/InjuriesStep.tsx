@@ -181,11 +181,11 @@ export default function InjuriesStep({ register, watch, setValue, errors, bodyMo
         <CardContent className="flex flex-col gap-4 p-3 sm:p-6">
           <p className="sr-only">Body map. {selectedSummary}</p>
 
-          <div className="flex flex-col gap-5">
-            <div className="flex flex-col gap-2 text-sm">
+          <div className="flex flex-col gap-5 xl:grid xl:grid-cols-[minmax(0,1fr)_16rem] xl:items-start">
+            <div className="flex flex-col gap-2 text-sm xl:col-start-2 xl:row-start-1 xl:rounded-lg xl:border xl:bg-slate-50 xl:p-4">
               <p className="text-sm font-medium text-foreground">Body Map Legend</p>
               <motion.div
-                className="grid grid-cols-2 gap-2 sm:grid-cols-4"
+                className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-1"
                 variants={staggerContainer}
                 initial={shouldReduceMotion ? false : 'hidden'}
                 animate="visible"
@@ -204,12 +204,12 @@ export default function InjuriesStep({ register, watch, setValue, errors, bodyMo
               </motion.div>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-2">
+            <div className="grid gap-4 lg:grid-cols-2 xl:col-start-1 xl:row-span-4 xl:row-start-1">
               {(['front', 'back'] as BodyMapView[]).map((view) => (
                 <section key={view} className="flex flex-col items-center" aria-label={`${view === 'front' ? 'Front' : 'Back'} body map`}>
                   <h3 className="sr-only">{view === 'front' ? 'Front' : 'Back'}</h3>
                   <div
-                    className="relative mx-auto flex h-[652px] w-full max-w-[400px] items-center justify-center overflow-hidden rounded-lg bg-muted/40 p-0 sm:h-[714px] sm:max-w-[442px] lg:h-[756px] xl:h-[630px] xl:max-w-[378px] 2xl:h-[714px] 2xl:max-w-[442px]"
+                    className="relative mx-auto flex h-[652px] w-full max-w-[400px] items-center justify-center overflow-hidden rounded-lg bg-muted/40 p-0 sm:h-[714px] sm:max-w-[442px] lg:h-[min(56vh,500px)] lg:min-h-[420px] lg:max-w-[400px] xl:h-[min(52vh,480px)] xl:max-w-[390px] 2xl:h-[min(58vh,540px)] 2xl:max-w-[420px]"
                     data-testid={`body-map-stage-${view}`}
                   >
                     <span
@@ -242,7 +242,7 @@ export default function InjuriesStep({ register, watch, setValue, errors, bodyMo
               ))}
             </div>
 
-            <div className="flex flex-col gap-2 [overflow-anchor:none]">
+            <div className="flex flex-col gap-2 [overflow-anchor:none] xl:col-start-2 xl:row-start-2 xl:rounded-lg xl:border xl:bg-white xl:p-4">
               <p className="text-sm font-medium text-foreground">Injury list</p>
               <div className="min-h-[72px] rounded-lg [overflow-anchor:none]">
                 <AnimatePresence initial={false} mode="wait">
@@ -260,7 +260,7 @@ export default function InjuriesStep({ register, watch, setValue, errors, bodyMo
                   ) : (
                     <motion.div
                       key="injury-selections"
-                      className="flex max-h-[220px] flex-col gap-2 overflow-y-auto pr-1 [overflow-anchor:none]"
+                      className="flex max-h-[220px] flex-col gap-2 overflow-y-auto pr-1 [overflow-anchor:none] xl:max-h-[340px]"
                       initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
@@ -284,7 +284,7 @@ export default function InjuriesStep({ register, watch, setValue, errors, bodyMo
               <FieldError>{errors.injuries.primaryInjury.message}</FieldError>
             )}
 
-            <div className="min-h-10 [overflow-anchor:none]">
+            <div className="min-h-10 [overflow-anchor:none] xl:col-start-2 xl:row-start-3">
               <AnimatePresence initial={false}>
                 {bodyMap.length > 0 && (
                   <motion.div

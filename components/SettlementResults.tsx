@@ -75,12 +75,12 @@ export default function SettlementResults({
 
   return (
     <motion.div
-      className="mx-auto flex max-w-3xl flex-col gap-4"
+      className="mx-auto grid max-w-5xl gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.85fr)] lg:items-start"
       variants={staggerContainer}
       initial={shouldReduceMotion ? false : 'hidden'}
       animate="visible"
     >
-      <motion.div variants={fadeUpItem}>
+      <motion.div variants={fadeUpItem} className="lg:col-start-1 lg:row-span-2">
         <Card>
           <CardHeader>
             <CardTitle>Insurance Settlement Estimate</CardTitle>
@@ -114,7 +114,7 @@ export default function SettlementResults({
         </Card>
       </motion.div>
 
-      <motion.div variants={fadeUpItem}>
+      <motion.div variants={fadeUpItem} className="lg:col-start-2">
         <Alert>
           <AlertCircle />
           <AlertTitle>
@@ -128,7 +128,7 @@ export default function SettlementResults({
         </Alert>
       </motion.div>
 
-      <motion.div variants={fadeUpItem}>
+      <motion.div variants={fadeUpItem} className="lg:col-start-2">
         <Card size="sm">
           <CardHeader>
             <CardTitle>Important Disclaimers</CardTitle>

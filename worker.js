@@ -19,7 +19,10 @@ async function sha256(value) {
 }
 
 async function hashForAudit(value, env) {
-  const salt = env.LEAD_HASH_SALT || 'development-only-lead-hash-salt';
+  const salt = env.LEAD_HASH_SALT || (env.NODE_ENV === 'production' ? null : 'development-only-lead-hash-salt');
+  if (!salt) {
+    throw new Error('LEAD_HASH_SALT is not configured.');
+  }
   return sha256(`${salt}:${value || 'unknown'}`);
 }
 

@@ -1,0 +1,228 @@
+[
+  {
+    "id": "valid_cold_attorney_lead",
+    "description": "California visitor with an attorney route verifies by SMS and queues a cold lead.",
+    "base": "soft_tissue",
+    "geo": "california",
+    "formStartAgeSeconds": 180,
+    "routing": "attorney_available",
+    "unlock": {
+      "mode": "sms_lead",
+      "phone": "(949) 555-0101",
+      "code": "123456",
+      "consent": true
+    },
+    "expect": {
+      "preview": {
+        "unlockMode": "sms_lead",
+        "requiresAttorneyConsent": true,
+        "leadDeliveryStatus": "preview_attorney_available"
+      },
+      "deliveryStatus": "ready_for_delivery",
+      "qualificationStatus": "valid",
+      "verificationStatus": "verified",
+      "temperature": "cold",
+      "queueCount": 1,
+      "payload": {
+        "maskedPhone": "(***) ***-0101",
+        "encryptedPhoneRefPrefix": "v1.",
+        "attorneyId": "scenario-attorney",
+        "omitsDateOfBirth": true
+      }
+    }
+  },
+  {
+    "id": "too_fast_completion",
+    "description": "A California visitor who finishes before the lead-quality window receives estimate-only unlock.",
+    "base": "soft_tissue",
+    "geo": "california",
+    "formStartAgeSeconds": 15,
+    "routing": "attorney_available",
+    "unlock": {
+      "mode": "estimate_only"
+    },
+    "expect": {
+      "preview": {
+        "unlockMode": "estimate_only",
+        "requiresAttorneyConsent": false,
+        "leadDeliveryStatus": "too_fast_no_delivery"
+      },
+      "deliveryStatus": "too_fast_no_delivery",
+      "qualificationStatus": "no_sale",
+      "verificationStatus": "unverified",
+      "temperature": "not_lead",
+      "queueCount": 0,
+      "reasonsInclude": ["too_fast_no_delivery"]
+    }
+  },
+  {
+    "id": "no_attorney_route",
+    "description": "A mature California session without an attorney route unlocks estimate-only and never queues.",
+    "base": "soft_tissue",
+    "geo": "california",
+    "formStartAgeSeconds": 180,
+    "routing": "no_attorney",
+    "unlock": {
+      "mode": "estimate_only"
+    },
+    "expect": {
+      "preview": {
+        "unlockMode": "estimate_only",
+        "requiresAttorneyConsent": false,
+        "leadDeliveryStatus": "unmapped_no_attorney_delivery"
+      },
+      "deliveryStatus": "unmapped_no_attorney_delivery",
+      "qualificationStatus": "no_sale",
+      "verificationStatus": "unverified",
+      "temperature": "not_lead",
+      "queueCount": 0,
+      "reasonsInclude": ["unmapped_no_attorney_delivery"]
+    }
+  },
+  {
+    "id": "existing_attorney_no_delivery",
+    "description": "A user who already has or plans to hire an attorney receives estimate-only unlock.",
+    "base": "soft_tissue",
+    "overrides": {
+      "insurance": {
+        "hasAttorney": true
+      }
+    },
+    "geo": "california",
+    "formStartAgeSeconds": 180,
+    "routing": "attorney_available",
+    "unlock": {
+      "mode": "estimate_only"
+    },
+    "expect": {
+      "preview": {
+        "unlockMode": "estimate_only",
+        "requiresAttorneyConsent": false,
+        "leadDeliveryStatus": "own_attorney_no_delivery"
+      },
+      "deliveryStatus": "own_attorney_no_delivery",
+      "qualificationStatus": "no_sale",
+      "verificationStatus": "unverified",
+      "temperature": "not_lead",
+      "queueCount": 0,
+      "reasonsInclude": ["existing_or_planned_attorney", "own_attorney_no_delivery"]
+    }
+  },
+  {
+    "id": "outside_california_visitor",
+    "description": "An attorney-routed county still does not deliver when geo headers identify an outside-California visitor.",
+    "base": "soft_tissue",
+    "geo": "outside_california",
+    "formStartAgeSeconds": 180,
+    "routing": "attorney_available",
+    "unlock": {
+      "mode": "estimate_only"
+    },
+    "expect": {
+      "preview": {
+        "unlockMode": "estimate_only",
+        "requiresAttorneyConsent": false,
+        "leadDeliveryStatus": "outside_california_no_delivery"
+      },
+      "deliveryStatus": "outside_california_no_delivery",
+      "qualificationStatus": "no_sale",
+      "verificationStatus": "unverified",
+      "temperature": "not_lead",
+      "queueCount": 0,
+      "reasonsInclude": ["geo_outside_california", "outside_california_no_delivery"]
+    }
+  },
+  {
+    "id": "duplicate_phone_no_charge",
+    "description": "A repeat attorney-delivery phone number is marked duplicate/no-charge and does not queue.",
+    "base": "soft_tissue",
+    "geo": "california",
+    "formStartAgeSeconds": 180,
+    "routing": "attorney_available",
+    "seedDuplicatePhone": true,
+    "unlock": {
+      "mode": "sms_lead",
+      "phone": "(949) 555-0202",
+      "code": "123456",
+      "consent": true
+    },
+    "expect": {
+      "preview": {
+        "unlockMode": "sms_lead",
+        "requiresAttorneyConsent": true,
+        "leadDeliveryStatus": "preview_attorney_available"
+      },
+      "unlockStartDuplicateWithin30Days": true,
+      "deliveryStatus": "duplicate_30d_no_charge",
+      "qualificationStatus": "no_sale",
+      "verificationStatus": "verified",
+      "temperature": "not_lead",
+      "queueCount": 0,
+      "reasonsInclude": ["duplicate_30d_no_charge"]
+    }
+  },
+  {
+    "id": "warm_treatment_lead",
+    "description": "A moderate injury profile verifies and queues as a warm lead.",
+    "base": "warm_treatment",
+    "geo": "california",
+    "formStartAgeSeconds": 180,
+    "routing": "attorney_available",
+    "unlock": {
+      "mode": "sms_lead",
+      "phone": "(949) 555-0303",
+      "code": "123456",
+      "consent": true
+    },
+    "expect": {
+      "preview": {
+        "unlockMode": "sms_lead",
+        "requiresAttorneyConsent": true,
+        "leadDeliveryStatus": "preview_attorney_available"
+      },
+      "deliveryStatus": "ready_for_delivery",
+      "qualificationStatus": "valid",
+      "verificationStatus": "verified",
+      "temperature": "warm",
+      "queueCount": 1,
+      "payload": {
+        "maskedPhone": "(***) ***-0303",
+        "encryptedPhoneRefPrefix": "v1.",
+        "attorneyId": "scenario-attorney",
+        "omitsDateOfBirth": true
+      }
+    }
+  },
+  {
+    "id": "surgery_hot_lead",
+    "description": "An advanced treatment profile verifies and queues as a hot lead.",
+    "base": "surgery_hot",
+    "geo": "california",
+    "formStartAgeSeconds": 180,
+    "routing": "attorney_available",
+    "unlock": {
+      "mode": "sms_lead",
+      "phone": "(949) 555-0404",
+      "code": "123456",
+      "consent": true
+    },
+    "expect": {
+      "preview": {
+        "unlockMode": "sms_lead",
+        "requiresAttorneyConsent": true,
+        "leadDeliveryStatus": "preview_attorney_available"
+      },
+      "deliveryStatus": "ready_for_delivery",
+      "qualificationStatus": "valid",
+      "verificationStatus": "verified",
+      "temperature": "hot",
+      "queueCount": 1,
+      "payload": {
+        "maskedPhone": "(***) ***-0404",
+        "encryptedPhoneRefPrefix": "v1.",
+        "attorneyId": "scenario-attorney",
+        "omitsDateOfBirth": true
+      }
+    }
+  }
+]

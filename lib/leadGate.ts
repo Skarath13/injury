@@ -1,11 +1,13 @@
 import { getWorkerEnv, WorkerEnv } from '@/lib/cloudflareEnv';
 import { attorneyConsentCopyVersion, DEFAULT_ATTORNEY_CONSENT_COPY_VERSION } from '@/lib/leadConsent';
+import { queueLeadDeliveryIfEligible, recordLeadQualification } from '@/lib/leadDelivery';
 import { PrivacyChoiceSnapshot } from '@/lib/privacyChoices';
 import { ResponsibleAttorney, SettlementResult } from '@/types/calculator';
 
 export const CONSENT_COPY_VERSION = DEFAULT_ATTORNEY_CONSENT_COPY_VERSION;
 const SESSION_TTL_SECONDS = 30 * 60;
 const OTP_TTL_SECONDS = 10 * 60;
+const OTP_CODE_LENGTH = 6;
 const DEDUPE_WINDOW_SECONDS = 30 * 24 * 60 * 60;
 export const FORM_START_COOKIE_NAME = 'injury_form_started';
 export const FORM_START_MIN_SECONDS = 120;
@@ -35,10 +37,15 @@ export interface LeadSession {
   visitorCity: string | null;
   geoEligibilityStatus: string;
   phoneHash: string | null;
+  phoneE164Encrypted: string | null;
+  phoneLast4: string | null;
+  phoneEncryptedAt: string | null;
+  phoneEncryptionKeyVersion: string | null;
   ipHash: string;
   userAgentHash: string;
   turnstileStatus: string;
   otpStatus: string;
+  otpProvider: string;
   leadDeliveryStatus: string;
   duplicateWithin30Days: boolean;
   inputJson: string;
@@ -48,6 +55,12 @@ export interface LeadSession {
   otpHash: string | null;
   otpExpiresAt: string | null;
   otpAttempts: number;
+  twilioVerifyServiceSid: string | null;
+  twilioVerifySid: string | null;
+  twilioVerifyChannel: string | null;
+  twilioVerifyStatus: string | null;
+  twilioVerifyErrorCode: string | null;
+  twilioVerifyErrorMessage: string | null;
 }
 
 export interface CreateLeadSessionInput {
@@ -82,6 +95,8 @@ export interface OtpSendResult {
   maskedPhone: string;
   duplicateWithin30Days: boolean;
   provider: string;
+  otpLength: number;
+  providerStatus?: string;
   devCode?: string;
 }
 
@@ -109,10 +124,15 @@ type LeadSessionRow = {
   visitor_city?: string | null;
   geo_eligibility_status?: string | null;
   phone_hash: string | null;
+  phone_e164_encrypted?: string | null;
+  phone_last4?: string | null;
+  phone_encrypted_at?: string | null;
+  phone_encryption_key_version?: string | null;
   ip_hash: string;
   user_agent_hash: string;
   turnstile_status: string;
   otp_status: string;
+  otp_provider?: string | null;
   lead_delivery_status: string;
   duplicate_within_30_days: number;
   input_json: string;
@@ -122,6 +142,12 @@ type LeadSessionRow = {
   otp_hash: string | null;
   otp_expires_at: string | null;
   otp_attempts: number;
+  twilio_verify_service_sid?: string | null;
+  twilio_verify_sid?: string | null;
+  twilio_verify_channel?: string | null;
+  twilio_verify_status?: string | null;
+  twilio_verify_error_code?: string | null;
+  twilio_verify_error_message?: string | null;
 };
 
 const memorySessions = globalThis as typeof globalThis & {
@@ -179,13 +205,83 @@ async function sha256(value: string): Promise<string> {
 }
 
 export async function hashForAudit(value: string, env: WorkerEnv = getWorkerEnv()): Promise<string> {
-  const salt = env.LEAD_HASH_SALT || 'development-only-lead-hash-salt';
+  const salt = requireLeadSecret(
+    env.LEAD_HASH_SALT,
+    env,
+    'LEAD_HASH_SALT',
+    'development-only-lead-hash-salt'
+  );
   return sha256(`${salt}:${value || 'unknown'}`);
 }
 
 async function hashOtp(sessionId: string, code: string, env: WorkerEnv): Promise<string> {
-  const salt = env.LEAD_HASH_SALT || 'development-only-lead-hash-salt';
+  const salt = requireLeadSecret(
+    env.LEAD_HASH_SALT,
+    env,
+    'LEAD_HASH_SALT',
+    'development-only-lead-hash-salt'
+  );
   return sha256(`${salt}:otp:${sessionId}:${code}`);
+}
+
+function requireLeadSecret(value: string | undefined, env: WorkerEnv, name: string, devFallback: string): string {
+  if (value) return value;
+  if (env.NODE_ENV === 'production') {
+    throw new Error(`${name} is not configured.`);
+  }
+  return devFallback;
+}
+
+async function leadEncryptionKey(env: WorkerEnv): Promise<CryptoKey> {
+  const secret = requireLeadSecret(
+    env.LEAD_ENCRYPTION_KEY,
+    env,
+    'LEAD_ENCRYPTION_KEY',
+    'development-only-lead-encryption-key'
+  );
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(secret));
+  return crypto.subtle.importKey('raw', digest, { name: 'AES-GCM' }, false, ['encrypt', 'decrypt']);
+}
+
+function bytesToBase64Url(bytes: Uint8Array): string {
+  let binary = '';
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function base64UrlToBytes(value: string): Uint8Array {
+  const padded = value.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(value.length / 4) * 4, '=');
+  const binary = atob(padded);
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+}
+
+async function encryptPhoneE164(phoneE164: string, env: WorkerEnv): Promise<string> {
+  const key = await leadEncryptionKey(env);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const encoded = new TextEncoder().encode(phoneE164);
+  const cipher = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, encoded));
+  return `v1.${bytesToBase64Url(iv)}.${bytesToBase64Url(cipher)}`;
+}
+
+export async function decryptPhoneE164ForDelivery(encryptedPhone: string, env: WorkerEnv = getWorkerEnv()): Promise<string> {
+  const [version, ivValue, cipherValue] = encryptedPhone.split('.');
+  if (version !== 'v1' || !ivValue || !cipherValue) {
+    throw new Error('Unsupported encrypted phone format.');
+  }
+
+  const key = await leadEncryptionKey(env);
+  const plain = await crypto.subtle.decrypt(
+    { name: 'AES-GCM', iv: base64UrlToBytes(ivValue) },
+    key,
+    base64UrlToBytes(cipherValue)
+  );
+  return new TextDecoder().decode(plain);
+}
+
+function phoneEncryptionKeyVersion(env: WorkerEnv): string {
+  return env.LEAD_ENCRYPTION_KEY_VERSION || 'lead-phone-key-v1';
 }
 
 function rowToSession(row: LeadSessionRow): LeadSession {
@@ -213,10 +309,15 @@ function rowToSession(row: LeadSessionRow): LeadSession {
     visitorCity: row.visitor_city || null,
     geoEligibilityStatus: row.geo_eligibility_status || 'unknown',
     phoneHash: row.phone_hash,
+    phoneE164Encrypted: row.phone_e164_encrypted || null,
+    phoneLast4: row.phone_last4 || null,
+    phoneEncryptedAt: row.phone_encrypted_at || null,
+    phoneEncryptionKeyVersion: row.phone_encryption_key_version || null,
     ipHash: row.ip_hash,
     userAgentHash: row.user_agent_hash,
     turnstileStatus: row.turnstile_status,
     otpStatus: row.otp_status,
+    otpProvider: row.otp_provider || 'none',
     leadDeliveryStatus: row.lead_delivery_status,
     duplicateWithin30Days: Boolean(row.duplicate_within_30_days),
     inputJson: row.input_json,
@@ -225,7 +326,13 @@ function rowToSession(row: LeadSessionRow): LeadSession {
     attorneyJson: row.attorney_json,
     otpHash: row.otp_hash,
     otpExpiresAt: row.otp_expires_at,
-    otpAttempts: row.otp_attempts
+    otpAttempts: row.otp_attempts,
+    twilioVerifyServiceSid: row.twilio_verify_service_sid || null,
+    twilioVerifySid: row.twilio_verify_sid || null,
+    twilioVerifyChannel: row.twilio_verify_channel || null,
+    twilioVerifyStatus: row.twilio_verify_status || null,
+    twilioVerifyErrorCode: row.twilio_verify_error_code || null,
+    twilioVerifyErrorMessage: row.twilio_verify_error_message || null
   };
 }
 
@@ -257,10 +364,15 @@ async function ensureD1Schema(env: WorkerEnv): Promise<void> {
       visitor_city TEXT,
       geo_eligibility_status TEXT NOT NULL DEFAULT 'unknown',
       phone_hash TEXT,
+      phone_e164_encrypted TEXT,
+      phone_last4 TEXT,
+      phone_encrypted_at TEXT,
+      phone_encryption_key_version TEXT,
       ip_hash TEXT NOT NULL,
       user_agent_hash TEXT NOT NULL,
       turnstile_status TEXT NOT NULL,
       otp_status TEXT NOT NULL,
+      otp_provider TEXT NOT NULL DEFAULT 'none',
       lead_delivery_status TEXT NOT NULL,
       duplicate_within_30_days INTEGER NOT NULL DEFAULT 0,
       input_json TEXT NOT NULL,
@@ -269,7 +381,13 @@ async function ensureD1Schema(env: WorkerEnv): Promise<void> {
       attorney_json TEXT,
       otp_hash TEXT,
       otp_expires_at TEXT,
-      otp_attempts INTEGER NOT NULL DEFAULT 0
+      otp_attempts INTEGER NOT NULL DEFAULT 0,
+      twilio_verify_service_sid TEXT,
+      twilio_verify_sid TEXT,
+      twilio_verify_channel TEXT,
+      twilio_verify_status TEXT,
+      twilio_verify_error_code TEXT,
+      twilio_verify_error_message TEXT
     )
   `).run();
 
@@ -293,6 +411,17 @@ async function ensureD1Schema(env: WorkerEnv): Promise<void> {
   await addColumn('visitor_region', 'visitor_region TEXT');
   await addColumn('visitor_city', 'visitor_city TEXT');
   await addColumn('geo_eligibility_status', "geo_eligibility_status TEXT NOT NULL DEFAULT 'unknown'");
+  await addColumn('phone_e164_encrypted', 'phone_e164_encrypted TEXT');
+  await addColumn('phone_last4', 'phone_last4 TEXT');
+  await addColumn('phone_encrypted_at', 'phone_encrypted_at TEXT');
+  await addColumn('phone_encryption_key_version', 'phone_encryption_key_version TEXT');
+  await addColumn('otp_provider', "otp_provider TEXT NOT NULL DEFAULT 'none'");
+  await addColumn('twilio_verify_service_sid', 'twilio_verify_service_sid TEXT');
+  await addColumn('twilio_verify_sid', 'twilio_verify_sid TEXT');
+  await addColumn('twilio_verify_channel', 'twilio_verify_channel TEXT');
+  await addColumn('twilio_verify_status', 'twilio_verify_status TEXT');
+  await addColumn('twilio_verify_error_code', 'twilio_verify_error_code TEXT');
+  await addColumn('twilio_verify_error_message', 'twilio_verify_error_message TEXT');
 
   await env.LEADS_DB.prepare('CREATE INDEX IF NOT EXISTS idx_lead_sessions_phone_created ON lead_sessions (phone_hash, created_at)').run();
   await env.LEADS_DB.prepare('CREATE INDEX IF NOT EXISTS idx_lead_sessions_geo_eligibility_created ON lead_sessions (geo_eligibility_status, created_at)').run();
@@ -336,10 +465,15 @@ export async function createLeadSession(
     visitorCity: input.visitorCity || null,
     geoEligibilityStatus: input.geoEligibilityStatus || 'unknown',
     phoneHash: null,
+    phoneE164Encrypted: null,
+    phoneLast4: null,
+    phoneEncryptedAt: null,
+    phoneEncryptionKeyVersion: null,
     ipHash: input.ipHash,
     userAgentHash: input.userAgentHash,
     turnstileStatus: input.turnstileStatus,
     otpStatus: 'not_started',
+    otpProvider: 'none',
     leadDeliveryStatus: input.initialLeadDeliveryStatus || (input.attorney ? 'preview_attorney_available' : 'preview_no_attorney'),
     duplicateWithin30Days: false,
     inputJson: JSON.stringify(input.input),
@@ -348,7 +482,13 @@ export async function createLeadSession(
     attorneyJson: input.attorney ? JSON.stringify(input.attorney) : null,
     otpHash: null,
     otpExpiresAt: null,
-    otpAttempts: 0
+    otpAttempts: 0,
+    twilioVerifyServiceSid: null,
+    twilioVerifySid: null,
+    twilioVerifyChannel: null,
+    twilioVerifyStatus: null,
+    twilioVerifyErrorCode: null,
+    twilioVerifyErrorMessage: null
   };
 
   if (env.LEADS_DB) {
@@ -359,10 +499,13 @@ export async function createLeadSession(
         routing_version, consent_copy_version, attorney_delivery_consent, attorney_delivery_consent_at,
         attorney_delivery_consent_text, phone_contact_consent, phone_contact_consent_at,
         privacy_choice_snapshot, gpc_status, visitor_country, visitor_region_code, visitor_region,
-        visitor_city, geo_eligibility_status, phone_hash, ip_hash, user_agent_hash,
-        turnstile_status, otp_status, lead_delivery_status, duplicate_within_30_days,
-        input_json, result_json, preview_json, attorney_json, otp_hash, otp_expires_at, otp_attempts
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        visitor_city, geo_eligibility_status, phone_hash, phone_e164_encrypted, phone_last4,
+        phone_encrypted_at, phone_encryption_key_version, ip_hash, user_agent_hash,
+        turnstile_status, otp_status, otp_provider, lead_delivery_status, duplicate_within_30_days,
+        input_json, result_json, preview_json, attorney_json, otp_hash, otp_expires_at, otp_attempts,
+        twilio_verify_service_sid, twilio_verify_sid, twilio_verify_channel, twilio_verify_status,
+        twilio_verify_error_code, twilio_verify_error_message
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       session.id,
       session.createdAt,
@@ -387,10 +530,15 @@ export async function createLeadSession(
       session.visitorCity,
       session.geoEligibilityStatus,
       session.phoneHash,
+      session.phoneE164Encrypted,
+      session.phoneLast4,
+      session.phoneEncryptedAt,
+      session.phoneEncryptionKeyVersion,
       session.ipHash,
       session.userAgentHash,
       session.turnstileStatus,
       session.otpStatus,
+      session.otpProvider,
       session.leadDeliveryStatus,
       session.duplicateWithin30Days ? 1 : 0,
       session.inputJson,
@@ -399,11 +547,19 @@ export async function createLeadSession(
       session.attorneyJson,
       session.otpHash,
       session.otpExpiresAt,
-      session.otpAttempts
+      session.otpAttempts,
+      session.twilioVerifyServiceSid,
+      session.twilioVerifySid,
+      session.twilioVerifyChannel,
+      session.twilioVerifyStatus,
+      session.twilioVerifyErrorCode,
+      session.twilioVerifyErrorMessage
     ).run();
   } else {
     getMemorySessions().set(id, session);
   }
+
+  await recordLeadQualification(session, env, { action: 'create_lead_session' });
 
   return session;
 }
@@ -442,10 +598,15 @@ type CompactCookieLeadSession = {
   gs?: string;
   ge?: string;
   ph?: string | null;
+  pe?: string | null;
+  pl?: string | null;
+  pt?: string | null;
+  pk?: string | null;
   ip?: string;
   ua?: string;
   ts: string;
   os: string;
+  op?: string;
   ls: string;
   d?: 1;
   r: unknown;
@@ -453,6 +614,12 @@ type CompactCookieLeadSession = {
   oh?: string | null;
   oe?: string | null;
   oa?: number;
+  tvs?: string | null;
+  tvid?: string | null;
+  tvc?: string | null;
+  tvst?: string | null;
+  tve?: string | null;
+  tvm?: string | null;
 };
 
 function base64UrlEncode(value: string): string {
@@ -465,7 +632,12 @@ function base64UrlDecode(value: string): string {
 }
 
 function formStartSignature(payload: string, env: WorkerEnv): Promise<string> {
-  const salt = env.LEAD_HASH_SALT || 'development-only-lead-hash-salt';
+  const salt = requireLeadSecret(
+    env.LEAD_HASH_SALT,
+    env,
+    'LEAD_HASH_SALT',
+    'development-only-lead-hash-salt'
+  );
   return sha256(`${salt}:form-start:${payload}`);
 }
 
@@ -533,17 +705,28 @@ export function encodeLocalSessionCookie(session: LeadSession): string {
     gs: session.gpcStatus,
     ge: session.geoEligibilityStatus,
     ph: session.phoneHash,
+    pe: session.phoneE164Encrypted,
+    pl: session.phoneLast4,
+    pt: session.phoneEncryptedAt,
+    pk: session.phoneEncryptionKeyVersion,
     ip: session.ipHash,
     ua: session.userAgentHash,
     ts: session.turnstileStatus,
     os: session.otpStatus,
+    op: session.otpProvider,
     ls: session.leadDeliveryStatus,
     d: session.duplicateWithin30Days ? 1 : undefined,
     r: JSON.parse(session.resultJson),
     a: session.attorneyJson ? JSON.parse(session.attorneyJson) : undefined,
     oh: session.otpHash,
     oe: session.otpExpiresAt,
-    oa: session.otpAttempts
+    oa: session.otpAttempts,
+    tvs: session.twilioVerifyServiceSid,
+    tvid: session.twilioVerifySid,
+    tvc: session.twilioVerifyChannel,
+    tvst: session.twilioVerifyStatus,
+    tve: session.twilioVerifyErrorCode,
+    tvm: session.twilioVerifyErrorMessage
   };
 
   return base64UrlEncode(JSON.stringify(compact));
@@ -580,10 +763,15 @@ export function decodeLocalSessionCookie(value: string | undefined): LeadSession
         visitorCity: null,
         geoEligibilityStatus: compact.ge || 'unknown',
         phoneHash: compact.ph || null,
+        phoneE164Encrypted: compact.pe || null,
+        phoneLast4: compact.pl || null,
+        phoneEncryptedAt: compact.pt || null,
+        phoneEncryptionKeyVersion: compact.pk || null,
         ipHash: compact.ip || 'local-cookie',
         userAgentHash: compact.ua || 'local-cookie',
         turnstileStatus: compact.ts,
         otpStatus: compact.os,
+        otpProvider: compact.op || 'none',
         leadDeliveryStatus: compact.ls,
         duplicateWithin30Days: Boolean(compact.d),
         inputJson: '{}',
@@ -592,7 +780,13 @@ export function decodeLocalSessionCookie(value: string | undefined): LeadSession
         attorneyJson: compact.a ? JSON.stringify(compact.a) : null,
         otpHash: compact.oh || null,
         otpExpiresAt: compact.oe || null,
-        otpAttempts: compact.oa || 0
+        otpAttempts: compact.oa || 0,
+        twilioVerifyServiceSid: compact.tvs || null,
+        twilioVerifySid: compact.tvid || null,
+        twilioVerifyChannel: compact.tvc || null,
+        twilioVerifyStatus: compact.tvst || null,
+        twilioVerifyErrorCode: compact.tve || null,
+        twilioVerifyErrorMessage: compact.tvm || null
       };
     }
 
@@ -611,6 +805,17 @@ export function decodeLocalSessionCookie(value: string | undefined): LeadSession
       visitorRegion: legacy.visitorRegion || null,
       visitorCity: legacy.visitorCity || null,
       geoEligibilityStatus: legacy.geoEligibilityStatus || 'unknown',
+      phoneE164Encrypted: legacy.phoneE164Encrypted || null,
+      phoneLast4: legacy.phoneLast4 || null,
+      phoneEncryptedAt: legacy.phoneEncryptedAt || null,
+      phoneEncryptionKeyVersion: legacy.phoneEncryptionKeyVersion || null,
+      otpProvider: legacy.otpProvider || 'none',
+      twilioVerifyServiceSid: legacy.twilioVerifyServiceSid || null,
+      twilioVerifySid: legacy.twilioVerifySid || null,
+      twilioVerifyChannel: legacy.twilioVerifyChannel || null,
+      twilioVerifyStatus: legacy.twilioVerifyStatus || null,
+      twilioVerifyErrorCode: legacy.twilioVerifyErrorCode || null,
+      twilioVerifyErrorMessage: legacy.twilioVerifyErrorMessage || null,
       inputJson: '{}',
       previewJson: '{}'
     };
@@ -630,7 +835,11 @@ async function updateSession(session: LeadSession, env: WorkerEnv): Promise<void
           duplicate_within_30_days = ?, otp_hash = ?, otp_expires_at = ?, otp_attempts = ?,
           attorney_delivery_consent = ?, attorney_delivery_consent_at = ?,
           attorney_delivery_consent_text = ?, phone_contact_consent = ?, phone_contact_consent_at = ?,
-          privacy_choice_snapshot = ?, gpc_status = ?, consent_copy_version = ?
+          privacy_choice_snapshot = ?, gpc_status = ?, consent_copy_version = ?,
+          phone_e164_encrypted = ?, phone_last4 = ?, phone_encrypted_at = ?,
+          phone_encryption_key_version = ?, otp_provider = ?, twilio_verify_service_sid = ?,
+          twilio_verify_sid = ?, twilio_verify_channel = ?, twilio_verify_status = ?,
+          twilio_verify_error_code = ?, twilio_verify_error_message = ?
       WHERE id = ?
     `).bind(
       session.updatedAt,
@@ -649,11 +858,24 @@ async function updateSession(session: LeadSession, env: WorkerEnv): Promise<void
       session.privacyChoiceSnapshot,
       session.gpcStatus,
       session.consentCopyVersion,
+      session.phoneE164Encrypted,
+      session.phoneLast4,
+      session.phoneEncryptedAt,
+      session.phoneEncryptionKeyVersion,
+      session.otpProvider,
+      session.twilioVerifyServiceSid,
+      session.twilioVerifySid,
+      session.twilioVerifyChannel,
+      session.twilioVerifyStatus,
+      session.twilioVerifyErrorCode,
+      session.twilioVerifyErrorMessage,
       session.id
     ).run();
   } else {
     getMemorySessions().set(session.id, session);
   }
+
+  await recordLeadQualification(session, env, { action: 'update_lead_session' });
 }
 
 async function hasRecentSubmittedPhone(phoneHash: string, currentSessionId: string, env: WorkerEnv): Promise<boolean> {
@@ -703,23 +925,49 @@ function generateOtp(env: WorkerEnv): string {
     return env.OTP_DEV_CODE;
   }
 
-  return Math.floor(1000 + Math.random() * 9000).toString();
+  const min = 10 ** (OTP_CODE_LENGTH - 1);
+  const max = (10 ** OTP_CODE_LENGTH) - 1;
+  return Math.floor(min + Math.random() * (max - min + 1)).toString();
 }
 
-async function sendOtp(phone: string, code: string, env: WorkerEnv): Promise<{ provider: string; devCode?: string }> {
+interface PhoneVerificationStartResult {
+  provider: string;
+  otpHash: string | null;
+  otpExpiresAt: string | null;
+  verificationSid: string | null;
+  serviceSid: string | null;
+  channel: string | null;
+  providerStatus: string | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+  devCode?: string;
+}
+
+interface PhoneVerificationCheckResult {
+  approved: boolean;
+  providerStatus: string;
+  errorCode: string | null;
+  errorMessage: string | null;
+}
+
+async function startPhoneVerification(
+  sessionId: string,
+  phoneE164: string,
+  env: WorkerEnv
+): Promise<PhoneVerificationStartResult> {
   const provider = env.SMS_PROVIDER || 'dev_stub';
-  const canUseTwilio = provider === 'twilio' &&
+  const wantsTwilioVerify = provider === 'twilio' || provider === 'twilio_verify';
+  const canUseTwilioVerify = wantsTwilioVerify &&
     env.TWILIO_ACCOUNT_SID &&
     env.TWILIO_AUTH_TOKEN &&
-    env.TWILIO_FROM_NUMBER;
+    env.TWILIO_VERIFY_SERVICE_SID;
 
-  if (canUseTwilio) {
+  if (canUseTwilioVerify) {
     const body = new URLSearchParams();
-    body.set('To', `+${normalizePhone(phone)}`);
-    body.set('From', env.TWILIO_FROM_NUMBER || '');
-    body.set('Body', `Your California Settlement Calculator verification code is ${code}.`);
+    body.set('To', `+${phoneE164}`);
+    body.set('Channel', 'sms');
 
-    const response = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${env.TWILIO_ACCOUNT_SID}/Messages.json`, {
+    const response = await fetch(`https://verify.twilio.com/v2/Services/${env.TWILIO_VERIFY_SERVICE_SID}/Verifications`, {
       method: 'POST',
       headers: {
         Authorization: `Basic ${btoa(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`)}`,
@@ -727,20 +975,137 @@ async function sendOtp(phone: string, code: string, env: WorkerEnv): Promise<{ p
       },
       body
     });
+    const payload = await response.json().catch(() => ({})) as {
+      sid?: string;
+      status?: string;
+      channel?: string;
+      code?: number | string;
+      message?: string;
+    };
 
     if (!response.ok) {
-      throw new Error('Unable to send SMS verification code.');
+      return {
+        provider: 'twilio_verify',
+        otpHash: null,
+        otpExpiresAt: null,
+        verificationSid: payload.sid || null,
+        serviceSid: env.TWILIO_VERIFY_SERVICE_SID || null,
+        channel: payload.channel || 'sms',
+        providerStatus: payload.status || 'failed',
+        errorCode: payload.code ? String(payload.code) : String(response.status),
+        errorMessage: payload.message || 'Unable to send SMS verification code.'
+      };
     }
 
-    return { provider: 'twilio' };
+    return {
+      provider: 'twilio_verify',
+      otpHash: null,
+      otpExpiresAt: null,
+      verificationSid: payload.sid || null,
+      serviceSid: env.TWILIO_VERIFY_SERVICE_SID || null,
+      channel: payload.channel || 'sms',
+      providerStatus: payload.status || 'pending',
+      errorCode: null,
+      errorMessage: null
+    };
   }
 
-  const devModeAllowed = env.NODE_ENV !== 'production' || env.OTP_DEV_MODE === 'true';
+  if (wantsTwilioVerify && env.NODE_ENV === 'production') {
+    throw new Error('Twilio Verify is not configured.');
+  }
+
+  const devModeAllowed = env.NODE_ENV !== 'production';
   if (!devModeAllowed) {
     throw new Error('SMS provider is not configured.');
   }
 
-  return { provider: 'dev_stub', devCode: code };
+  const code = generateOtp(env);
+  return {
+    provider: 'dev_stub',
+    otpHash: await hashOtp(sessionId, code, env),
+    otpExpiresAt: secondsFromNow(OTP_TTL_SECONDS),
+    verificationSid: `VEdev${sessionId.replace(/-/g, '').slice(0, 24)}`,
+    serviceSid: 'dev_stub',
+    channel: 'sms',
+    providerStatus: 'pending',
+    errorCode: null,
+    errorMessage: null,
+    devCode: code
+  };
+}
+
+async function checkPhoneVerification(
+  session: LeadSession,
+  code: string,
+  env: WorkerEnv
+): Promise<PhoneVerificationCheckResult> {
+  if (session.otpProvider === 'twilio_verify') {
+    if (!session.twilioVerifyServiceSid || !session.twilioVerifySid) {
+      return {
+        approved: false,
+        providerStatus: 'missing_verification_sid',
+        errorCode: 'missing_verification_sid',
+        errorMessage: 'Verification session is missing.'
+      };
+    }
+
+    const body = new URLSearchParams();
+    body.set('VerificationSid', session.twilioVerifySid);
+    body.set('Code', code.trim());
+
+    const response = await fetch(`https://verify.twilio.com/v2/Services/${session.twilioVerifyServiceSid}/VerificationCheck`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${btoa(`${env.TWILIO_ACCOUNT_SID}:${env.TWILIO_AUTH_TOKEN}`)}`,
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body
+    });
+    const payload = await response.json().catch(() => ({})) as {
+      status?: string;
+      code?: number | string;
+      message?: string;
+    };
+
+    if (!response.ok) {
+      return {
+        approved: false,
+        providerStatus: payload.status || 'failed',
+        errorCode: payload.code ? String(payload.code) : String(response.status),
+        errorMessage: payload.message || 'Unable to verify code.'
+      };
+    }
+
+    return {
+      approved: payload.status === 'approved',
+      providerStatus: payload.status || 'pending',
+      errorCode: null,
+      errorMessage: null
+    };
+  }
+
+  if (!session.otpHash || !session.otpExpiresAt || isExpired(session.otpExpiresAt)) {
+    return {
+      approved: false,
+      providerStatus: 'expired',
+      errorCode: 'expired',
+      errorMessage: 'The verification code expired. Please request a new code.'
+    };
+  }
+
+  const candidateHash = await hashOtp(session.id, code.trim(), env);
+  return {
+    approved: candidateHash === session.otpHash,
+    providerStatus: candidateHash === session.otpHash ? 'approved' : 'failed',
+    errorCode: candidateHash === session.otpHash ? null : 'incorrect_code',
+    errorMessage: candidateHash === session.otpHash ? null : 'That verification code is not correct.'
+  };
+}
+
+function throwIfVerificationStartFailed(start: PhoneVerificationStartResult): void {
+  if (start.errorCode || start.errorMessage) {
+    throw new Error(start.errorMessage || 'Unable to send SMS verification code.');
+  }
 }
 
 export async function startOtpUnlock(
@@ -784,10 +1149,13 @@ export async function startOtpUnlock(
   const normalizedPhone = normalizePhone(phone);
   const phoneHash = await hashForAudit(normalizedPhone, env);
   const duplicateWithin30Days = await hasRecentSubmittedPhone(phoneHash, session.id, env);
-  const code = generateOtp(env);
-  const otpHash = await hashOtp(session.id, code, env);
+  const encryptedPhone = await encryptPhoneE164(`+${normalizedPhone}`, env);
 
   session.phoneHash = phoneHash;
+  session.phoneE164Encrypted = encryptedPhone;
+  session.phoneLast4 = normalizedPhone.slice(-4);
+  session.phoneEncryptedAt = nowIso();
+  session.phoneEncryptionKeyVersion = phoneEncryptionKeyVersion(env);
   session.attorneyDeliveryConsent = true;
   session.attorneyDeliveryConsentAt = nowIso();
   session.attorneyDeliveryConsentText = consent.consentText;
@@ -800,18 +1168,28 @@ export async function startOtpUnlock(
   session.leadDeliveryStatus = duplicateWithin30Days ? 'duplicate_30d_no_charge' : session.leadDeliveryStatus;
   await updateSession(session, env);
 
-  const sms = await sendOtp(phone, code, env);
+  const verificationStart = await startPhoneVerification(session.id, normalizedPhone, env);
 
-  session.otpHash = otpHash;
-  session.otpExpiresAt = secondsFromNow(OTP_TTL_SECONDS);
-  session.otpStatus = 'sent';
+  session.otpProvider = verificationStart.provider;
+  session.otpHash = verificationStart.otpHash;
+  session.otpExpiresAt = verificationStart.otpExpiresAt;
+  session.twilioVerifyServiceSid = verificationStart.serviceSid;
+  session.twilioVerifySid = verificationStart.verificationSid;
+  session.twilioVerifyChannel = verificationStart.channel;
+  session.twilioVerifyStatus = verificationStart.providerStatus;
+  session.twilioVerifyErrorCode = verificationStart.errorCode;
+  session.twilioVerifyErrorMessage = verificationStart.errorMessage;
+  session.otpStatus = verificationStart.errorCode || verificationStart.errorMessage ? 'failed' : 'sent';
   await updateSession(session, env);
+  throwIfVerificationStartFailed(verificationStart);
 
   return {
     maskedPhone: maskPhone(phone),
     duplicateWithin30Days,
-    provider: sms.provider,
-    devCode: sms.devCode
+    provider: verificationStart.provider,
+    otpLength: OTP_CODE_LENGTH,
+    providerStatus: verificationStart.providerStatus || undefined,
+    devCode: verificationStart.devCode
   };
 }
 
@@ -836,10 +1214,21 @@ export async function unlockEstimateOnly(
   session.phoneContactConsent = false;
   session.phoneContactConsentAt = null;
   session.phoneHash = null;
+  session.phoneE164Encrypted = null;
+  session.phoneLast4 = null;
+  session.phoneEncryptedAt = null;
+  session.phoneEncryptionKeyVersion = null;
   session.otpHash = null;
   session.otpExpiresAt = null;
   session.otpAttempts = 0;
   session.otpStatus = 'not_started';
+  session.otpProvider = 'none';
+  session.twilioVerifyServiceSid = null;
+  session.twilioVerifySid = null;
+  session.twilioVerifyChannel = null;
+  session.twilioVerifyStatus = null;
+  session.twilioVerifyErrorCode = null;
+  session.twilioVerifyErrorMessage = null;
   session.duplicateWithin30Days = false;
   await updateSession(session, env);
 
@@ -862,22 +1251,26 @@ export async function verifyOtpUnlock(
     throw new Error('This estimate preview expired. Please prepare a new preview.');
   }
 
-  if (!session.otpHash || !session.otpExpiresAt || isExpired(session.otpExpiresAt)) {
-    session.otpStatus = 'expired';
-    await updateSession(session, env);
-    throw new Error('The verification code expired. Please request a new code.');
-  }
-
   if (session.otpAttempts >= 5) {
     throw new Error('Too many verification attempts. Please prepare a new preview.');
   }
 
-  const candidateHash = await hashOtp(session.id, code.trim(), env);
-  if (candidateHash !== session.otpHash) {
+  const verificationCheck = await checkPhoneVerification(session, code, env);
+  session.twilioVerifyStatus = verificationCheck.providerStatus;
+  session.twilioVerifyErrorCode = verificationCheck.errorCode;
+  session.twilioVerifyErrorMessage = verificationCheck.errorMessage;
+
+  if (verificationCheck.errorCode === 'expired') {
+    session.otpStatus = 'expired';
+    await updateSession(session, env);
+    throw new Error(verificationCheck.errorMessage || 'The verification code expired. Please request a new code.');
+  }
+
+  if (!verificationCheck.approved) {
     session.otpAttempts += 1;
     session.otpStatus = 'failed';
     await updateSession(session, env);
-    throw new Error('That verification code is not correct.');
+    throw new Error(verificationCheck.errorMessage || 'That verification code is not correct.');
   }
 
   const attorney = session.attorneyJson ? JSON.parse(session.attorneyJson) as ResponsibleAttorney : null;
@@ -887,6 +1280,8 @@ export async function verifyOtpUnlock(
 
   const geoNoDeliveryStatus = noDeliveryStatusForGeo(session, env);
   session.otpStatus = 'verified';
+  session.twilioVerifyErrorCode = null;
+  session.twilioVerifyErrorMessage = null;
   session.leadDeliveryStatus = session.duplicateWithin30Days
     ? 'duplicate_30d_no_charge'
     : geoNoDeliveryStatus
@@ -895,6 +1290,8 @@ export async function verifyOtpUnlock(
       ? 'ready_for_delivery'
       : 'unmapped_no_attorney_delivery';
   await updateSession(session, env);
+  const qualification = await recordLeadQualification(session, env, { action: 'verify_otp_unlock' });
+  await queueLeadDeliveryIfEligible(session, qualification, env);
 
   return {
     session,

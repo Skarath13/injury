@@ -25,7 +25,6 @@ import {
   AccordionTrigger
 } from '@/components/ui/accordion';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -45,7 +44,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { Separator } from '@/components/ui/separator';
-import { fadeUpItem, premiumEase, reducedMotionFade, softSpring, staggerContainer } from '@/components/motion/presets';
+import { fadeUpItem, reducedMotionFade, staggerContainer } from '@/components/motion/presets';
 
 interface Props {
   register: UseFormRegister<InjuryCalculatorData>;
@@ -386,7 +385,6 @@ function NumberInput({
   value: number;
   onChange: (value: number) => void;
 }) {
-  const shouldReduceMotion = Boolean(useReducedMotion());
   const max = item.max ?? 999;
   const itemRange = COST_RANGES[item.rangeKey];
 
@@ -421,21 +419,16 @@ function NumberInput({
             <Minus />
           </Button>
 
-          <motion.div
-            animate={shouldReduceMotion ? undefined : { scale: value > 0 ? [1, 1.035, 1] : 1 }}
-            transition={{ duration: 0.24, ease: premiumEase }}
-          >
-            <Input
-              type="number"
-              inputMode="numeric"
-              min={0}
-              max={max}
-              value={value}
-              onChange={handleInputChange}
-              className="h-11 w-20 text-center text-base font-semibold"
-              aria-label={item.label}
-            />
-          </motion.div>
+          <Input
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={max}
+            value={value}
+            onChange={handleInputChange}
+            className="h-11 w-20 text-center text-base font-semibold tabular-nums"
+            aria-label={item.label}
+          />
 
           <Button
             type="button"
@@ -454,35 +447,38 @@ function NumberInput({
   );
 }
 
-function SectionSummary({ count, range }: { count: number; range: CostRange }) {
-  const shouldReduceMotion = Boolean(useReducedMotion());
+function SectionSummary({ count, range, reserveRange = false }: { count: number; range: CostRange; reserveRange?: boolean }) {
+  const hasSelection = count > 0;
+  const showRangeSlot = hasSelection || reserveRange;
 
   return (
-    <div className="flex flex-wrap items-center gap-2 text-left sm:justify-end sm:text-right">
-      <motion.div
-        key={`count-${count > 0 ? 'selected' : 'empty'}-${count}`}
-        initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 3, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={shouldReduceMotion ? { duration: 0.08 } : softSpring}
-      >
-        <Badge variant={count > 0 ? 'default' : 'secondary'}>
-          {count > 0 ? `${count} selected` : 'Not added'}
-        </Badge>
-      </motion.div>
-      <AnimatePresence initial={false}>
-        {count > 0 && (
-          <motion.span
-            key={formatRange(range)}
-            className="text-xs font-medium text-muted-foreground"
-            initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, x: -4 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -4 }}
-            transition={shouldReduceMotion ? { duration: 0.08 } : { duration: 0.18, ease: premiumEase }}
-          >
-            {formatRange(range)}
-          </motion.span>
+    <div
+      className={cn(
+        'grid w-full shrink-0 content-start justify-items-start gap-1 text-left sm:w-40 sm:justify-items-end sm:text-right',
+        showRangeSlot ? 'min-h-[3.25rem]' : 'min-h-5'
+      )}
+    >
+      <span
+        className={cn(
+          'inline-flex h-5 w-[6.25rem] items-center justify-center rounded-full px-2 py-0.5 text-xs font-medium tabular-nums whitespace-nowrap',
+          hasSelection
+            ? 'bg-primary text-primary-foreground'
+            : 'bg-secondary text-secondary-foreground'
         )}
-      </AnimatePresence>
+      >
+        {hasSelection ? `${count} selected` : 'Not added'}
+      </span>
+      {showRangeSlot && (
+        <span
+          aria-hidden={!hasSelection}
+          className={cn(
+            'block h-4 w-40 overflow-hidden text-ellipsis whitespace-nowrap text-xs font-medium text-muted-foreground tabular-nums',
+            !hasSelection && 'invisible'
+          )}
+        >
+          {hasSelection ? formatRange(range) : '$0'}
+        </span>
+      )}
     </div>
   );
 }
@@ -573,195 +569,205 @@ export default function TreatmentStep({ register, watch, setValue }: Props) {
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Care categories</CardTitle>
-          <CardDescription>Open each section that applies and add counts with the steppers.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <motion.div
-            variants={staggerContainer}
-            initial={shouldReduceMotion ? false : 'hidden'}
-            animate="visible"
-          >
-            <Accordion
-              type="multiple"
-              value={openTreatmentCategories}
-              onValueChange={handleTreatmentAccordionChange}
-              className="rounded-lg border"
+      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+        <Card className="lg:min-w-0">
+          <CardHeader>
+            <CardTitle>Care categories</CardTitle>
+            <CardDescription>Open each section that applies and add counts with the steppers.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <motion.div
+              variants={staggerContainer}
+              initial={shouldReduceMotion ? false : 'hidden'}
+              animate="visible"
             >
-              {TREATMENT_SECTIONS.map((section) => {
-                const Icon = section.icon;
-                const sectionCount = countForItems(section.items);
-                const sectionRange = rangeForItems(section.items);
-
-                return (
-                  <AccordionItem
-                    key={section.value}
-                    ref={(node) => {
-                      treatmentCategoryRefs.current[section.value] = node;
-                    }}
-                    value={section.value}
-                    className={cn('border-b last:border-b-0', section.tone.itemClassName)}
-                  >
-                    <motion.div variants={fadeUpItem}>
-                      <AccordionTrigger className={cn(accordionRowTriggerClassName, section.tone.triggerClassName)}>
-                        <div className="flex w-full min-w-0 flex-col gap-3 pr-3 sm:flex-row sm:items-start sm:justify-between">
-                          <div className="flex min-w-0 items-start gap-3 text-left sm:flex-1">
-                            <span className={cn('mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full', section.tone.iconClassName)}>
-                              <Icon className="size-4" />
-                            </span>
-                            <span className="min-w-0">
-                              <span className={cn('block text-sm font-semibold', section.tone.titleClassName)}>{section.title}</span>
-                              <span className="mt-1 block text-xs leading-5 text-muted-foreground">{section.description}</span>
-                            </span>
-                          </div>
-                          <SectionSummary count={sectionCount} range={sectionRange} />
-                        </div>
-                      </AccordionTrigger>
-                    </motion.div>
-                    <AccordionContent className="px-4 pb-4">
-                      <FieldGroup>
-                        {section.items.map((item) => (
-                          <NumberInput
-                            key={item.key}
-                            item={item}
-                            value={getValue(item.key)}
-                            onChange={(value) => updateTreatmentCount(item.key, value)}
-                          />
-                        ))}
-                      </FieldGroup>
-                    </AccordionContent>
-                  </AccordionItem>
-                );
-              })}
-
-              <AccordionItem
-                ref={(node) => {
-                  treatmentCategoryRefs.current.surgery = node;
-                }}
-                value="surgery"
-                className={cn('last:border-b-0', SURGERY_TONE.itemClassName)}
+              <Accordion
+                type="multiple"
+                value={openTreatmentCategories}
+                onValueChange={handleTreatmentAccordionChange}
+                className="rounded-lg border"
               >
-              <AccordionTrigger className={cn(accordionRowTriggerClassName, SURGERY_TONE.triggerClassName)}>
-                <div className="flex w-full min-w-0 flex-col gap-3 pr-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="flex min-w-0 items-start gap-3 text-left sm:flex-1">
-                    <span className={cn('mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full', SURGERY_TONE.iconClassName)}>
-                      <Scissors className="size-4" />
-                    </span>
-                    <span className="min-w-0">
-                      <span className={cn('block text-sm font-semibold', SURGERY_TONE.titleClassName)}>Surgery and future care</span>
-                      <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                        Recommended or completed procedures and ongoing treatment.
-                      </span>
-                    </span>
-                  </div>
-                  <SectionSummary count={surgeryCount} range={surgeryRange} />
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="px-4 pb-4">
-                <FieldGroup>
-                  <Field orientation="horizontal" className="rounded-lg border bg-background p-3">
-                    <Checkbox
-                      id="surgeryRecommended"
-                      checked={surgeryRecommended}
-                      onCheckedChange={(checked) => {
-                        const nextValue = checked === true;
-                        setValue('treatment.surgeryRecommended', nextValue, { shouldDirty: true });
-                        if (!nextValue) {
-                          setValue('treatment.surgeryCompleted', false, { shouldDirty: true });
-                          setValue('treatment.surgeryType', undefined, { shouldDirty: true });
-                        }
+                {TREATMENT_SECTIONS.map((section) => {
+                  const Icon = section.icon;
+                  const sectionCount = countForItems(section.items);
+                  const sectionRange = rangeForItems(section.items);
+
+                  return (
+                    <AccordionItem
+                      key={section.value}
+                      ref={(node) => {
+                        treatmentCategoryRefs.current[section.value] = node;
                       }}
-                    />
-                    <FieldContent>
-                      <FieldLabel htmlFor="surgeryRecommended">Surgery recommended by a doctor</FieldLabel>
-                      <FieldDescription>Use this when a provider has discussed or recommended surgery.</FieldDescription>
-                    </FieldContent>
-                  </Field>
-
-                  <AnimatePresence initial={false}>
-                    {surgeryRecommended && (
-                      <motion.div
-                        key="surgery-details"
-                        className="flex flex-col gap-4 rounded-lg border bg-muted/30 p-3"
-                        {...reducedMotionFade(shouldReduceMotion)}
-                        layout
-                      >
-                        <Field orientation="horizontal">
-                          <Checkbox
-                            id="surgeryCompleted"
-                            checked={surgeryCompleted}
-                            onCheckedChange={(checked) => setValue('treatment.surgeryCompleted', checked === true, { shouldDirty: true })}
-                          />
-                          <FieldContent>
-                            <FieldLabel htmlFor="surgeryCompleted">Surgery completed</FieldLabel>
-                            <FieldDescription>Select this if the accident-related surgery already happened.</FieldDescription>
-                          </FieldContent>
-                        </Field>
-
-                        <Separator />
-
-                        <Field>
-                          <FieldLabel>Surgery type</FieldLabel>
-                          <NativeSelect {...register('treatment.surgeryType')} className="min-h-11">
-                            <option value="">Select surgery type...</option>
-                            <option value="minor">Minor surgery: arthroscopy or smaller procedure ($20k - $75k)</option>
-                            <option value="moderate">Moderate surgery: disc or joint repair ($45k - $140k)</option>
-                            <option value="major">Major surgery: fusion or replacement ($90k - $250k)</option>
-                          </NativeSelect>
-                          <FieldDescription>Choose the closest category; the estimate still uses a broad range.</FieldDescription>
-                        </Field>
+                      value={section.value}
+                      className={cn('border-b last:border-b-0', section.tone.itemClassName)}
+                    >
+                      <motion.div variants={fadeUpItem}>
+                        <AccordionTrigger className={cn(accordionRowTriggerClassName, section.tone.triggerClassName)}>
+                          <div className="flex w-full min-w-0 flex-col gap-3 pr-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="flex min-w-0 items-start gap-3 text-left sm:flex-1">
+                              <span className={cn('mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full', section.tone.iconClassName)}>
+                                <Icon className="size-4" />
+                              </span>
+                              <span className="min-w-0">
+                                <span className={cn('block text-sm font-semibold', section.tone.titleClassName)}>{section.title}</span>
+                                <span className="mt-1 block text-xs leading-5 text-muted-foreground">{section.description}</span>
+                              </span>
+                            </div>
+                            <SectionSummary
+                              count={sectionCount}
+                              range={sectionRange}
+                              reserveRange={openTreatmentCategories.includes(section.value)}
+                            />
+                          </div>
+                        </AccordionTrigger>
                       </motion.div>
-                    )}
-                  </AnimatePresence>
+                      <AccordionContent className="px-4 pb-4">
+                        <FieldGroup>
+                          {section.items.map((item) => (
+                            <NumberInput
+                              key={item.key}
+                              item={item}
+                              value={getValue(item.key)}
+                              onChange={(value) => updateTreatmentCount(item.key, value)}
+                            />
+                          ))}
+                        </FieldGroup>
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
 
-                  <Field orientation="horizontal" className={cn('rounded-lg border bg-background p-3', ongoingTreatment && 'bg-muted/40')}>
-                    <Checkbox
-                      id="ongoingTreatment"
-                      checked={ongoingTreatment}
-                      onCheckedChange={(checked) => setValue('treatment.ongoingTreatment', checked === true, { shouldDirty: true })}
-                    />
-                    <FieldContent>
-                      <FieldLabel htmlFor="ongoingTreatment">Still receiving treatment or future care is planned</FieldLabel>
-                      <FieldDescription>Use this when care is ongoing, even if future costs are not known yet.</FieldDescription>
-                    </FieldContent>
-                  </Field>
-                </FieldGroup>
-              </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </motion.div>
-        </CardContent>
-      </Card>
+                <AccordionItem
+                  ref={(node) => {
+                    treatmentCategoryRefs.current.surgery = node;
+                  }}
+                  value="surgery"
+                  className={cn('last:border-b-0', SURGERY_TONE.itemClassName)}
+                >
+                  <AccordionTrigger className={cn(accordionRowTriggerClassName, SURGERY_TONE.triggerClassName)}>
+                    <div className="flex w-full min-w-0 flex-col gap-3 pr-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex min-w-0 items-start gap-3 text-left sm:flex-1">
+                        <span className={cn('mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full', SURGERY_TONE.iconClassName)}>
+                          <Scissors className="size-4" />
+                        </span>
+                        <span className="min-w-0">
+                          <span className={cn('block text-sm font-semibold', SURGERY_TONE.titleClassName)}>Surgery and future care</span>
+                          <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                            Recommended or completed procedures and ongoing treatment.
+                          </span>
+                        </span>
+                      </div>
+                      <SectionSummary
+                        count={surgeryCount}
+                        range={surgeryRange}
+                        reserveRange={openTreatmentCategories.includes('surgery')}
+                      />
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-4 pb-4">
+                    <FieldGroup>
+                      <Field orientation="horizontal" className="rounded-lg border bg-background p-3">
+                        <Checkbox
+                          id="surgeryRecommended"
+                          checked={surgeryRecommended}
+                          onCheckedChange={(checked) => {
+                            const nextValue = checked === true;
+                            setValue('treatment.surgeryRecommended', nextValue, { shouldDirty: true });
+                            if (!nextValue) {
+                              setValue('treatment.surgeryCompleted', false, { shouldDirty: true });
+                              setValue('treatment.surgeryType', undefined, { shouldDirty: true });
+                            }
+                          }}
+                        />
+                        <FieldContent>
+                          <FieldLabel htmlFor="surgeryRecommended">Surgery recommended by a doctor</FieldLabel>
+                          <FieldDescription>Use this when a provider has discussed or recommended surgery.</FieldDescription>
+                        </FieldContent>
+                      </Field>
 
-      <Card>
-        <CardHeader className="gap-3 sm:grid-cols-[1fr_auto]">
-          <div className="flex items-start gap-3">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted">
-              <Calculator className="size-5 text-muted-foreground" />
-            </span>
-            <div className="min-w-0">
-              <CardTitle>Estimated medical specials</CardTitle>
-              <CardDescription>
-                {totalCount > 0 ? `${totalCount} treatment item${totalCount === 1 ? '' : 's'} selected` : 'Nothing selected yet'}
-              </CardDescription>
+                      <AnimatePresence initial={false}>
+                        {surgeryRecommended && (
+                          <motion.div
+                            key="surgery-details"
+                            className="flex flex-col gap-4 rounded-lg border bg-muted/30 p-3"
+                            {...reducedMotionFade(shouldReduceMotion)}
+                            layout
+                          >
+                            <Field orientation="horizontal">
+                              <Checkbox
+                                id="surgeryCompleted"
+                                checked={surgeryCompleted}
+                                onCheckedChange={(checked) => setValue('treatment.surgeryCompleted', checked === true, { shouldDirty: true })}
+                              />
+                              <FieldContent>
+                                <FieldLabel htmlFor="surgeryCompleted">Surgery completed</FieldLabel>
+                                <FieldDescription>Select this if the accident-related surgery already happened.</FieldDescription>
+                              </FieldContent>
+                            </Field>
+
+                            <Separator />
+
+                            <Field>
+                              <FieldLabel>Surgery type</FieldLabel>
+                              <NativeSelect {...register('treatment.surgeryType')} className="min-h-11">
+                                <option value="">Select surgery type...</option>
+                                <option value="minor">Minor surgery: arthroscopy or smaller procedure ($20k - $75k)</option>
+                                <option value="moderate">Moderate surgery: disc or joint repair ($45k - $140k)</option>
+                                <option value="major">Major surgery: fusion or replacement ($90k - $250k)</option>
+                              </NativeSelect>
+                              <FieldDescription>Choose the closest category; the estimate still uses a broad range.</FieldDescription>
+                            </Field>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+
+                      <Field orientation="horizontal" className={cn('rounded-lg border bg-background p-3', ongoingTreatment && 'bg-muted/40')}>
+                        <Checkbox
+                          id="ongoingTreatment"
+                          checked={ongoingTreatment}
+                          onCheckedChange={(checked) => setValue('treatment.ongoingTreatment', checked === true, { shouldDirty: true })}
+                        />
+                        <FieldContent>
+                          <FieldLabel htmlFor="ongoingTreatment">Still receiving treatment or future care is planned</FieldLabel>
+                          <FieldDescription>Use this when care is ongoing, even if future costs are not known yet.</FieldDescription>
+                        </FieldContent>
+                      </Field>
+                    </FieldGroup>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </motion.div>
+          </CardContent>
+        </Card>
+
+        <Card className="lg:sticky lg:top-4">
+          <CardHeader className="gap-3 sm:grid-cols-[1fr_auto] lg:grid-cols-1">
+            <div className="flex items-start gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-muted">
+                <Calculator className="size-5 text-muted-foreground" />
+              </span>
+              <div className="min-w-0">
+                <CardTitle>Estimated medical specials</CardTitle>
+                <CardDescription>
+                  {totalCount > 0 ? `${totalCount} treatment item${totalCount === 1 ? '' : 's'} selected` : 'Nothing selected yet'}
+                </CardDescription>
+              </div>
             </div>
-          </div>
-          <div className="rounded-lg border bg-muted/40 px-3 py-2 text-right">
-            <p className="text-xs font-medium text-muted-foreground">Reasonable value range</p>
-            <p className="text-base font-semibold text-foreground">{formatRange(totalRange)}</p>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Alert>
-            <CheckCircle2 data-icon="inline-start" />
-            <AlertDescription>
-              No medical bills are entered here. Insurers often negotiate or reduce charges, so this calculator estimates low, mid, and high medical specials from treatment counts.
-            </AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
+            <div className="rounded-lg border bg-muted/40 px-3 py-2 text-left sm:text-right lg:text-left">
+              <p className="text-xs font-medium text-muted-foreground">Reasonable value range</p>
+              <p className="text-base font-semibold text-foreground">{formatRange(totalRange)}</p>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Alert>
+              <CheckCircle2 data-icon="inline-start" />
+              <AlertDescription>
+                No medical bills are entered here. Insurers often negotiate or reduce charges, so this calculator estimates low, mid, and high medical specials from treatment counts.
+              </AlertDescription>
+            </Alert>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

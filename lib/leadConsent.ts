@@ -10,6 +10,7 @@ export function attorneyDeliveryConsentText(attorney: ResponsibleAttorney): stri
   return [
     `I authorize California Settlement Calculator to send my calculator inputs, estimate results, and contact information to ${attorney.name}, State Bar No. ${attorney.barNumber}.`,
     `I authorize ${attorney.name} or the law firm responsible for this attorney advertisement to call or text me at the phone number I provide about my auto injury inquiry, including by automated technology.`,
+    'I agree to receive a one-time SMS verification code for this unlock, and I understand message and data rates may apply.',
     'I understand consent is not required to view my estimate, this does not create an attorney-client relationship, and California Settlement Calculator may be compensated for a qualified lead.'
   ].join(' ');
 }

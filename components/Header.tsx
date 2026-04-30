@@ -47,7 +47,7 @@ export default function Header({ enableCalculatorReset = false }: HeaderProps) {
               </div>
             </Link>
 
-            <nav className="hidden items-center gap-1 md:flex" aria-label="Main navigation">
+            <nav className="hidden items-center gap-1 lg:flex" aria-label="Main navigation">
               {navItems.map((item) => (
                 <Link
                   key={item.href}
@@ -65,7 +65,7 @@ export default function Header({ enableCalculatorReset = false }: HeaderProps) {
 
             <motion.button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="flex h-11 w-11 items-center justify-center rounded-lg border border-slate-200 text-slate-700 transition hover:bg-slate-50 md:hidden"
+              className="flex h-11 w-11 items-center justify-center rounded-lg border border-slate-200 text-slate-700 transition hover:bg-slate-50 lg:hidden"
               aria-label="Toggle menu"
               aria-expanded={isMenuOpen}
               whileTap={shouldReduceMotion ? undefined : { scale: 0.96 }}
@@ -88,7 +88,7 @@ export default function Header({ enableCalculatorReset = false }: HeaderProps) {
           <AnimatePresence initial={false}>
             {isMenuOpen && (
               <motion.div
-                className="md:hidden"
+                className="lg:hidden"
                 initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, height: 0 }}

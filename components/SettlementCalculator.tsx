@@ -819,6 +819,7 @@ function UnlockActionPanel({
   const [error, setError] = useState<string | null>(null);
   const shouldReduceMotion = Boolean(useReducedMotion());
   const panelMotion = reducedMotionFade(shouldReduceMotion);
+  const otpLength = otpSent?.otpLength || 6;
 
   useEffect(() => {
     setPhone('');
@@ -1011,7 +1012,7 @@ function UnlockActionPanel({
                     Send my results to {attorney.name}
                   </FieldLabel>
                   <FieldDescription>
-                    I give permission to send my calculator results and contact information to {attorney.name}, State Bar No. {attorney.barNumber}. This does not create an attorney-client relationship.
+                    I give permission to send my calculator results and contact information to {attorney.name}, State Bar No. {attorney.barNumber}. I also agree that {attorney.name} or the responsible law firm may call or text me about this auto injury inquiry, including by automated technology. This does not create an attorney-client relationship.
                   </FieldDescription>
                 </FieldContent>
               </Field>
@@ -1043,7 +1044,7 @@ function UnlockActionPanel({
               </Button>
             </div>
             <FieldDescription>
-              We use the phone number for this one-time unlock and, only with consent, attorney follow-up.
+              We use this number for a one-time SMS verification code and, only with your consent, attorney follow-up. Message and data rates may apply. See the <a href="/terms" className="font-medium text-sky-700 underline">Terms</a> and <a href="/privacy" className="font-medium text-sky-700 underline">Privacy Policy</a>.
             </FieldDescription>
           </Field>
 
@@ -1053,7 +1054,7 @@ function UnlockActionPanel({
                 <Field>
                   <FieldLabel>
                     <KeyRound data-icon="inline-start" />
-                    4-digit code
+                    6-digit code
                   </FieldLabel>
                   <FieldDescription>
                     Code sent to {otpSent.maskedPhone}.
@@ -1061,18 +1062,20 @@ function UnlockActionPanel({
                     {otpSent.devCode && ` Development code: ${otpSent.devCode}.`}
                   </FieldDescription>
                   <div className="grid gap-3 md:grid-cols-[1fr_auto]">
-                    <InputOTP maxLength={4} value={code} onChange={setCode}>
+                    <InputOTP maxLength={otpLength} value={code} onChange={setCode}>
                       <InputOTPGroup>
                         <InputOTPSlot index={0} />
                         <InputOTPSlot index={1} />
                         <InputOTPSlot index={2} />
                         <InputOTPSlot index={3} />
+                        <InputOTPSlot index={4} />
+                        <InputOTPSlot index={5} />
                       </InputOTPGroup>
                     </InputOTP>
                     <Button
                       type="button"
                       onClick={verifyCode}
-                      disabled={isVerifying || code.length !== 4}
+                      disabled={isVerifying || code.length !== otpLength}
                       className="h-10 bg-sky-700 text-white hover:bg-sky-600"
                     >
                       {isVerifying ? 'Verifying...' : 'Unlock estimate'}
@@ -1402,19 +1405,20 @@ function StartCalculatorScreen({
     'Real-world claim insight, not generic guesswork',
     'Free to use. No gimmicks. No charge.',
     'No AI used to derive claim value',
-    'Educational estimate, not legal or professional advice'
+    'Educational estimate, not legal or professional advice',
+    'Treatment-based medical estimate, not raw bill entry'
   ];
   const shouldReduceMotion = Boolean(useReducedMotion());
 
   return (
     <motion.section
       aria-labelledby="calculator-start-heading"
-      className="mx-auto max-w-6xl overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
+      className="mx-auto max-w-6xl overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(22rem,28rem)]"
       variants={staggerContainer}
       initial={false}
       animate="visible"
     >
-      <motion.div className="aspect-[16/17] w-full overflow-hidden bg-slate-100" variants={fadeUpItem}>
+      <motion.div className="aspect-[16/17] w-full overflow-hidden bg-slate-100 lg:hidden" variants={fadeUpItem}>
         <img
           src="/marketing/settlement-hero.webp"
           alt="Relieved California auto accident claimant holding a phone and settlement cash near a parked car"
@@ -1426,10 +1430,10 @@ function StartCalculatorScreen({
         />
       </motion.div>
 
-      <div className="p-6 sm:p-8 lg:p-10">
+      <div className="p-6 sm:p-8 lg:flex lg:min-h-[560px] lg:flex-col lg:justify-center lg:p-10 xl:min-h-[620px] xl:p-12">
         <motion.h1
           id="calculator-start-heading"
-          className="max-w-3xl text-3xl font-semibold leading-[1.05] tracking-tight text-slate-950 sm:text-5xl"
+          className="max-w-3xl text-3xl font-semibold leading-[1.05] tracking-tight text-slate-950 sm:text-5xl lg:max-w-2xl"
           variants={fadeUpItem}
         >
           Estimate Your California Auto Injury Claim
@@ -1476,9 +1480,55 @@ function StartCalculatorScreen({
               <ArrowRight data-icon="inline-end" />
             </Button>
         </motion.div>
+
+        <motion.div className="mt-8 hidden grid-cols-2 gap-3 lg:grid" variants={staggerContainer}>
+          {trustPoints.map((point) => (
+            <motion.div
+              key={point}
+              className="flex min-h-14 items-center gap-3 rounded-lg bg-slate-50 px-3 py-3 ring-1 ring-slate-200"
+              variants={fadeUpItem}
+              whileHover={shouldReduceMotion ? undefined : { y: -2 }}
+              transition={gentleSpring}
+            >
+              <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-emerald-700 text-white">
+                <Check className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <span className="text-sm font-medium leading-5 text-slate-800">{point}</span>
+            </motion.div>
+          ))}
+        </motion.div>
       </div>
 
-      <aside className="border-t border-slate-200 bg-slate-50">
+      <motion.aside
+        className="hidden border-l border-slate-200 bg-slate-50 p-4 lg:grid lg:h-[560px] lg:grid-rows-[minmax(0,1.08fr)_minmax(0,0.92fr)] lg:gap-4 xl:h-[620px] xl:p-5"
+        variants={staggerContainer}
+        aria-label="Calculator preview imagery"
+      >
+        <motion.div className="min-h-0 overflow-hidden rounded-lg bg-slate-100 shadow-sm ring-1 ring-slate-200" variants={fadeUpItem}>
+          <img
+            src="/marketing/settlement-hero.webp"
+            alt="Relieved California auto accident claimant holding a phone and settlement cash near a parked car"
+            width={1080}
+            height={1920}
+            fetchPriority="high"
+            decoding="async"
+            className="h-full w-full object-cover object-[center_35%]"
+          />
+        </motion.div>
+        <motion.div className="min-h-0 overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-slate-200" variants={fadeUpItem}>
+          <img
+            src="/marketing/settlement-trust.webp"
+            alt="Young woman with a neck brace reviewing her settlement on a phone at a kitchen table"
+            width={1080}
+            height={1920}
+            loading="lazy"
+            decoding="async"
+            className="h-full w-full object-cover object-[center_32%]"
+          />
+        </motion.div>
+      </motion.aside>
+
+      <aside className="border-t border-slate-200 bg-slate-50 lg:hidden">
         <motion.div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-3" variants={staggerContainer}>
           {trustPoints.map((point) => (
             <motion.div
@@ -1971,8 +2021,13 @@ export default function SettlementCalculator() {
     }
   };
 
-  const validateCurrentStep = async () => {
-    switch (currentStep) {
+  const showTemporaryValidationError = useCallback(() => {
+    setShowValidationError(true);
+    window.setTimeout(() => setShowValidationError(false), 3000);
+  }, []);
+
+  const validateStep = async (step: number) => {
+    switch (step) {
       case 1:
         {
           const requiredFieldsAreValid = await trigger([
@@ -2062,6 +2117,8 @@ export default function SettlementCalculator() {
     }
   };
 
+  const validateCurrentStep = () => validateStep(currentStep);
+
   const nextStep = async () => {
     if (stepTransitionLockedRef.current || stepTransition.active) return;
     stepTransitionLockedRef.current = true;
@@ -2070,8 +2127,7 @@ export default function SettlementCalculator() {
 
     if (!isValid) {
       stepTransitionLockedRef.current = false;
-      setShowValidationError(true);
-      setTimeout(() => setShowValidationError(false), 3000);
+      showTemporaryValidationError();
       return;
     }
 
@@ -2109,11 +2165,64 @@ export default function SettlementCalculator() {
     }
   };
 
+  const handleStepJump = async (requestedStep: number) => {
+    if (stepTransitionLockedRef.current || stepTransition.active || isCalculating) return;
+
+    const targetStep = clampStep(requestedStep);
+    if (targetStep === currentStep) return;
+
+    setCalculationError(null);
+
+    if (targetStep < currentStep) {
+      if (preview) {
+        setPreview(null);
+      }
+      setShowValidationError(false);
+      stepTransitionLockedRef.current = true;
+      writeCalculatorHistoryState('replaceState', { [HISTORY_STATE_KEY]: { step: targetStep } });
+      await runStepTransition(targetStep, 'back', 'Loading previous section');
+      return;
+    }
+
+    stepTransitionLockedRef.current = true;
+    setShowValidationError(false);
+
+    for (let step = currentStep; step < targetStep; step += 1) {
+      const stepIsValid = await validateStep(step);
+
+      if (!stepIsValid) {
+        if (step === currentStep) {
+          stepTransitionLockedRef.current = false;
+          showTemporaryValidationError();
+          return;
+        }
+
+        pushStepHistory(step);
+        await runStepTransition(
+          step,
+          'forward',
+          STEP_TRANSITION_MESSAGES[step - 1] || 'Opening required section'
+        );
+        showTemporaryValidationError();
+        return;
+      }
+    }
+
+    if (preview) {
+      setPreview(null);
+    }
+    pushStepHistory(targetStep);
+    await runStepTransition(
+      targetStep,
+      'forward',
+      STEP_TRANSITION_MESSAGES[Math.max(1, targetStep - 1)] || `Opening ${STEPS[targetStep - 1].name}`
+    );
+  };
+
   const handleCalculate = async () => {
     const isValid = await validateCurrentStep();
     if (!isValid) {
-      setShowValidationError(true);
-      setTimeout(() => setShowValidationError(false), 3000);
+      showTemporaryValidationError();
       return;
     }
 
@@ -2125,6 +2234,7 @@ export default function SettlementCalculator() {
   const liveCompletedCount = liveProfileItems.filter((item) => item.complete).length;
   const liveStrength = profileState(liveCompletedCount);
   const stepProgress = Math.round((currentStep / STEPS.length) * 100);
+  const desktopRailProgress = ((currentStep - 0.5) / STEPS.length) * 100;
   const abandonDialog = (
     <AbandonResetDialog
       open={isAbandonDialogOpen}
@@ -2197,15 +2307,18 @@ export default function SettlementCalculator() {
   }
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5">
-      <div className={`grid min-w-0 gap-5 ${currentStep === 1 ? 'grid-cols-1' : 'lg:grid-cols-[300px_1fr]'}`}>
+    <div className="mx-auto max-w-7xl space-y-5">
+      <div className={`grid min-w-0 gap-5 ${currentStep === 1 ? 'grid-cols-1' : 'lg:grid-cols-[280px_minmax(0,1fr)] xl:grid-cols-[300px_minmax(0,1fr)]'}`}>
         <div className={`${currentStep === 1 ? 'hidden' : 'hidden lg:sticky lg:top-4 lg:block lg:self-start'}`}>
           <ProfileStrengthCard data={watchData} turnstileToken={turnstileToken} currentStep={currentStep} />
         </div>
 
         <motion.div
           layout
-          className="relative min-w-0 w-full max-w-[calc(100vw-2rem)] overflow-visible rounded-lg border border-slate-200 bg-white shadow-sm sm:max-w-none"
+          className={cn(
+            'relative min-w-0 w-full max-w-[calc(100vw-2rem)] overflow-visible rounded-lg border border-slate-200 bg-white shadow-sm sm:max-w-none',
+            currentStep === 1 && 'lg:mx-auto lg:max-w-5xl'
+          )}
           data-form-container
           initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
@@ -2224,7 +2337,7 @@ export default function SettlementCalculator() {
                   Step {currentStep} of {STEPS.length} · {stepProgress}% complete
                 </p>
               </div>
-              <div className="hidden shrink-0 items-center gap-1 sm:flex">
+              <div className="hidden shrink-0 items-center gap-1 sm:flex lg:hidden" aria-hidden="true">
                 {STEPS.map((step) => {
                   const Icon = step.icon;
                   return (
@@ -2243,8 +2356,43 @@ export default function SettlementCalculator() {
                       whileHover={shouldReduceMotion ? undefined : { y: -2 }}
                       transition={softSpring}
                     >
-                      <Icon className="h-4 w-4" />
+                      <Icon className="h-4 w-4" aria-hidden="true" />
                     </motion.div>
+                  );
+                })}
+              </div>
+              <div className="hidden shrink-0 items-center gap-1 lg:flex" aria-label="Calculator steps">
+                {STEPS.map((step) => {
+                  const Icon = step.icon;
+                  const isCurrentStep = currentStep === step.id;
+                  const isStepReached = currentStep >= step.id;
+                  const stepControlsDisabled = stepTransition.active || isCalculating;
+
+                  return (
+                    <motion.button
+                      key={step.id}
+                      type="button"
+                      onClick={() => void handleStepJump(step.id)}
+                      disabled={stepControlsDisabled || isCurrentStep}
+                      aria-current={isCurrentStep ? 'step' : undefined}
+                      aria-label={isCurrentStep ? `${step.name} step, current` : `Go to ${step.name} step`}
+                      className={cn(
+                        'flex h-9 w-9 items-center justify-center rounded-lg transition focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-default disabled:opacity-100',
+                        isStepReached
+                          ? 'bg-emerald-700 text-white'
+                          : 'bg-white text-slate-400 ring-1 ring-slate-200',
+                        !isCurrentStep && !stepControlsDisabled && 'cursor-pointer hover:-translate-y-0.5 hover:ring-slate-300'
+                      )}
+                      title={isCurrentStep ? `${step.name} step` : `Go to ${step.name} step`}
+                      animate={shouldReduceMotion ? undefined : {
+                        scale: isCurrentStep ? 1.06 : 1,
+                        y: isCurrentStep ? -1 : 0
+                      }}
+                      whileHover={shouldReduceMotion || isCurrentStep || stepControlsDisabled ? undefined : { y: -2 }}
+                      transition={softSpring}
+                    >
+                      <Icon className="h-4 w-4" aria-hidden="true" />
+                    </motion.button>
                   );
                 })}
               </div>
@@ -2252,12 +2400,27 @@ export default function SettlementCalculator() {
             <Progress
               value={stepProgress}
               aria-label={`Calculator progress: ${stepProgress}% complete`}
-              className="mt-4 h-2 bg-slate-200"
+              className="mt-4 h-2 bg-slate-200 lg:hidden"
               indicatorClassName="bg-emerald-700"
             />
-            <div className="mt-4 hidden grid-cols-5 gap-2 text-xs font-medium text-slate-500 sm:grid">
+            <div
+              className="mt-4 hidden h-2 overflow-hidden rounded-full bg-slate-200 lg:block"
+              role="presentation"
+              aria-hidden="true"
+            >
+              <div
+                className="h-full rounded-full bg-emerald-700 transition-[width] duration-300 ease-out"
+                style={{ width: `${desktopRailProgress}%` }}
+              />
+            </div>
+            <div className="mt-4 hidden grid-cols-5 gap-2 text-xs font-medium text-slate-500 sm:grid lg:hidden">
               {STEPS.map((step) => (
                 <span key={step.id} className={currentStep >= step.id ? 'text-emerald-800' : ''}>{step.shortName}</span>
+              ))}
+            </div>
+            <div className="mt-4 hidden grid-cols-5 text-center text-xs font-medium text-slate-500 lg:grid">
+              {STEPS.map((step) => (
+                <span key={step.id} className={cn('px-1', currentStep >= step.id ? 'text-emerald-800' : '')}>{step.shortName}</span>
               ))}
             </div>
           </div>
@@ -2342,7 +2505,7 @@ export default function SettlementCalculator() {
 
             {!preview && (
             <div className="mt-8 rounded-lg border border-slate-200 bg-slate-50 p-2">
-              <div className="grid w-full grid-cols-2 items-center gap-2">
+              <div className="grid w-full grid-cols-2 items-center gap-2 sm:ml-auto sm:max-w-md">
                 <Button
                   type="button"
                   onClick={prevStep}

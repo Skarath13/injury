@@ -54,7 +54,7 @@ function YesNoToggle({
       spacing={1}
       aria-label={ariaLabel}
       aria-invalid={invalid}
-      className="grid w-full grid-cols-2 gap-1 rounded-[10px] border border-slate-200 bg-slate-100/80 p-1 shadow-inner sm:w-56"
+      className="grid w-full grid-cols-2 gap-1 rounded-[10px] border border-slate-200 bg-slate-100/80 p-1 shadow-inner 2xl:w-56"
     >
       <ToggleGroupItem value="yes" aria-label={`${ariaLabel}: yes`} className={yesNoToggleItemClass}>
         Yes
@@ -132,7 +132,7 @@ function ToggleQuestion({
       <motion.div
         data-invalid={invalid || undefined}
         className={cn(
-          'grid gap-3 rounded-lg border border-slate-200 bg-slate-50/80 p-3 sm:grid-cols-[minmax(0,1fr)_14rem] sm:items-center',
+          'grid gap-3 rounded-lg border border-slate-200 bg-slate-50/80 p-3 2xl:grid-cols-[minmax(0,1fr)_14rem] 2xl:items-center',
           invalid && 'border-destructive bg-destructive/5'
         )}
         animate={shouldReduceMotion ? undefined : {
@@ -252,12 +252,12 @@ export default function WorkLifeStep({
 
   return (
     <motion.div
-      className="flex flex-col gap-6"
+      className="flex flex-col gap-6 lg:grid lg:grid-cols-2 lg:items-start"
       variants={staggerContainer}
       initial={shouldReduceMotion ? false : 'hidden'}
       animate="visible"
     >
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 lg:col-span-2">
         <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Work and daily life</h2>
         <p className="max-w-2xl text-sm leading-6 text-slate-600">
           Answer the items that apply. Anything left unanswered is treated as no, except attorney status.
@@ -269,6 +269,7 @@ export default function WorkLifeStep({
         description="Wage loss is estimated from occupation, income range, and the injury/treatment profile."
         icon={Briefcase}
         iconClassName="bg-emerald-100 text-emerald-700"
+        className="lg:col-span-2"
       >
         <FieldGroup>
           <ToggleQuestion
@@ -428,7 +429,7 @@ export default function WorkLifeStep({
         description="This only changes attorney-fee context in the final explanation."
         icon={Scale}
         iconClassName="bg-sky-100 text-sky-700"
-        className="border-sky-200 bg-sky-50/70"
+        className="border-sky-200 bg-sky-50/70 lg:col-span-2"
       >
         <ToggleQuestion
           title="Do you have an attorney?"

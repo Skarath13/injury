@@ -37,9 +37,16 @@ import {
 } from '../lib/demographics';
 import { attorneyConsentCopyVersion, attorneyDeliveryConsentText } from '../lib/leadConsent';
 import {
+  buildLeadDeliveryPayload,
+  getLeadDeliveryQueueItems,
+  getLeadQualification,
+  qualifyLeadSession
+} from '../lib/leadDelivery';
+import {
   createFormStartToken,
   createLeadSession,
   decodeLocalSessionCookie,
+  decryptPhoneE164ForDelivery,
   encodeLocalSessionCookie,
   FORM_START_MIN_SECONDS,
   formStartElapsedSeconds,
@@ -148,7 +155,8 @@ function baseCase(overrides: Partial<InjuryCalculatorData> = {}): InjuryCalculat
 
 const testLeadEnv = {
   LEAD_HASH_SALT: 'test-lead-salt',
-  OTP_DEV_CODE: '1234',
+  LEAD_ENCRYPTION_KEY: 'test-lead-encryption-key',
+  OTP_DEV_CODE: '123456',
   NODE_ENV: 'test'
 };
 
@@ -166,6 +174,39 @@ async function createTestLeadSession(
   overrides: Partial<CreateLeadSessionInput> = {}
 ) {
   const data = baseCase();
+  const result = calculateSettlement(data);
+
+  return createLeadSession({
+    county: data.accidentDetails.county,
+    logicVersion: result.logicVersion,
+    logicHash: result.logicHash,
+    routingVersion: 'test-routing-v1',
+    turnstileStatus: 'verified',
+    input: data,
+    result,
+    preview: {
+      severityBand: result.severityBand,
+      caseTier: result.caseTier,
+      blurredRangeLabel: '$••,••• - $•••,•••'
+    },
+    attorney,
+    ipHash: 'ip-hash',
+    userAgentHash: 'ua-hash',
+    privacyChoiceSnapshot: createPrivacyChoiceSnapshot(createDefaultPrivacyChoices('2026-04-29T00:00:00.000Z'), false),
+    visitorCountry: 'US',
+    visitorRegionCode: 'CA',
+    visitorRegion: 'California',
+    visitorCity: 'Irvine',
+    geoEligibilityStatus: 'california',
+    ...overrides
+  }, testLeadEnv);
+}
+
+async function createTestLeadSessionForData(
+  data: InjuryCalculatorData,
+  attorney: ResponsibleAttorney | null = testAttorney,
+  overrides: Partial<CreateLeadSessionInput> = {}
+) {
   const result = calculateSettlement(data);
 
   return createLeadSession({
@@ -461,7 +502,8 @@ test('attorney delivery start records consent metadata before OTP verification',
   const updated = await getLeadSession(session.id, testLeadEnv);
 
   assert.equal(otp.provider, 'dev_stub');
-  assert.equal(otp.devCode, '1234');
+  assert.equal(otp.devCode, '123456');
+  assert.equal(otp.otpLength, 6);
   assert.equal(updated?.attorneyDeliveryConsent, true);
   assert.equal(updated?.phoneContactConsent, true);
   assert.equal(updated?.consentCopyVersion, testAttorney.consentCopyVersion);
@@ -469,7 +511,11 @@ test('attorney delivery start records consent metadata before OTP verification',
   assert.ok(updated?.attorneyDeliveryConsentAt);
   assert.ok(updated?.phoneContactConsentAt);
   assert.ok(updated?.phoneHash);
+  assert.equal(updated?.phoneLast4, '1212');
+  assert.ok(updated?.phoneE164Encrypted?.startsWith('v1.'));
+  assert.equal(await decryptPhoneE164ForDelivery(updated?.phoneE164Encrypted || '', testLeadEnv), '+19495551212');
   assert.equal(updated?.otpStatus, 'sent');
+  assert.equal(updated?.otpProvider, 'dev_stub');
 });
 
 test('prior attorney-delivery submission marks repeat phone no-charge before OTP verification', async () => {
@@ -526,7 +572,7 @@ test('outside-California verified OTP never becomes a deliverable attorney lead'
   assert.ok(stored);
   stored.geoEligibilityStatus = 'outside_california';
 
-  const unlocked = await verifyOtpUnlock(session.id, '1234', testLeadEnv);
+  const unlocked = await verifyOtpUnlock(session.id, '123456', testLeadEnv);
   assert.equal(unlocked.session.otpStatus, 'verified');
   assert.equal(unlocked.session.leadDeliveryStatus, 'outside_california_no_delivery');
 });
@@ -540,6 +586,210 @@ test('no-attorney preview can unlock without SMS', async () => {
   assert.equal(updated?.attorneyId, null);
   assert.equal(updated?.phoneHash, null);
   assert.equal(updated?.otpStatus, 'not_started');
+});
+
+test('lead qualification starts as candidate and estimate-only becomes no-sale', async () => {
+  const session = await createTestLeadSession();
+  const candidate = await getLeadQualification(session.id, testLeadEnv);
+
+  assert.equal(candidate?.qualificationStatus, 'candidate');
+  assert.equal(candidate?.verificationStatus, 'unverified');
+  assert.equal(candidate?.temperature, 'not_lead');
+  assert.ok(candidate?.reasons.includes('otp_not_started'));
+
+  await unlockEstimateOnly(session.id, testLeadEnv);
+  const noSale = await getLeadQualification(session.id, testLeadEnv);
+  const queued = await getLeadDeliveryQueueItems(session.id, testLeadEnv);
+
+  assert.equal(noSale?.qualificationStatus, 'no_sale');
+  assert.equal(noSale?.temperature, 'not_lead');
+  assert.ok(noSale?.reasons.includes('estimate_only_no_delivery'));
+  assert.equal(queued.length, 0);
+});
+
+test('verified valid lead is queued with readable payload and encrypted phone reference', async () => {
+  const session = await createTestLeadSession();
+  await startOtpUnlock(session.id, '(949) 555-7777', {
+    attorneyDeliveryConsent: true,
+    phoneContactConsent: true,
+    consentCopyVersion: attorneyConsentCopyVersion(testAttorney),
+    consentText: attorneyDeliveryConsentText(testAttorney)
+  }, testLeadEnv);
+
+  const unlocked = await verifyOtpUnlock(session.id, '123456', testLeadEnv);
+  const qualification = await getLeadQualification(session.id, testLeadEnv);
+  const queued = await getLeadDeliveryQueueItems(session.id, testLeadEnv);
+
+  assert.equal(unlocked.session.leadDeliveryStatus, 'ready_for_delivery');
+  assert.equal(qualification?.qualificationStatus, 'valid');
+  assert.equal(qualification?.verificationStatus, 'verified');
+  assert.equal(qualification?.temperature, 'cold');
+  assert.equal(queued.length, 1);
+  assert.equal(queued[0].status, 'queued');
+  assert.equal(queued[0].payload.schemaVersion, 'lead-delivery-2026-04-30-v1');
+  assert.equal(queued[0].payload.phoneContact.maskedPhone, '(***) ***-7777');
+  assert.ok(queued[0].payload.phoneContact.encryptedPhoneRef?.startsWith('v1.'));
+  assert.equal(queued[0].payload.caseSummary.age, 35);
+  assert.ok(queued[0].payload.caseSummary.readableSections.some((section) => section.title === 'Case snapshot'));
+  assert.equal(JSON.stringify(queued[0].payload).includes('1990-01-01'), false);
+});
+
+test('qualification temperature maps cold warm and hot leads', async () => {
+  const coldSession = await createTestLeadSession();
+  const moderateData = baseCase({
+    injuries: {
+      ...baseCase().injuries,
+      bodyMap: [{
+        slug: 'knees',
+        side: 'left',
+        view: 'front',
+        severity: 3,
+        label: 'Left knee'
+      }],
+      primaryInjury: 'Knee Injury'
+    }
+  });
+  const hotData = baseCase({
+    treatment: {
+      ...baseCase().treatment,
+      surgeryRecommended: true,
+      surgeryType: 'moderate'
+    }
+  });
+  const warmSession = await createTestLeadSessionForData(moderateData);
+  const hotSession = await createTestLeadSessionForData(hotData);
+
+  for (const session of [coldSession, warmSession, hotSession]) {
+    await startOtpUnlock(session.id, '(949) 555-8888', {
+      attorneyDeliveryConsent: true,
+      phoneContactConsent: true,
+      consentCopyVersion: attorneyConsentCopyVersion(testAttorney),
+      consentText: attorneyDeliveryConsentText(testAttorney)
+    }, {
+      ...testLeadEnv,
+      LEAD_HASH_SALT: `${testLeadEnv.LEAD_HASH_SALT}-${session.id}`
+    });
+    await verifyOtpUnlock(session.id, '123456', {
+      ...testLeadEnv,
+      LEAD_HASH_SALT: `${testLeadEnv.LEAD_HASH_SALT}-${session.id}`
+    });
+  }
+
+  assert.equal((await getLeadQualification(coldSession.id, testLeadEnv))?.temperature, 'cold');
+  assert.equal((await getLeadQualification(warmSession.id, testLeadEnv))?.temperature, 'warm');
+  assert.equal((await getLeadQualification(hotSession.id, testLeadEnv))?.temperature, 'hot');
+});
+
+test('duplicate and non-California verified sessions never queue', async () => {
+  const firstSession = await createTestLeadSession();
+  const secondSession = await createTestLeadSession();
+  const consent = {
+    attorneyDeliveryConsent: true,
+    phoneContactConsent: true,
+    consentCopyVersion: attorneyConsentCopyVersion(testAttorney),
+    consentText: attorneyDeliveryConsentText(testAttorney)
+  };
+
+  await startOtpUnlock(firstSession.id, '(949) 555-9090', consent, testLeadEnv);
+  await startOtpUnlock(secondSession.id, '(949) 555-9090', consent, testLeadEnv);
+  await verifyOtpUnlock(secondSession.id, '123456', testLeadEnv);
+
+  const duplicateQualification = await getLeadQualification(secondSession.id, testLeadEnv);
+  const duplicateQueue = await getLeadDeliveryQueueItems(secondSession.id, testLeadEnv);
+
+  assert.equal(duplicateQualification?.qualificationStatus, 'no_sale');
+  assert.equal(duplicateQualification?.temperature, 'not_lead');
+  assert.equal(duplicateQueue.length, 0);
+
+  const outsideSession = await createTestLeadSession(testAttorney, {
+    geoEligibilityStatus: 'outside_california',
+    visitorRegionCode: 'NV',
+    visitorRegion: 'Nevada'
+  });
+  await assert.rejects(() => startOtpUnlock(outsideSession.id, '(949) 555-9191', consent, testLeadEnv));
+
+  assert.equal((await getLeadDeliveryQueueItems(outsideSession.id, testLeadEnv)).length, 0);
+});
+
+test('payload builder is human-readable and omits exact date of birth', async () => {
+  const session = await createTestLeadSession();
+  await startOtpUnlock(session.id, '(949) 555-8080', {
+    attorneyDeliveryConsent: true,
+    phoneContactConsent: true,
+    consentCopyVersion: attorneyConsentCopyVersion(testAttorney),
+    consentText: attorneyDeliveryConsentText(testAttorney)
+  }, testLeadEnv);
+  const verified = await verifyOtpUnlock(session.id, '123456', testLeadEnv);
+  const qualification = qualifyLeadSession(verified.session);
+  const payload = buildLeadDeliveryPayload(verified.session, qualification, '2026-04-30T00:00:00.000Z');
+  const payloadText = JSON.stringify(payload);
+
+  assert.equal(payload.generatedAt, '2026-04-30T00:00:00.000Z');
+  assert.equal(payload.caseSummary.accidentCounty, 'Orange');
+  assert.equal(payload.caseSummary.age, 35);
+  assert.ok(payload.caseSummary.readableSections.length >= 3);
+  assert.equal(payloadText.includes('1990-01-01'), false);
+});
+
+test('Twilio Verify start and check use Verify endpoints without returning a dev code', async () => {
+  const session = await createTestLeadSession();
+  const originalFetch = globalThis.fetch;
+  const calls: Array<{ url: string; body: string }> = [];
+  const twilioEnv = {
+    ...testLeadEnv,
+    SMS_PROVIDER: 'twilio_verify',
+    TWILIO_ACCOUNT_SID: 'ACtest',
+    TWILIO_AUTH_TOKEN: 'auth-token',
+    TWILIO_VERIFY_SERVICE_SID: 'VAservice',
+    OTP_DEV_CODE: undefined
+  };
+
+  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    const body = init?.body?.toString() || '';
+    calls.push({ url, body });
+
+    if (url.endsWith('/Verifications')) {
+      return new Response(JSON.stringify({
+        sid: 'VEverification',
+        status: 'pending',
+        channel: 'sms'
+      }), { status: 201, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    return new Response(JSON.stringify({
+      sid: 'VEcheck',
+      status: 'approved'
+    }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  }) as typeof fetch;
+
+  try {
+    const otp = await startOtpUnlock(session.id, '(949) 555-6060', {
+      attorneyDeliveryConsent: true,
+      phoneContactConsent: true,
+      consentCopyVersion: attorneyConsentCopyVersion(testAttorney),
+      consentText: attorneyDeliveryConsentText(testAttorney)
+    }, twilioEnv);
+    const started = await getLeadSession(session.id, twilioEnv);
+
+    assert.equal(otp.provider, 'twilio_verify');
+    assert.equal(otp.providerStatus, 'pending');
+    assert.equal(otp.devCode, undefined);
+    assert.equal(started?.twilioVerifySid, 'VEverification');
+    assert.equal(started?.otpProvider, 'twilio_verify');
+    assert.equal(calls[0].url, 'https://verify.twilio.com/v2/Services/VAservice/Verifications');
+    assert.match(calls[0].body, /To=%2B19495556060/);
+    assert.match(calls[0].body, /Channel=sms/);
+
+    const unlocked = await verifyOtpUnlock(session.id, '111111', twilioEnv);
+
+    assert.equal(unlocked.session.otpStatus, 'verified');
+    assert.equal(calls[1].url, 'https://verify.twilio.com/v2/Services/VAservice/VerificationCheck');
+    assert.match(calls[1].body, /VerificationSid=VEverification/);
+    assert.match(calls[1].body, /Code=111111/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test('default privacy choices and GPC block marketing pixels', () => {

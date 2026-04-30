@@ -107,7 +107,7 @@ export default function Home() {
       
       <div className="min-h-screen bg-gradient-to-b from-slate-50 via-white to-slate-50">
         <Header enableCalculatorReset />
-        <main className="container mx-auto px-4 sm:px-6 py-5 sm:py-8">
+        <main className="container mx-auto px-4 py-5 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
         <div className="mx-auto max-w-6xl">
           <section aria-label="Settlement Calculator">
             <SettlementCalculator />

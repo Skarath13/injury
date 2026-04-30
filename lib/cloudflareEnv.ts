@@ -31,6 +31,9 @@ export interface WorkerEnv {
   TWILIO_ACCOUNT_SID?: string;
   TWILIO_AUTH_TOKEN?: string;
   TWILIO_FROM_NUMBER?: string;
+  TWILIO_VERIFY_SERVICE_SID?: string;
+  LEAD_ENCRYPTION_KEY?: string;
+  LEAD_ENCRYPTION_KEY_VERSION?: string;
   GEO_ACCESS_MODE?: string;
   GEO_ALLOW_UNKNOWN?: string;
   NODE_ENV?: string;

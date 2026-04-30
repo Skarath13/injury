@@ -229,13 +229,13 @@ export default function QuickFactsStep({
   }, [calendarOpen]);
 
   return (
-    <div className="flex flex-col gap-6">
-      <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Quick Facts</h2>
+    <div className="flex flex-col gap-6 lg:grid lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start">
+      <h2 className="text-2xl font-semibold tracking-tight text-slate-950 lg:col-span-2">Quick Facts</h2>
 
-      <FieldGroup className="max-w-full">
+      <FieldGroup className="max-w-full lg:col-start-1 lg:row-start-2">
         <Field
           data-invalid={Boolean(errors.accidentDetails?.dateOfAccident)}
-          className="w-full max-w-[19rem] min-w-0 sm:max-w-sm"
+          className="w-full max-w-[19rem] min-w-0 sm:max-w-sm lg:max-w-none"
         >
           <FieldLabel htmlFor="accident-date-picker">
             <Calendar className="h-4 w-4 text-sky-700" />
@@ -246,6 +246,9 @@ export default function QuickFactsStep({
             type="hidden"
             {...dateRegistration}
           />
+          <FieldDescription className="hidden lg:block">
+            Use the accident date or your closest estimate.
+          </FieldDescription>
           <div className="relative">
             <button
               id="accident-date-picker"
@@ -258,7 +261,7 @@ export default function QuickFactsStep({
               aria-invalid={Boolean(errors.accidentDetails?.dateOfAccident)}
               onClick={() => setCalendarOpen((open) => !open)}
               className={cn(
-                'flex h-11 w-full max-w-full min-w-0 items-center justify-between gap-3 rounded-lg border border-input bg-white px-3 py-2 text-left text-base outline-none transition-colors',
+                'flex h-11 w-full max-w-full min-w-0 items-center justify-between gap-3 rounded-lg border border-input bg-white px-3 py-2 text-left text-base outline-none transition-colors lg:h-[3.25rem]',
                 'focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50',
                 errors.accidentDetails?.dateOfAccident && 'border-destructive ring-3 ring-destructive/20'
               )}
@@ -335,7 +338,7 @@ export default function QuickFactsStep({
         </Field>
       </FieldGroup>
 
-      <FieldSet>
+      <FieldSet className="lg:col-span-2 lg:row-start-3">
         <FieldLegend className="flex items-center gap-2">
           <Car className="h-4 w-4 text-amber-600" />
           Vehicle damage <span className="text-amber-600">*</span>
@@ -351,7 +354,7 @@ export default function QuickFactsStep({
           onValueChange={(value) => commitDamageSelection(value as VehicleDamageValue)}
           aria-label="Vehicle damage"
           aria-invalid={Boolean(errors.accidentDetails?.impactSeverity)}
-          className="grid gap-3 sm:grid-cols-2"
+          className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"
         >
           {damageOptions.map((option) => {
             const inputId = `vehicle-damage-${option.value}`;
@@ -363,20 +366,21 @@ export default function QuickFactsStep({
                 htmlFor={inputId}
                 className={cn(
                   damageToggleItemClass,
+                  'lg:min-h-[14rem] lg:flex-col',
                   selected && 'border-primary bg-primary/5 shadow-md'
                 )}
               >
-                <span aria-hidden="true" className="relative h-full w-24 shrink-0 overflow-hidden bg-muted sm:w-28">
+                <span aria-hidden="true" className="relative h-full w-24 shrink-0 overflow-hidden bg-muted sm:w-28 lg:h-32 lg:w-full lg:shrink">
                   <Image
                     src={option.imageSrc}
                     alt=""
                     fill
-                    sizes="(min-width: 640px) 112px, 96px"
+                    sizes="(min-width: 1024px) 25vw, (min-width: 640px) 112px, 96px"
                     className="h-full w-full object-cover"
                     draggable={false}
                   />
                 </span>
-                <span className="flex min-w-0 flex-1 flex-col justify-center gap-1.5 p-3 pr-11">
+                <span className="flex min-w-0 flex-1 flex-col justify-center gap-1.5 p-3 pr-11 lg:justify-start lg:pr-10">
                   <span className="text-sm font-semibold leading-tight">{option.label}</span>
                   <span className="damage-detail text-xs leading-snug text-muted-foreground">
                     {option.detail}
@@ -399,7 +403,7 @@ export default function QuickFactsStep({
         <FieldError>{errors.accidentDetails?.impactSeverity?.message}</FieldError>
       </FieldSet>
 
-      <FieldSet data-invalid={Boolean(bodyModelError)}>
+      <FieldSet data-invalid={Boolean(bodyModelError)} className="lg:col-start-2 lg:row-start-2">
         <FieldLegend className="flex items-center gap-2">
           <ScanFace className="h-4 w-4 text-sky-700" />
           Body model <span className="text-amber-600">*</span>
@@ -414,7 +418,7 @@ export default function QuickFactsStep({
           aria-label="Choose body map model"
           aria-invalid={Boolean(bodyModelError)}
           className={cn(
-            'grid w-full grid-cols-2 gap-1 rounded-[10px] border border-slate-200 bg-slate-100/80 p-1 shadow-inner',
+            'grid w-full grid-cols-2 gap-1 rounded-[10px] border border-slate-200 bg-slate-100/80 p-1 shadow-inner lg:mt-2.5',
             bodyModelError && 'border-destructive ring-3 ring-destructive/20'
           )}
         >

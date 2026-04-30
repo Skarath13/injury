@@ -246,9 +246,9 @@ export default function PrivacyChoicesManager() {
       <span id="privacy-choices" className="sr-only" aria-hidden="true" />
 
       {showNotice && (
-        <div className="fixed inset-x-0 bottom-0 z-50 animate-slide-up px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 sm:bottom-4 sm:px-4 sm:pb-0 sm:pt-0">
-          <div className="mx-auto max-w-4xl rounded-t-lg border border-slate-200 bg-white p-3 shadow-lg sm:rounded-lg sm:p-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="fixed inset-x-0 bottom-0 z-50 animate-slide-up px-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 sm:bottom-4 sm:px-4 sm:pb-0 sm:pt-0 lg:inset-x-auto lg:bottom-6 lg:right-6 lg:w-[min(28rem,calc(100vw-3rem))] lg:px-0">
+          <div className="mx-auto max-w-4xl rounded-t-lg border border-slate-200 bg-white p-3 shadow-lg sm:rounded-lg sm:p-4 lg:max-w-none">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:flex-col lg:items-stretch lg:justify-start">
               <div className="flex items-start gap-3">
                 <ShieldCheck className="mt-0.5 h-5 w-5 flex-shrink-0 text-sky-700" />
                 <div>
@@ -260,7 +260,7 @@ export default function PrivacyChoicesManager() {
                 </div>
               </div>
 
-              <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center">
+              <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center lg:grid lg:grid-cols-3">
                 <button
                   type="button"
                   onClick={keepEssentialOnly}
@@ -299,7 +299,7 @@ export default function PrivacyChoicesManager() {
           }}
         >
           <div
-            className="flex max-h-[calc(100dvh-1.5rem-env(safe-area-inset-bottom))] w-full max-w-lg flex-col overflow-hidden rounded-t-lg bg-white shadow-xl sm:max-h-[min(720px,calc(100dvh-2rem))] sm:rounded-lg"
+            className="flex max-h-[calc(100dvh-1.5rem-env(safe-area-inset-bottom))] w-full max-w-lg flex-col overflow-hidden rounded-t-lg bg-white shadow-xl sm:max-h-[min(720px,calc(100dvh-2rem))] sm:rounded-lg lg:max-w-2xl"
             role="dialog"
             aria-modal="true"
             aria-labelledby="privacy-choices-title"

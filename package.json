@@ -13,7 +13,9 @@
     "worker:tail": "wrangler tail",
     "start": "next start",
     "lint": "next lint",
-    "test": "node --import tsx --test tests/*.test.ts"
+    "test": "node --import tsx --test tests/*.test.ts",
+    "test:lead-scenarios": "node --import tsx --test tests/lead-scenarios.test.ts",
+    "test:launch": "npm test && npm run test:lead-scenarios"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.0",
