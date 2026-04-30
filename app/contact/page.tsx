@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Mail, MessageSquare, FileText } from 'lucide-react'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import { DEFAULT_OPEN_GRAPH_IMAGE } from '@/lib/seo'
 
 export const metadata: Metadata = {
   title: 'Contact Us | CA Auto Injury Settlement Calculator Support',
@@ -11,6 +12,7 @@ export const metadata: Metadata = {
     title: 'Contact Us | CA Auto Injury Settlement Calculator Support',
     description: 'Contact our California auto injury settlement calculator team. Get help with settlement estimates and calculator questions.',
     url: 'https://californiasettlementcalculator.com/contact',
+    images: [DEFAULT_OPEN_GRAPH_IMAGE],
   },
   alternates: {
     canonical: 'https://californiasettlementcalculator.com/contact',

@@ -6,7 +6,7 @@ interface Props {
 export default function CaliforniaMark({ className = 'h-10 w-10', label = 'California Settlement Calculator' }: Props) {
   return (
     <img
-      src="/california-outline.svg"
+      src="/logo.svg"
       alt={label}
       title={label}
       className={`inline-block object-contain ${className}`}

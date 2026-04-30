@@ -122,10 +122,9 @@ export default function TestPage() {
               </div>
               
               <div className="bg-white border border-slate-200 rounded-lg p-4">
-                <h3 className="text-lg font-semibold text-slate-700 mb-3">PWA Files</h3>
+                <h3 className="text-lg font-semibold text-slate-700 mb-3">App Metadata</h3>
                 <ul className="text-sm space-y-2">
                   <li><a href="/manifest.json" className="text-blue-600 hover:text-blue-700 underline" target="_blank">📱 App Manifest</a></li>
-                  <li><a href="/sw.js" className="text-blue-600 hover:text-blue-700 underline" target="_blank">⚙️ Service Worker</a></li>
                 </ul>
               </div>
             </div>

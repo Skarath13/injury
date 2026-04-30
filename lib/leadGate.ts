@@ -421,7 +421,39 @@ export async function getLeadSession(
   return getMemorySessions().get(sessionId) || null;
 }
 
-type CookieLeadSession = Omit<LeadSession, 'inputJson' | 'previewJson'>;
+type LegacyCookieLeadSession = Omit<LeadSession, 'inputJson' | 'previewJson'>;
+
+type CompactCookieLeadSession = {
+  v: 1;
+  i: string;
+  c: string;
+  u: string;
+  e: string;
+  n: string;
+  ai: string | null;
+  lv: string;
+  lh: string;
+  rv: string;
+  cv: string;
+  ad?: 1;
+  ada?: string | null;
+  pc?: 1;
+  pca?: string | null;
+  gs?: string;
+  ge?: string;
+  ph?: string | null;
+  ip?: string;
+  ua?: string;
+  ts: string;
+  os: string;
+  ls: string;
+  d?: 1;
+  r: unknown;
+  a?: unknown;
+  oh?: string | null;
+  oe?: string | null;
+  oa?: number;
+};
 
 function base64UrlEncode(value: string): string {
   return btoa(value).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
@@ -482,11 +514,38 @@ export function localSessionCookieName(sessionId: string): string {
 }
 
 export function encodeLocalSessionCookie(session: LeadSession): string {
-  const compact: CookieLeadSession = {
-    ...session
+  const compact: CompactCookieLeadSession = {
+    v: 1,
+    i: session.id,
+    c: session.createdAt,
+    u: session.updatedAt,
+    e: session.expiresAt,
+    n: session.county,
+    ai: session.attorneyId,
+    lv: session.logicVersion,
+    lh: session.logicHash,
+    rv: session.routingVersion,
+    cv: session.consentCopyVersion,
+    ad: session.attorneyDeliveryConsent ? 1 : undefined,
+    ada: session.attorneyDeliveryConsentAt,
+    pc: session.phoneContactConsent ? 1 : undefined,
+    pca: session.phoneContactConsentAt,
+    gs: session.gpcStatus,
+    ge: session.geoEligibilityStatus,
+    ph: session.phoneHash,
+    ip: session.ipHash,
+    ua: session.userAgentHash,
+    ts: session.turnstileStatus,
+    os: session.otpStatus,
+    ls: session.leadDeliveryStatus,
+    d: session.duplicateWithin30Days ? 1 : undefined,
+    r: JSON.parse(session.resultJson),
+    a: session.attorneyJson ? JSON.parse(session.attorneyJson) : undefined,
+    oh: session.otpHash,
+    oe: session.otpExpiresAt,
+    oa: session.otpAttempts
   };
-  delete (compact as Partial<LeadSession>).inputJson;
-  delete (compact as Partial<LeadSession>).previewJson;
+
   return base64UrlEncode(JSON.stringify(compact));
 }
 
@@ -494,21 +553,64 @@ export function decodeLocalSessionCookie(value: string | undefined): LeadSession
   if (!value) return null;
 
   try {
-    const compact = JSON.parse(base64UrlDecode(value)) as CookieLeadSession;
+    const compact = JSON.parse(base64UrlDecode(value)) as CompactCookieLeadSession | LegacyCookieLeadSession;
+
+    if ('v' in compact && compact.v === 1) {
+      return {
+        id: compact.i,
+        createdAt: compact.c,
+        updatedAt: compact.u,
+        expiresAt: compact.e,
+        county: compact.n,
+        attorneyId: compact.ai,
+        logicVersion: compact.lv,
+        logicHash: compact.lh,
+        routingVersion: compact.rv,
+        consentCopyVersion: compact.cv,
+        attorneyDeliveryConsent: Boolean(compact.ad),
+        attorneyDeliveryConsentAt: compact.ada || null,
+        attorneyDeliveryConsentText: null,
+        phoneContactConsent: Boolean(compact.pc),
+        phoneContactConsentAt: compact.pca || null,
+        privacyChoiceSnapshot: null,
+        gpcStatus: compact.gs || 'unknown',
+        visitorCountry: null,
+        visitorRegionCode: null,
+        visitorRegion: null,
+        visitorCity: null,
+        geoEligibilityStatus: compact.ge || 'unknown',
+        phoneHash: compact.ph || null,
+        ipHash: compact.ip || 'local-cookie',
+        userAgentHash: compact.ua || 'local-cookie',
+        turnstileStatus: compact.ts,
+        otpStatus: compact.os,
+        leadDeliveryStatus: compact.ls,
+        duplicateWithin30Days: Boolean(compact.d),
+        inputJson: '{}',
+        resultJson: JSON.stringify(compact.r),
+        previewJson: '{}',
+        attorneyJson: compact.a ? JSON.stringify(compact.a) : null,
+        otpHash: compact.oh || null,
+        otpExpiresAt: compact.oe || null,
+        otpAttempts: compact.oa || 0
+      };
+    }
+
+    const legacy = compact as LegacyCookieLeadSession;
     return {
-      ...compact,
-      attorneyDeliveryConsent: Boolean(compact.attorneyDeliveryConsent),
-      attorneyDeliveryConsentAt: compact.attorneyDeliveryConsentAt || null,
-      attorneyDeliveryConsentText: compact.attorneyDeliveryConsentText || null,
-      phoneContactConsent: Boolean(compact.phoneContactConsent),
-      phoneContactConsentAt: compact.phoneContactConsentAt || null,
-      privacyChoiceSnapshot: compact.privacyChoiceSnapshot || null,
-      gpcStatus: compact.gpcStatus || 'unknown',
-      visitorCountry: compact.visitorCountry || null,
-      visitorRegionCode: compact.visitorRegionCode || null,
-      visitorRegion: compact.visitorRegion || null,
-      visitorCity: compact.visitorCity || null,
-      geoEligibilityStatus: compact.geoEligibilityStatus || 'unknown',
+      ...legacy,
+      attorneyDeliveryConsent: Boolean(legacy.attorneyDeliveryConsent),
+      attorneyDeliveryConsentAt: legacy.attorneyDeliveryConsentAt || null,
+      attorneyDeliveryConsentText: legacy.attorneyDeliveryConsentText || null,
+      phoneContactConsent: Boolean(legacy.phoneContactConsent),
+      phoneContactConsentAt: legacy.phoneContactConsentAt || null,
+      privacyChoiceSnapshot: legacy.privacyChoiceSnapshot || null,
+      gpcStatus: legacy.gpcStatus || 'unknown',
+      visitorCountry: legacy.visitorCountry || null,
+      visitorRegionCode: legacy.visitorRegionCode || null,
+      visitorRegion: legacy.visitorRegion || null,
+      visitorCity: legacy.visitorCity || null,
+      geoEligibilityStatus: legacy.geoEligibilityStatus || 'unknown',
       inputJson: '{}',
       previewJson: '{}'
     };
@@ -648,8 +750,11 @@ export async function startOtpUnlock(
   env: WorkerEnv = getWorkerEnv()
 ): Promise<OtpSendResult> {
   const session = await getLeadSession(sessionId, env);
-  if (!session || isExpired(session.expiresAt)) {
-    throw new Error('This estimate session expired. Please calculate again.');
+  if (!session) {
+    throw new Error('Estimate session was not found. Please prepare the preview again.');
+  }
+  if (isExpired(session.expiresAt)) {
+    throw new Error('This estimate preview expired. Please prepare a new preview.');
   }
 
   const attorney = session.attorneyJson ? JSON.parse(session.attorneyJson) as ResponsibleAttorney : null;
@@ -715,8 +820,11 @@ export async function unlockEstimateOnly(
   env: WorkerEnv = getWorkerEnv()
 ): Promise<{ session: LeadSession; result: SettlementResult }> {
   const session = await getLeadSession(sessionId, env);
-  if (!session || isExpired(session.expiresAt)) {
-    throw new Error('This estimate session expired. Please calculate again.');
+  if (!session) {
+    throw new Error('Estimate session was not found. Please prepare the preview again.');
+  }
+  if (isExpired(session.expiresAt)) {
+    throw new Error('This estimate preview expired. Please prepare a new preview.');
   }
 
   session.leadDeliveryStatus = isNoDeliveryStatus(session.leadDeliveryStatus)
@@ -747,8 +855,11 @@ export async function verifyOtpUnlock(
   env: WorkerEnv = getWorkerEnv()
 ): Promise<{ session: LeadSession; result: SettlementResult; attorney: ResponsibleAttorney | null }> {
   const session = await getLeadSession(sessionId, env);
-  if (!session || isExpired(session.expiresAt)) {
-    throw new Error('This estimate session expired. Please calculate again.');
+  if (!session) {
+    throw new Error('Estimate session was not found. Please prepare the preview again.');
+  }
+  if (isExpired(session.expiresAt)) {
+    throw new Error('This estimate preview expired. Please prepare a new preview.');
   }
 
   if (!session.otpHash || !session.otpExpiresAt || isExpired(session.otpExpiresAt)) {
@@ -758,7 +869,7 @@ export async function verifyOtpUnlock(
   }
 
   if (session.otpAttempts >= 5) {
-    throw new Error('Too many verification attempts. Please calculate again.');
+    throw new Error('Too many verification attempts. Please prepare a new preview.');
   }
 
   const candidateHash = await hashOtp(session.id, code.trim(), env);

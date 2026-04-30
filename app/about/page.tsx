@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Calculator, Shield, Scale, Target } from 'lucide-react'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import { DEFAULT_OPEN_GRAPH_IMAGE } from '@/lib/seo'
 
 export const metadata: Metadata = {
   title: 'About Our CA Auto Injury Calculator',
@@ -11,6 +12,7 @@ export const metadata: Metadata = {
     title: 'About Our CA Auto Injury Calculator',
     description: 'Learn how the California auto injury settlement calculator builds an educational case profile and phone-verified estimate.',
     url: 'https://californiasettlementcalculator.com/about',
+    images: [DEFAULT_OPEN_GRAPH_IMAGE],
   },
   alternates: {
     canonical: 'https://californiasettlementcalculator.com/about',

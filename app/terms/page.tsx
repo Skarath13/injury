@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import { DEFAULT_OPEN_GRAPH_IMAGE } from '@/lib/seo'
 
 export const metadata: Metadata = {
   title: 'Terms & Conditions | CA Auto Injury Calculator Legal Terms',
@@ -10,6 +11,7 @@ export const metadata: Metadata = {
     title: 'Terms & Conditions | CA Auto Injury Calculator Legal Terms',
     description: 'Terms of use and legal disclaimers for our California auto injury settlement calculator service.',
     url: 'https://californiasettlementcalculator.com/terms',
+    images: [DEFAULT_OPEN_GRAPH_IMAGE],
   },
   alternates: {
     canonical: 'https://californiasettlementcalculator.com/terms',

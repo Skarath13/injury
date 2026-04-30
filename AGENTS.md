@@ -36,9 +36,9 @@ This is a California Auto Injury Settlement Calculator built with Next.js 15.3.2
 - **Default Values**: Form has sensible defaults (age: 35, income: empty string for placeholder)
 - **Validation**: Custom validation for each step, prevents progression without required fields
 
-### PWA Implementation
+### App Metadata
 - **Manifest**: `/public/manifest.json` with app metadata
-- **Service Worker**: `/public/sw.js` for offline functionality  
+- **Service Worker**: Removed from active use; `/public/sw.js` is only a legacy cleanup stub for previously registered browsers
 - **Icons**: SVG icons for different sizes (192x192, 512x512, 180x180)
 - **iOS Optimization**: Apple-specific meta tags and mobile optimizations
 
@@ -87,8 +87,8 @@ wrangler deploy
 - **Type Errors**: Ensure numeric calculations use `Number()` conversion
 - **Validation**: Each step has custom validation logic in `validateCurrentStep()`
 
-### PWA Issues
-- Service worker registration is non-blocking (uses console.warn for errors)
+### Manifest Issues
+- No service worker should be registered for this app
 - Manifest icons reference actual SVG files that exist
 - No manual `<head>` tags - use Next.js metadata API
 

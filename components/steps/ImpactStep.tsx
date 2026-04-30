@@ -25,11 +25,11 @@ export default function ImpactStep({ register, watch, errors }: Props) {
       <div className="space-y-6">
         {/* Work Impact */}
         <div>
-          <label className="flex items-center text-sm font-medium text-slate-700 mb-2">
+          <div className="flex items-center text-sm font-medium text-slate-700 mb-2">
             <Briefcase className="w-4 h-4 mr-2 text-slate-400" />
             Total Work Days Missed
             <InfoIcon content="Recorded for context and attorney review. Missed work days no longer change the estimate calculation." />
-          </label>
+          </div>
           <input
             type="number"
             {...register('impact.missedWorkDays', { 
@@ -73,18 +73,20 @@ export default function ImpactStep({ register, watch, errors }: Props) {
               </span>
             </label>
             
-            <label className="flex items-center space-x-2 cursor-pointer">
-              <input
-                type="checkbox"
-                {...register('impact.dylanVLeggClaim')}
-                className="w-4 h-4 text-purple-600 border-slate-300 rounded focus:ring-purple-500"
-              />
-              <span className="text-sm text-slate-700">
-                <Scale className="w-4 h-4 inline mr-1 text-purple-600" />
-                Dillon v. Legg Claim (Witnessed Injury to Family Member)
-                <InfoIcon content="California law allows recovery if you witnessed severe injury to a close family member" />
-              </span>
-            </label>
+            <div className="flex items-center gap-2">
+              <label className="flex items-center space-x-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  {...register('impact.dylanVLeggClaim')}
+                  className="w-4 h-4 text-purple-600 border-slate-300 rounded focus:ring-purple-500"
+                />
+                <span className="text-sm text-slate-700">
+                  <Scale className="w-4 h-4 inline mr-1 text-purple-600" />
+                  Dillon v. Legg Claim (Witnessed Injury to Family Member)
+                </span>
+              </label>
+              <InfoIcon content="California law allows recovery if you witnessed severe injury to a close family member" />
+            </div>
           </div>
         </div>
 
@@ -108,10 +110,10 @@ export default function ImpactStep({ register, watch, errors }: Props) {
             
             {permanentImpairment && (
               <div className="ml-6">
-                <label className="text-sm font-medium text-slate-700 mb-1 block">
+                <div className="mb-1 flex items-center text-sm font-medium text-slate-700">
                   Impairment Rating (% if known)
                   <InfoIcon content="Whole person impairment rating from doctor (0-100%)" />
-                </label>
+                </div>
                 <input
                   type="number"
                   {...register('impact.impairmentRating', { 

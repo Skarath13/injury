@@ -4,7 +4,7 @@
   "description": "Build a California auto injury case profile and unlock an educational estimate",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "background_color": "#f8fafc",
   "theme_color": "#0f172a",
   "orientation": "portrait-primary",
   "scope": "/",

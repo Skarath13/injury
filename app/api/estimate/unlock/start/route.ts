@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
       }
     }
     if (!session) {
-      return NextResponse.json({ error: 'Estimate session was not found.' }, { status: 404 });
+      return NextResponse.json({ error: 'Estimate session was not found. Please prepare the preview again.' }, { status: 404 });
     }
 
     const attorney = session.attorneyJson ? JSON.parse(session.attorneyJson) as ResponsibleAttorney : null;

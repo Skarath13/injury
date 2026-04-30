@@ -31,15 +31,20 @@ import {
 import {
   ageFromDateOfBirth,
   calculatorAgeFromDemographics,
+  dateInputValueForDate,
+  dateOnlyIsInFuture,
   dateOfBirthIsInAllowedRange
 } from '../lib/demographics';
 import { attorneyConsentCopyVersion, attorneyDeliveryConsentText } from '../lib/leadConsent';
 import {
   createFormStartToken,
   createLeadSession,
+  decodeLocalSessionCookie,
+  encodeLocalSessionCookie,
   FORM_START_MIN_SECONDS,
   formStartElapsedSeconds,
   getLeadSession,
+  localSessionCookieName,
   startOtpUnlock,
   unlockEstimateOnly,
   verifyOtpUnlock
@@ -201,6 +206,19 @@ test('form start token distinguishes fast completions from mature sessions', asy
   assert.equal(await formStartElapsedSeconds('invalid-token', testLeadEnv), null);
 });
 
+test('local session cookie stays compact enough for dev fallback unlocks', async () => {
+  const session = await createTestLeadSession();
+  const encoded = encodeLocalSessionCookie(session);
+  const decoded = decodeLocalSessionCookie(encoded);
+
+  assert.ok(`${localSessionCookieName(session.id)}=${encoded}`.length < 3800);
+  assert.equal(decoded?.id, session.id);
+  assert.equal(decoded?.attorneyJson, session.attorneyJson);
+  assert.equal(JSON.parse(decoded?.resultJson || '{}').midEstimate, JSON.parse(session.resultJson).midEstimate);
+  assert.equal(decoded?.inputJson, '{}');
+  assert.equal(decoded?.previewJson, '{}');
+});
+
 test('general-damages model starts with medical specials plus multiplier value', () => {
   const result = calculateSettlement(baseCase());
 
@@ -226,6 +244,15 @@ test('date of birth helper derives valid calculator age without prefilled age', 
     age: 0,
     dateOfBirth: '1956-04-29'
   }, referenceDate), 70);
+});
+
+test('date-only helper detects future dates using the local calendar day', () => {
+  const referenceDate = new Date(2026, 3, 29, 23, 30);
+
+  assert.equal(dateInputValueForDate(referenceDate), '2026-04-29');
+  assert.equal(dateOnlyIsInFuture('2026-04-30', referenceDate), true);
+  assert.equal(dateOnlyIsInFuture('2026-04-29', referenceDate), false);
+  assert.equal(dateOnlyIsInFuture('2026-04-28', referenceDate), false);
 });
 
 test('about 1x general damages means total value is about specials plus specials', () => {
@@ -783,6 +810,41 @@ test('preview endpoint requires occupation and income when wage loss is yes', as
 
   assert.equal(response.status, 400);
   assert.equal(payload.error, 'Please complete occupation and income details for wage loss.');
+});
+
+test('preview endpoint rejects future date of loss', async () => {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const calculatorData = baseCase({
+    accidentDetails: {
+      ...baseCase().accidentDetails,
+      dateOfAccident: dateInputValueForDate(tomorrow)
+    },
+    injuries: {
+      ...baseCase().injuries,
+      bodyMap: [{
+        slug: 'neck',
+        side: 'common',
+        view: 'front',
+        severity: 1,
+        label: 'Base of neck / collarbone'
+      }],
+      primaryInjury: ''
+    }
+  });
+  const request = new NextRequest('http://localhost/api/estimate/preview', {
+    method: 'POST',
+    body: JSON.stringify({
+      calculatorData,
+      turnstileToken: 'dev-turnstile-token'
+    })
+  });
+
+  const response = await previewPost(request);
+  const payload = await response.json();
+
+  assert.equal(response.status, 400);
+  assert.equal(payload.error, 'Date of Loss cannot be in the future.');
 });
 
 test('county lookup only resolves exact California county selections', () => {

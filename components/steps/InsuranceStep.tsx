@@ -44,11 +44,11 @@ export default function InsuranceStep({ register, watch, errors }: Props) {
           
           {policyLimitsKnown && (
             <div>
-              <label className="flex items-center text-sm font-medium text-slate-700 mb-2">
+              <div className="flex items-center text-sm font-medium text-slate-700 mb-2">
                 <DollarSign className="w-4 h-4 mr-2 text-slate-400" />
                 Policy Limits (Per Person)
                 <InfoIcon content="Recorded for context only; the estimate is no longer capped by this value." />
-              </label>
+              </div>
               <select
                 {...register('insurance.policyLimits')}
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
@@ -89,10 +89,10 @@ export default function InsuranceStep({ register, watch, errors }: Props) {
           
           {hasAttorney && (
             <div>
-              <label className="text-sm font-medium text-slate-700 mb-2 block">
+              <div className="mb-2 flex items-center text-sm font-medium text-slate-700">
                 Attorney Contingency Fee
                 <InfoIcon content="Attorney fees are deducted from your gross settlement" />
-              </label>
+              </div>
               <select
                 {...register('insurance.attorneyContingency')}
                 className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"

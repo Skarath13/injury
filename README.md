@@ -37,11 +37,10 @@ A comprehensive, realistic settlement estimation tool for California auto injury
 - **Components**: Radix UI primitives
 - **Deployment**: Cloudflare Workers with Edge Runtime
 
-## PWA Features
+## App Metadata
 
-- **Progressive Web App**: Installable on mobile devices
-- **Service Worker**: Offline functionality with caching
-- **App Manifest**: Native app-like experience
+- **App Manifest**: Mobile metadata and icons
+- **Service Worker**: Not actively used; legacy registrations are cleaned up by `/sw.js`
 - **iOS Optimized**: Special handling for iPhone Safari
 - **Mobile-First**: Touch targets and responsive design
 
@@ -70,8 +69,8 @@ A comprehensive, realistic settlement estimation tool for California auto injury
 ├── types/
 │   └── calculator.ts      # TypeScript type definitions
 └── public/
-    ├── manifest.json      # PWA manifest
-    ├── sw.js             # Service worker
+    ├── manifest.json      # Web app metadata
+    ├── sw.js             # Legacy service-worker cleanup stub
     └── *.svg             # App icons
 ```
 

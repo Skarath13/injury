@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCountyRouting } from '@/lib/attorneyRouting';
 import { isCaliforniaCounty, normalizeCounty } from '@/lib/californiaCounties';
 import { getWorkerEnv } from '@/lib/cloudflareEnv';
-import { calculatorAgeFromDemographics } from '@/lib/demographics';
+import { calculatorAgeFromDemographics, dateOnlyIsInFuture, dateOnlyIsValid } from '@/lib/demographics';
 import { normalizeGuidedInjuryData } from '@/lib/guidedInjurySignals';
 import { PrivacyChoiceSnapshot } from '@/lib/privacyChoices';
 import { calculateSettlement } from '@/lib/settlementEngine';
@@ -105,6 +105,12 @@ function validateCalculatorData(data: InjuryCalculatorData): string | null {
   }
   if (!data.accidentDetails?.dateOfAccident || !data.accidentDetails?.impactSeverity) {
     return 'Please complete the required accident details.';
+  }
+  if (!dateOnlyIsValid(data.accidentDetails.dateOfAccident)) {
+    return 'Please enter a valid Date of Loss.';
+  }
+  if (dateOnlyIsInFuture(data.accidentDetails.dateOfAccident)) {
+    return 'Date of Loss cannot be in the future.';
   }
   if (!data.injuries?.bodyMap?.length || !data.injuries?.primaryInjury) {
     return 'Please tap at least one injury area.';

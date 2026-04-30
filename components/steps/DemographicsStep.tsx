@@ -23,11 +23,11 @@ export default function DemographicsStep({ register, setValue, watch, errors }: 
 
       <div className="space-y-4">
         <div>
-          <label className="flex items-center text-sm font-medium text-slate-700 mb-2">
+          <div className="flex items-center text-sm font-medium text-slate-700 mb-2">
             <User className="w-4 h-4 mr-2 text-slate-400" />
             Age <span className="text-red-500">*</span>
             <InfoIcon content="Age affects recovery time and future medical needs. Younger victims may have longer future care needs, while older victims may have complications that increase settlements." />
-          </label>
+          </div>
           <input
             type="number"
             {...register('demographics.age', { 
@@ -48,11 +48,11 @@ export default function DemographicsStep({ register, setValue, watch, errors }: 
         </div>
 
         <div>
-          <label className="flex items-center text-sm font-medium text-slate-700 mb-2">
+          <div className="flex items-center text-sm font-medium text-slate-700 mb-2">
             <Briefcase className="w-4 h-4 mr-2 text-slate-400" />
             Occupation <span className="text-red-500">*</span>
             <InfoIcon content="Occupation is recorded for context and attorney review. It no longer changes the estimate by itself." />
-          </label>
+          </div>
           <select
             {...register('demographics.occupation', { required: 'Occupation is required' })}
             className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
@@ -74,11 +74,11 @@ export default function DemographicsStep({ register, setValue, watch, errors }: 
         </div>
 
         <div>
-          <label className="flex items-center text-sm font-medium text-slate-700 mb-2">
+          <div className="flex items-center text-sm font-medium text-slate-700 mb-2">
             <DollarSign className="w-4 h-4 mr-2 text-slate-400" />
             Annual Income (Before Taxes) <span className="text-red-500">*</span>
             <InfoIcon content="Income is recorded for context and attorney review. Wage loss no longer changes the estimate calculation." />
-          </label>
+          </div>
           <select
             {...register('demographics.annualIncome', { 
               required: 'Income is required',

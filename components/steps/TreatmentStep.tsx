@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, type ChangeEvent, type ComponentType } from 'react';
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type ComponentType } from 'react';
 import { FieldErrors, UseFormRegister, UseFormSetValue, UseFormWatch } from 'react-hook-form';
+import { AnimatePresence, motion, useReducedMotion } from '@/components/motion/react';
 import {
   Activity,
   Calculator,
@@ -44,6 +45,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { Separator } from '@/components/ui/separator';
+import { fadeUpItem, premiumEase, reducedMotionFade, softSpring, staggerContainer } from '@/components/motion/presets';
 
 interface Props {
   register: UseFormRegister<InjuryCalculatorData>;
@@ -384,6 +386,7 @@ function NumberInput({
   value: number;
   onChange: (value: number) => void;
 }) {
+  const shouldReduceMotion = Boolean(useReducedMotion());
   const max = item.max ?? 999;
   const itemRange = COST_RANGES[item.rangeKey];
 
@@ -418,16 +421,21 @@ function NumberInput({
             <Minus />
           </Button>
 
-          <Input
-            type="number"
-            inputMode="numeric"
-            min={0}
-            max={max}
-            value={value}
-            onChange={handleInputChange}
-            className="h-11 w-20 text-center text-base font-semibold"
-            aria-label={item.label}
-          />
+          <motion.div
+            animate={shouldReduceMotion ? undefined : { scale: value > 0 ? [1, 1.035, 1] : 1 }}
+            transition={{ duration: 0.24, ease: premiumEase }}
+          >
+            <Input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={max}
+              value={value}
+              onChange={handleInputChange}
+              className="h-11 w-20 text-center text-base font-semibold"
+              aria-label={item.label}
+            />
+          </motion.div>
 
           <Button
             type="button"
@@ -447,19 +455,43 @@ function NumberInput({
 }
 
 function SectionSummary({ count, range }: { count: number; range: CostRange }) {
+  const shouldReduceMotion = Boolean(useReducedMotion());
+
   return (
     <div className="flex flex-wrap items-center gap-2 text-left sm:justify-end sm:text-right">
-      <Badge variant={count > 0 ? 'default' : 'secondary'}>
-        {count > 0 ? `${count} selected` : 'Not added'}
-      </Badge>
-      {count > 0 && (
-        <span className="text-xs font-medium text-muted-foreground">{formatRange(range)}</span>
-      )}
+      <motion.div
+        key={`count-${count > 0 ? 'selected' : 'empty'}-${count}`}
+        initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 3, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={shouldReduceMotion ? { duration: 0.08 } : softSpring}
+      >
+        <Badge variant={count > 0 ? 'default' : 'secondary'}>
+          {count > 0 ? `${count} selected` : 'Not added'}
+        </Badge>
+      </motion.div>
+      <AnimatePresence initial={false}>
+        {count > 0 && (
+          <motion.span
+            key={formatRange(range)}
+            className="text-xs font-medium text-muted-foreground"
+            initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, x: -4 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -4 }}
+            transition={shouldReduceMotion ? { duration: 0.08 } : { duration: 0.18, ease: premiumEase }}
+          >
+            {formatRange(range)}
+          </motion.span>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
 export default function TreatmentStep({ register, watch, setValue }: Props) {
+  const shouldReduceMotion = Boolean(useReducedMotion());
+  const treatmentCategoryRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const openTreatmentCategoriesRef = useRef<string[]>([]);
+  const [openTreatmentCategories, setOpenTreatmentCategories] = useState<string[]>([]);
   const treatment = watch('treatment');
   const surgeryRecommended = Boolean(treatment.surgeryRecommended);
   const surgeryCompleted = Boolean(treatment.surgeryCompleted);
@@ -474,6 +506,39 @@ export default function TreatmentStep({ register, watch, setValue }: Props) {
   const updateTreatmentCount = (key: NumericTreatmentField, value: number) => {
     setValue(`treatment.${key}`, value, { shouldDirty: true, shouldValidate: true });
   };
+
+  const anchorTreatmentCategory = useCallback((category: string) => {
+    if (typeof window === 'undefined') return;
+
+    const scrollToCategory = () => {
+      const categoryNode = treatmentCategoryRefs.current[category];
+      if (!categoryNode) return;
+
+      const top = categoryNode.getBoundingClientRect().top + window.scrollY;
+      window.scrollTo({
+        top: Math.max(0, top),
+        behavior: shouldReduceMotion ? 'auto' : 'smooth'
+      });
+    };
+
+    window.requestAnimationFrame(() => {
+      scrollToCategory();
+      window.requestAnimationFrame(scrollToCategory);
+    });
+  }, [shouldReduceMotion]);
+
+  const handleTreatmentAccordionChange = useCallback((nextCategories: string[]) => {
+    const newlyOpenedCategory = nextCategories.find(
+      (category) => !openTreatmentCategoriesRef.current.includes(category)
+    );
+
+    openTreatmentCategoriesRef.current = nextCategories;
+    setOpenTreatmentCategories(nextCategories);
+
+    if (newlyOpenedCategory) {
+      anchorTreatmentCategory(newlyOpenedCategory);
+    }
+  }, [anchorTreatmentCategory]);
 
   const rangeForItems = (items: TreatmentItem[]) => items.reduce((total, item) => {
     const value = getValue(item.key);
@@ -514,49 +579,70 @@ export default function TreatmentStep({ register, watch, setValue }: Props) {
           <CardDescription>Open each section that applies and add counts with the steppers.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Accordion type="multiple" className="rounded-lg border">
-            {TREATMENT_SECTIONS.map((section) => {
-              const Icon = section.icon;
-              const sectionCount = countForItems(section.items);
-              const sectionRange = rangeForItems(section.items);
+          <motion.div
+            variants={staggerContainer}
+            initial={shouldReduceMotion ? false : 'hidden'}
+            animate="visible"
+          >
+            <Accordion
+              type="multiple"
+              value={openTreatmentCategories}
+              onValueChange={handleTreatmentAccordionChange}
+              className="rounded-lg border"
+            >
+              {TREATMENT_SECTIONS.map((section) => {
+                const Icon = section.icon;
+                const sectionCount = countForItems(section.items);
+                const sectionRange = rangeForItems(section.items);
 
-              return (
-                <AccordionItem
-                  key={section.value}
-                  value={section.value}
-                  className={cn('border-b last:border-b-0', section.tone.itemClassName)}
-                >
-                  <AccordionTrigger className={cn(accordionRowTriggerClassName, section.tone.triggerClassName)}>
-                    <div className="flex w-full min-w-0 flex-col gap-3 pr-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="flex min-w-0 items-start gap-3 text-left sm:flex-1">
-                        <span className={cn('mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full', section.tone.iconClassName)}>
-                          <Icon className="size-4" />
-                        </span>
-                        <span className="min-w-0">
-                          <span className={cn('block text-sm font-semibold', section.tone.titleClassName)}>{section.title}</span>
-                          <span className="mt-1 block text-xs leading-5 text-muted-foreground">{section.description}</span>
-                        </span>
-                      </div>
-                      <SectionSummary count={sectionCount} range={sectionRange} />
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="px-4 pb-4">
-                    <FieldGroup>
-                      {section.items.map((item) => (
-                        <NumberInput
-                          key={item.key}
-                          item={item}
-                          value={getValue(item.key)}
-                          onChange={(value) => updateTreatmentCount(item.key, value)}
-                        />
-                      ))}
-                    </FieldGroup>
-                  </AccordionContent>
-                </AccordionItem>
-              );
-            })}
+                return (
+                  <AccordionItem
+                    key={section.value}
+                    ref={(node) => {
+                      treatmentCategoryRefs.current[section.value] = node;
+                    }}
+                    value={section.value}
+                    className={cn('border-b last:border-b-0', section.tone.itemClassName)}
+                  >
+                    <motion.div variants={fadeUpItem}>
+                      <AccordionTrigger className={cn(accordionRowTriggerClassName, section.tone.triggerClassName)}>
+                        <div className="flex w-full min-w-0 flex-col gap-3 pr-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="flex min-w-0 items-start gap-3 text-left sm:flex-1">
+                            <span className={cn('mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full', section.tone.iconClassName)}>
+                              <Icon className="size-4" />
+                            </span>
+                            <span className="min-w-0">
+                              <span className={cn('block text-sm font-semibold', section.tone.titleClassName)}>{section.title}</span>
+                              <span className="mt-1 block text-xs leading-5 text-muted-foreground">{section.description}</span>
+                            </span>
+                          </div>
+                          <SectionSummary count={sectionCount} range={sectionRange} />
+                        </div>
+                      </AccordionTrigger>
+                    </motion.div>
+                    <AccordionContent className="px-4 pb-4">
+                      <FieldGroup>
+                        {section.items.map((item) => (
+                          <NumberInput
+                            key={item.key}
+                            item={item}
+                            value={getValue(item.key)}
+                            onChange={(value) => updateTreatmentCount(item.key, value)}
+                          />
+                        ))}
+                      </FieldGroup>
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
 
-            <AccordionItem value="surgery" className={cn('last:border-b-0', SURGERY_TONE.itemClassName)}>
+              <AccordionItem
+                ref={(node) => {
+                  treatmentCategoryRefs.current.surgery = node;
+                }}
+                value="surgery"
+                className={cn('last:border-b-0', SURGERY_TONE.itemClassName)}
+              >
               <AccordionTrigger className={cn(accordionRowTriggerClassName, SURGERY_TONE.triggerClassName)}>
                 <div className="flex w-full min-w-0 flex-col gap-3 pr-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="flex min-w-0 items-start gap-3 text-left sm:flex-1">
@@ -594,34 +680,41 @@ export default function TreatmentStep({ register, watch, setValue }: Props) {
                     </FieldContent>
                   </Field>
 
-                  {surgeryRecommended && (
-                    <div className="flex flex-col gap-4 rounded-lg border bg-muted/30 p-3">
-                      <Field orientation="horizontal">
-                        <Checkbox
-                          id="surgeryCompleted"
-                          checked={surgeryCompleted}
-                          onCheckedChange={(checked) => setValue('treatment.surgeryCompleted', checked === true, { shouldDirty: true })}
-                        />
-                        <FieldContent>
-                          <FieldLabel htmlFor="surgeryCompleted">Surgery completed</FieldLabel>
-                          <FieldDescription>Select this if the accident-related surgery already happened.</FieldDescription>
-                        </FieldContent>
-                      </Field>
+                  <AnimatePresence initial={false}>
+                    {surgeryRecommended && (
+                      <motion.div
+                        key="surgery-details"
+                        className="flex flex-col gap-4 rounded-lg border bg-muted/30 p-3"
+                        {...reducedMotionFade(shouldReduceMotion)}
+                        layout
+                      >
+                        <Field orientation="horizontal">
+                          <Checkbox
+                            id="surgeryCompleted"
+                            checked={surgeryCompleted}
+                            onCheckedChange={(checked) => setValue('treatment.surgeryCompleted', checked === true, { shouldDirty: true })}
+                          />
+                          <FieldContent>
+                            <FieldLabel htmlFor="surgeryCompleted">Surgery completed</FieldLabel>
+                            <FieldDescription>Select this if the accident-related surgery already happened.</FieldDescription>
+                          </FieldContent>
+                        </Field>
 
-                      <Separator />
+                        <Separator />
 
-                      <Field>
-                        <FieldLabel>Surgery type</FieldLabel>
-                        <NativeSelect {...register('treatment.surgeryType')} className="min-h-11">
-                          <option value="">Select surgery type...</option>
-                          <option value="minor">Minor surgery: arthroscopy or smaller procedure ($20k - $75k)</option>
-                          <option value="moderate">Moderate surgery: disc or joint repair ($45k - $140k)</option>
-                          <option value="major">Major surgery: fusion or replacement ($90k - $250k)</option>
-                        </NativeSelect>
-                        <FieldDescription>Choose the closest category; the estimate still uses a broad range.</FieldDescription>
-                      </Field>
-                    </div>
-                  )}
+                        <Field>
+                          <FieldLabel>Surgery type</FieldLabel>
+                          <NativeSelect {...register('treatment.surgeryType')} className="min-h-11">
+                            <option value="">Select surgery type...</option>
+                            <option value="minor">Minor surgery: arthroscopy or smaller procedure ($20k - $75k)</option>
+                            <option value="moderate">Moderate surgery: disc or joint repair ($45k - $140k)</option>
+                            <option value="major">Major surgery: fusion or replacement ($90k - $250k)</option>
+                          </NativeSelect>
+                          <FieldDescription>Choose the closest category; the estimate still uses a broad range.</FieldDescription>
+                        </Field>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
                   <Field orientation="horizontal" className={cn('rounded-lg border bg-background p-3', ongoingTreatment && 'bg-muted/40')}>
                     <Checkbox
@@ -636,8 +729,9 @@ export default function TreatmentStep({ register, watch, setValue }: Props) {
                   </Field>
                 </FieldGroup>
               </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+              </AccordionItem>
+            </Accordion>
+          </motion.div>
         </CardContent>
       </Card>
 

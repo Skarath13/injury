@@ -24,7 +24,7 @@ export default function Footer() {
 
         <div className="mt-6 border-t border-slate-800 pt-5 text-xs text-slate-500">
           <details>
-            <summary className="cursor-pointer text-slate-400">Attorney advertiser disclosure</summary>
+            <summary className="cursor-pointer text-slate-400 transition-colors hover:text-white">Attorney advertiser disclosure</summary>
             <p className="mt-2 leading-5">{panelDisclosure}</p>
           </details>
           <p className="mt-4">© {currentYear} California Settlement Calculator.</p>

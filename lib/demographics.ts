@@ -2,7 +2,7 @@ import { InjuryCalculatorData } from '@/types/calculator';
 
 const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
-function parseDateOnly(value: unknown) {
+export function parseDateOnly(value: unknown) {
   if (typeof value !== 'string') return null;
 
   const match = DATE_ONLY_PATTERN.exec(value);
@@ -28,6 +28,14 @@ function padDatePart(value: number) {
   return String(value).padStart(2, '0');
 }
 
+export function dateInputValueForDate(referenceDate = new Date()) {
+  return [
+    referenceDate.getFullYear(),
+    padDatePart(referenceDate.getMonth() + 1),
+    padDatePart(referenceDate.getDate())
+  ].join('-');
+}
+
 export function dateInputValueForAge(age: number, referenceDate = new Date()) {
   const date = new Date(
     referenceDate.getFullYear() - age,
@@ -35,11 +43,27 @@ export function dateInputValueForAge(age: number, referenceDate = new Date()) {
     referenceDate.getDate()
   );
 
-  return [
-    date.getFullYear(),
-    padDatePart(date.getMonth() + 1),
-    padDatePart(date.getDate())
-  ].join('-');
+  return dateInputValueForDate(date);
+}
+
+export function dateOnlyIsValid(value: unknown) {
+  return Boolean(parseDateOnly(value));
+}
+
+export function dateOnlyIsInFuture(value: unknown, referenceDate = new Date()) {
+  const parsed = parseDateOnly(value);
+  if (!parsed) return false;
+
+  if (parsed.year !== referenceDate.getFullYear()) {
+    return parsed.year > referenceDate.getFullYear();
+  }
+
+  const referenceMonth = referenceDate.getMonth() + 1;
+  if (parsed.month !== referenceMonth) {
+    return parsed.month > referenceMonth;
+  }
+
+  return parsed.day > referenceDate.getDate();
 }
 
 export function ageFromDateOfBirth(dateOfBirth: unknown, referenceDate = new Date()): number | null {

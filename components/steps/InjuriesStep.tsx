@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { FieldErrors, UseFormRegister, UseFormSetValue, UseFormWatch } from 'react-hook-form';
 import { RotateCcw, X } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from '@/components/motion/react';
 import { BodyHighlighter, BodyPartHighlight } from '@/components/body-highlighter';
 import { INTENSITY_COLORS } from '@/components/body-highlighter/constants';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +31,7 @@ import {
   InjuryCalculatorData
 } from '@/types/calculator';
 import { cn } from '@/lib/utils';
+import { fadeUpItem, premiumEase, softSpring, staggerContainer } from '@/components/motion/presets';
 
 interface Props {
   register: UseFormRegister<InjuryCalculatorData>;
@@ -50,8 +52,17 @@ function SelectionBadge({ selection, onRemove }: {
   selection: BodyMapSelection;
   onRemove: () => void;
 }) {
+  const shouldReduceMotion = Boolean(useReducedMotion());
+
   return (
-    <div className="flex min-h-11 items-center justify-between gap-2 rounded-lg border bg-card px-3 py-2">
+    <motion.div
+      className="flex min-h-11 items-center justify-between gap-2 rounded-lg border bg-card px-3 py-2"
+      initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 8, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: -6, scale: 0.98 }}
+      transition={shouldReduceMotion ? { duration: 0.08 } : { duration: 0.22, ease: premiumEase }}
+      whileHover={shouldReduceMotion ? undefined : { y: -1 }}
+    >
       <p className="min-w-0 flex-1 truncate text-sm font-medium">{selection.label}</p>
       <Badge variant="outline" className={cn('shrink-0', SEVERITY_BADGE_CLASS[selection.severity])}>
         {BODY_MAP_SEVERITY_LABELS[selection.severity]}
@@ -59,14 +70,27 @@ function SelectionBadge({ selection, onRemove }: {
       <Button type="button" variant="ghost" size="icon-sm" onClick={onRemove} aria-label={`Remove ${selection.label}`}>
         <X data-icon="inline-start" />
       </Button>
-    </div>
+    </motion.div>
   );
 }
 
 export default function InjuriesStep({ register, watch, setValue, errors, bodyModel }: Props) {
+  const shouldReduceMotion = Boolean(useReducedMotion());
   const injuries = watch('injuries');
   const bodyMap = injuries.bodyMap || [];
   const selectedSummary = bodyMapSummary(bodyMap);
+
+  const preserveScrollPosition = useCallback(() => {
+    if (typeof window === 'undefined') return;
+
+    const scrollY = window.scrollY;
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: scrollY, behavior: 'auto' });
+      window.requestAnimationFrame(() => {
+        window.scrollTo({ top: scrollY, behavior: 'auto' });
+      });
+    });
+  }, []);
 
   const highlightedPartsByView = useMemo<Record<BodyMapView, BodyPartHighlight[]>>(() => ({
     front: bodyMap
@@ -113,12 +137,14 @@ export default function InjuriesStep({ register, watch, setValue, errors, bodyMo
   }, [injuries, setValue]);
 
   const updateBodyMap = (nextBodyMap: BodyMapSelection[]) => {
+    preserveScrollPosition();
     setValue('injuries.bodyMap', nextBodyMap, { shouldDirty: true, shouldValidate: true });
     const derived = deriveBodyMapOnlyInjuryFields({
       ...injuries,
       bodyMap: nextBodyMap
     });
     setValue('injuries.primaryInjury', derived.primaryInjury, { shouldDirty: true, shouldValidate: true });
+    preserveScrollPosition();
   };
 
   const handleBodyPartClick = (view: BodyMapView) => (part: BodyPartHighlight) => {
@@ -158,17 +184,24 @@ export default function InjuriesStep({ register, watch, setValue, errors, bodyMo
           <div className="flex flex-col gap-5">
             <div className="flex flex-col gap-2 text-sm">
               <p className="text-sm font-medium text-foreground">Body Map Legend</p>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <motion.div
+                className="grid grid-cols-2 gap-2 sm:grid-cols-4"
+                variants={staggerContainer}
+                initial={shouldReduceMotion ? false : 'hidden'}
+                animate="visible"
+              >
                 {([1, 2, 3, 4] as BodyMapSeverity[]).map((severity) => (
-                  <div key={severity} className="flex min-h-11 items-center gap-2 rounded-lg border bg-card px-3 py-2">
-                    <span
+                  <motion.div key={severity} className="flex min-h-11 items-center gap-2 rounded-lg border bg-card px-3 py-2" variants={fadeUpItem}>
+                    <motion.span
                       className="size-4 rounded-full ring-1 ring-foreground/10"
                       style={{ backgroundColor: INTENSITY_COLORS[severity] }}
+                      animate={shouldReduceMotion ? undefined : { scale: [1, 1.08, 1] }}
+                      transition={{ duration: 0.35, delay: severity * 0.04, ease: premiumEase }}
                     />
                     <span className="font-medium">{BODY_MAP_SEVERITY_LABELS[severity]}</span>
-                  </div>
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
             </div>
 
             <div className="grid gap-4 lg:grid-cols-2">
@@ -209,35 +242,65 @@ export default function InjuriesStep({ register, watch, setValue, errors, bodyMo
               ))}
             </div>
 
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 [overflow-anchor:none]">
               <p className="text-sm font-medium text-foreground">Injury list</p>
-              {bodyMap.length > 0 ? (
-                <div className="flex flex-col gap-2">
-                  {bodyMap.map((selection) => (
-                    <SelectionBadge
-                      key={`${selection.slug}-${selection.side}-${selection.view}`}
-                      selection={selection}
-                      onRemove={() => removeSelection(selection)}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                  No injury area selected yet.
-                </div>
-              )}
+              <div className="min-h-[72px] rounded-lg [overflow-anchor:none]">
+                <AnimatePresence initial={false} mode="wait">
+                  {bodyMap.length === 0 ? (
+                  <motion.div
+                    key="empty-injury-list"
+                    className="min-h-[72px] rounded-lg border border-dashed p-4 text-sm text-muted-foreground"
+                    initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    transition={shouldReduceMotion ? { duration: 0.08 } : { duration: 0.2, ease: premiumEase }}
+                  >
+                    No injury area selected yet.
+                  </motion.div>
+                  ) : (
+                    <motion.div
+                      key="injury-selections"
+                      className="flex max-h-[220px] flex-col gap-2 overflow-y-auto pr-1 [overflow-anchor:none]"
+                      initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                    >
+                      <AnimatePresence initial={false}>
+                        {bodyMap.map((selection) => (
+                          <SelectionBadge
+                            key={`${selection.slug}-${selection.side}-${selection.view}`}
+                            selection={selection}
+                            onRemove={() => removeSelection(selection)}
+                          />
+                        ))}
+                      </AnimatePresence>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
 
             {bodyMap.length === 0 && errors.injuries?.primaryInjury && (
               <FieldError>{errors.injuries.primaryInjury.message}</FieldError>
             )}
 
-            {bodyMap.length > 0 && (
-              <Button type="button" variant="outline" onClick={() => updateBodyMap([])}>
-                <RotateCcw data-icon="inline-start" />
-                Clear map
-              </Button>
-            )}
+            <div className="min-h-10 [overflow-anchor:none]">
+              <AnimatePresence initial={false}>
+                {bodyMap.length > 0 && (
+                  <motion.div
+                    initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    transition={shouldReduceMotion ? { duration: 0.08 } : softSpring}
+                  >
+                    <Button type="button" variant="outline" onClick={() => updateBodyMap([])}>
+                      <RotateCcw data-icon="inline-start" />
+                      Clear map
+                    </Button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </CardContent>
       </Card>

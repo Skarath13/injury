@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   ArrowRight,
   Briefcase,
+  CalendarDays,
   Check,
   ChevronLeft,
   ClipboardCheck,
@@ -23,7 +24,7 @@ import {
   Stethoscope,
   X
 } from 'lucide-react';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { AnimatePresence, motion, useReducedMotion } from '@/components/motion/react';
 import {
   BodyMapGender,
   EstimateOnlyUnlockResponse,
@@ -35,7 +36,12 @@ import {
   UnlockVerifyResponse
 } from '@/types/calculator';
 import { deriveBodyMapOnlyInjuryFields } from '@/lib/bodyMapInjuries';
-import { calculatorAgeFromDemographics } from '@/lib/demographics';
+import {
+  calculatorAgeFromDemographics,
+  dateInputValueForAge,
+  dateOfBirthIsInAllowedRange,
+  parseDateOnly
+} from '@/lib/demographics';
 import { createDefaultGuidedInjurySignals } from '@/lib/guidedInjurySignals';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -43,9 +49,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Field, FieldContent, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field';
+import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
+import { NativeSelect } from '@/components/ui/native-select';
 import {
   Dialog,
   DialogClose,
@@ -64,12 +71,24 @@ import TurnstileWidget from './TurnstileWidget';
 import EstimatePreparationLoader, { ESTIMATE_PREPARATION_MIN_MS } from './EstimatePreparationLoader';
 import CountyCombobox from './CountyCombobox';
 import InfoIcon from './InfoIcon';
+import { fadeUpItem, gentleSpring, premiumEase, reducedMotionFade, softSpring, staggerContainer } from '@/components/motion/presets';
 import { cn } from '@/lib/utils';
 import { readBrowserPrivacyChoices } from '@/lib/privacyChoices';
+import {
+  CALCULATOR_DRAFT_NONE,
+  CALCULATOR_DRAFT_PRESENT,
+  CALCULATOR_DRAFT_STORAGE_KEY,
+  CALCULATOR_DRAFT_VERSION,
+  normalizeCalculatorDraft,
+  setCalculatorDraftDocumentStatus,
+  type CalculatorDraft,
+  type WorkLifeBooleanAnswers,
+  type WorkLifeBooleanField
+} from '@/lib/calculatorDraft';
 
 const STEPS = [
   { id: 1, name: 'Quick Facts', shortName: 'Facts', icon: MapPin },
-  { id: 2, name: 'Injury Signals', shortName: 'Injury', icon: Stethoscope },
+  { id: 2, name: 'Injury Map', shortName: 'Injury', icon: Stethoscope },
   { id: 3, name: 'Treatment', shortName: 'Care', icon: Activity },
   { id: 4, name: 'Work & Daily Life', shortName: 'Life', icon: Briefcase },
   { id: 5, name: 'Unlock', shortName: 'Unlock', icon: FileLock2 }
@@ -84,8 +103,6 @@ const STEP_TRANSITION_MESSAGES: Record<number, string> = {
   4: 'Updating claim impact'
 };
 
-const DRAFT_STORAGE_KEY = 'injury-calculator:draft:v1';
-const DRAFT_VERSION = 1;
 const CALCULATOR_RESET_EVENT = 'injury-calculator:request-reset';
 const HISTORY_STATE_KEY = 'injuryCalculator';
 
@@ -114,15 +131,6 @@ function getStepTransitionStages(transition: StepTransitionState) {
     transition.message || 'Updating case profile',
     'Opening next section'
   ];
-}
-
-interface CalculatorDraft {
-  version: typeof DRAFT_VERSION;
-  data: InjuryCalculatorData;
-  hasStarted: boolean;
-  currentStep: number;
-  bodyModel: BodyMapGender | '';
-  savedAt: string;
 }
 
 interface ProfileItem {
@@ -270,62 +278,82 @@ function hasMeaningfulCalculatorProgress(data: InjuryCalculatorData, bodyModel: 
   );
 }
 
+function workLifeBooleanAnswersFromData(data: InjuryCalculatorData): WorkLifeBooleanAnswers {
+  const answers: WorkLifeBooleanAnswers = {};
+
+  if (data.impact?.hasWageLoss) answers.hasWageLoss = true;
+  if (data.impact?.emotionalDistress) answers.emotionalDistress = true;
+  if (data.impact?.lossOfConsortium) answers.lossOfConsortium = true;
+  if (data.impact?.permanentImpairment) answers.permanentImpairment = true;
+  if (data.insurance?.hasAttorney) answers.hasAttorney = true;
+
+  return answers;
+}
+
 function readCalculatorDraft(): CalculatorDraft | null {
   const storage = getBrowserStorage();
-  if (!storage) return null;
+  if (!storage) {
+    setCalculatorDraftDocumentStatus(CALCULATOR_DRAFT_NONE);
+    return null;
+  }
 
   try {
-    const storedDraft = storage.getItem(DRAFT_STORAGE_KEY);
-    if (!storedDraft) return null;
-
-    const parsedDraft = JSON.parse(storedDraft) as Partial<CalculatorDraft>;
-    if (
-      parsedDraft?.version !== DRAFT_VERSION ||
-      !parsedDraft.data ||
-      typeof parsedDraft.data !== 'object'
-    ) {
-      storage.removeItem(DRAFT_STORAGE_KEY);
+    const storedDraft = storage.getItem(CALCULATOR_DRAFT_STORAGE_KEY);
+    if (!storedDraft) {
+      setCalculatorDraftDocumentStatus(CALCULATOR_DRAFT_NONE);
       return null;
     }
 
-    return {
-      version: DRAFT_VERSION,
-      data: parsedDraft.data as InjuryCalculatorData,
-      hasStarted: Boolean(parsedDraft.hasStarted),
-      currentStep: clampStep(parsedDraft.currentStep),
-      bodyModel: parsedDraft.bodyModel === 'female' || parsedDraft.bodyModel === 'male' ? parsedDraft.bodyModel : '',
-      savedAt: typeof parsedDraft.savedAt === 'string' ? parsedDraft.savedAt : new Date().toISOString()
-    };
+    const parsedDraft = JSON.parse(storedDraft);
+    const normalizedDraft = normalizeCalculatorDraft(parsedDraft, clampStep);
+    if (!normalizedDraft) {
+      storage.removeItem(CALCULATOR_DRAFT_STORAGE_KEY);
+      setCalculatorDraftDocumentStatus(CALCULATOR_DRAFT_NONE);
+      return null;
+    }
+
+    setCalculatorDraftDocumentStatus(CALCULATOR_DRAFT_PRESENT);
+    return normalizedDraft;
   } catch {
     try {
-      storage.removeItem(DRAFT_STORAGE_KEY);
+      storage.removeItem(CALCULATOR_DRAFT_STORAGE_KEY);
     } catch {
       // Storage may be unavailable in private or restricted browser contexts.
     }
+    setCalculatorDraftDocumentStatus(CALCULATOR_DRAFT_NONE);
     return null;
   }
 }
 
 function writeCalculatorDraft(draft: CalculatorDraft) {
   const storage = getBrowserStorage();
-  if (!storage) return;
+  if (!storage) {
+    setCalculatorDraftDocumentStatus(CALCULATOR_DRAFT_NONE);
+    return;
+  }
 
   try {
-    storage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(draft));
+    storage.setItem(CALCULATOR_DRAFT_STORAGE_KEY, JSON.stringify(draft));
+    setCalculatorDraftDocumentStatus(CALCULATOR_DRAFT_PRESENT);
   } catch {
     // Storage may be unavailable in private or restricted browser contexts.
+    setCalculatorDraftDocumentStatus(CALCULATOR_DRAFT_NONE);
   }
 }
 
 function clearCalculatorDraft() {
   const storage = getBrowserStorage();
-  if (!storage) return;
+  if (!storage) {
+    setCalculatorDraftDocumentStatus(CALCULATOR_DRAFT_NONE);
+    return;
+  }
 
   try {
-    storage.removeItem(DRAFT_STORAGE_KEY);
+    storage.removeItem(CALCULATOR_DRAFT_STORAGE_KEY);
   } catch {
     // Storage may be unavailable in private or restricted browser contexts.
   }
+  setCalculatorDraftDocumentStatus(CALCULATOR_DRAFT_NONE);
 }
 
 function writeCalculatorHistoryState(method: 'pushState' | 'replaceState', state: unknown) {
@@ -381,7 +409,7 @@ function buildProfileItems(data: InjuryCalculatorData, turnstileToken: string, c
       complete: currentStep > 1 || Boolean(data.accidentDetails.dateOfAccident && data.accidentDetails.impactSeverity)
     },
     {
-      label: 'Injury Signals',
+      label: 'Injury Map',
       complete: currentStep > 2 || Boolean(data.injuries.primaryInjury || data.injuries.bodyMap?.length)
     },
     {
@@ -394,7 +422,7 @@ function buildProfileItems(data: InjuryCalculatorData, turnstileToken: string, c
     },
     {
       label: 'Security Check',
-      complete: Boolean(turnstileToken)
+      complete: Boolean(turnstileToken && dateOfBirthIsInAllowedRange(data.demographics.dateOfBirth))
     }
   ];
 }
@@ -410,6 +438,7 @@ function ProfileStrengthCard({ data, turnstileToken, currentStep }: {
   turnstileToken: string;
   currentStep: number;
 }) {
+  const shouldReduceMotion = Boolean(useReducedMotion());
   const items = buildProfileItems(data, turnstileToken, currentStep);
   const completedCount = items.filter((item) => item.complete).length;
   const strength = profileState(completedCount);
@@ -417,41 +446,83 @@ function ProfileStrengthCard({ data, turnstileToken, currentStep }: {
   const missingCount = items.filter((item) => !item.complete).length;
 
   return (
-    <Card size="sm">
-      <CardHeader>
-        <CardTitle className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Case profile strength</CardTitle>
-        <p className={`text-2xl font-semibold ${strength.color}`}>{strength.label}</p>
-      </CardHeader>
+    <motion.div
+      layout
+      initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={shouldReduceMotion ? { duration: 0.08 } : { duration: 0.3, ease: premiumEase }}
+    >
+      <Card size="sm">
+        <CardHeader>
+          <CardTitle className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Case profile strength</CardTitle>
+          <motion.p
+            key={strength.label}
+            className={`text-2xl font-semibold ${strength.color}`}
+            initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={shouldReduceMotion ? { duration: 0.08 } : { duration: 0.22, ease: premiumEase }}
+          >
+            {strength.label}
+          </motion.p>
+        </CardHeader>
 
-      <CardContent className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <Progress value={progressValue} />
-          <p className="text-sm text-muted-foreground">
-            {missingCount > 0 ? `${missingCount} checklist item${missingCount === 1 ? '' : 's'} left.` : strength.helper}
-          </p>
-        </div>
-
-      <div className="flex flex-col gap-2">
-        {items.map((item) => (
-          <div key={item.label} className="flex items-start gap-2 rounded-lg bg-slate-50 px-3 py-2">
-            <span className={`mt-0.5 flex h-5 w-5 flex-none items-center justify-center rounded-full ${
-              item.complete ? 'bg-emerald-600 text-white' : 'bg-white text-slate-400 ring-1 ring-slate-200'
-            }`}>
-              {item.complete ? <Check className="h-3.5 w-3.5" /> : null}
-            </span>
-            <span className="min-w-0">
-              <span className="block text-sm font-medium text-slate-800">{item.label}</span>
-              <span className="block text-xs text-slate-500">{item.complete ? 'Complete' : 'Pending'}</span>
-            </span>
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Progress value={progressValue} />
+            <p className="text-sm text-muted-foreground">
+              {missingCount > 0 ? `${missingCount} checklist item${missingCount === 1 ? '' : 's'} left.` : strength.helper}
+            </p>
           </div>
-        ))}
-      </div>
 
-      <div className="rounded-lg border bg-muted/40 p-3 text-xs leading-5 text-muted-foreground">
-        Step {currentStep} of {STEPS.length}: {STEPS[currentStep - 1].name}
-      </div>
-      </CardContent>
-    </Card>
+          <motion.div
+            className="flex flex-col gap-2"
+            variants={staggerContainer}
+            initial={shouldReduceMotion ? false : 'hidden'}
+            animate="visible"
+          >
+            {items.map((item) => (
+              <motion.div
+                key={item.label}
+                layout
+                variants={fadeUpItem}
+                className="flex items-start gap-2 rounded-lg bg-slate-50 px-3 py-2"
+              >
+                <motion.span
+                  layout
+                  className={`mt-0.5 flex h-5 w-5 flex-none items-center justify-center rounded-full ${
+                    item.complete ? 'bg-emerald-600 text-white' : 'bg-white text-slate-400 ring-1 ring-slate-200'
+                  }`}
+                  animate={shouldReduceMotion ? undefined : { scale: item.complete ? [1, 1.12, 1] : 1 }}
+                  transition={{ duration: 0.28, ease: premiumEase }}
+                >
+                  <AnimatePresence initial={false}>
+                    {item.complete && (
+                      <motion.span
+                        key="check"
+                        initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, scale: 0.65 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.65 }}
+                        transition={shouldReduceMotion ? { duration: 0.08 } : softSpring}
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </motion.span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium text-slate-800">{item.label}</span>
+                  <span className="block text-xs text-slate-500">{item.complete ? 'Complete' : 'Pending'}</span>
+                </span>
+              </motion.div>
+            ))}
+          </motion.div>
+
+          <div className="rounded-lg border bg-muted/40 p-3 text-xs leading-5 text-muted-foreground">
+            Step {currentStep} of {STEPS.length}: {STEPS[currentStep - 1].name}
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 }
 
@@ -475,36 +546,255 @@ function unlockStatusMessage(status: string) {
   }
 }
 
+async function requestEstimateOnlyUnlock(sessionId: string): Promise<EstimateOnlyUnlockResponse> {
+  const response = await fetch('/api/estimate/unlock/estimate-only', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId })
+  });
+  const payload: EstimateOnlyUnlockResponse & { error?: string } = await response.json();
+
+  if (!response.ok) {
+    throw new Error(payload.error || 'Unable to unlock the estimate.');
+  }
+
+  return payload;
+}
+
 function LockedRangePreview({ preview }: { preview: EstimatePreviewResponse | null }) {
+  const shouldReduceMotion = Boolean(useReducedMotion());
+
   return (
-    <Card className="border-emerald-200 bg-white shadow-sm">
+    <motion.div
+      layout
+      initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={shouldReduceMotion ? { duration: 0.08 } : { duration: 0.3, ease: premiumEase }}
+    >
+      <Card className="border-emerald-200 bg-white shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Lock data-icon="inline-start" className="text-emerald-700" />
+            Your range is ready
+          </CardTitle>
+          <CardDescription>
+            {preview ? preview.summary : 'Prepare the secure preview to unlock your estimated range.'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="rounded-lg border bg-slate-50 p-3">
+            <div className="flex flex-col gap-2">
+              <div
+                className="h-3 rounded-full bg-gradient-to-r from-emerald-500 via-amber-400 to-red-500 shadow-inner"
+                aria-hidden="true"
+              />
+              <div className="flex items-center justify-between gap-3 text-xs font-medium text-muted-foreground">
+                <span>Likely</span>
+                <span>Potential</span>
+              </div>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              {['Likely', 'Potential'].map((label, index) => (
+                <motion.div
+                  key={label}
+                  className="rounded-lg border bg-white p-3"
+                  initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={shouldReduceMotion ? { duration: 0.08 } : { duration: 0.28, delay: index * 0.06, ease: premiumEase }}
+                >
+                  <p className="text-xs font-medium text-muted-foreground">{label}</p>
+                  <p className="mt-1 select-none text-xl font-semibold tracking-tight text-slate-950 blur-sm" aria-hidden="true">
+                    $••,•••
+                  </p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
+
+const DOB_MONTHS = [
+  { value: '01', label: 'January' },
+  { value: '02', label: 'February' },
+  { value: '03', label: 'March' },
+  { value: '04', label: 'April' },
+  { value: '05', label: 'May' },
+  { value: '06', label: 'June' },
+  { value: '07', label: 'July' },
+  { value: '08', label: 'August' },
+  { value: '09', label: 'September' },
+  { value: '10', label: 'October' },
+  { value: '11', label: 'November' },
+  { value: '12', label: 'December' }
+];
+
+function padDatePart(value: string | number) {
+  return String(value).padStart(2, '0');
+}
+
+function datePartsFromDateOfBirth(value: string | undefined) {
+  const parsed = parseDateOnly(value);
+
+  return {
+    month: parsed ? padDatePart(parsed.month) : '',
+    day: parsed ? padDatePart(parsed.day) : '',
+    year: parsed ? String(parsed.year) : ''
+  };
+}
+
+function DateOfBirthAgeCheck({
+  value,
+  register,
+  setValue,
+  error
+}: {
+  value: string | undefined;
+  register: UseFormRegister<InjuryCalculatorData>;
+  setValue: UseFormSetValue<InjuryCalculatorData>;
+  error?: string;
+}) {
+  const [parts, setParts] = useState(() => datePartsFromDateOfBirth(value));
+  const parsedMinimumDate = parseDateOnly(dateInputValueForAge(100));
+  const parsedMaximumDate = parseDateOnly(dateInputValueForAge(18));
+  const minimumYear = parsedMinimumDate?.year || new Date().getFullYear() - 100;
+  const maximumYear = parsedMaximumDate?.year || new Date().getFullYear() - 18;
+  const yearOptions = useMemo(() => {
+    const years: string[] = [];
+    for (let year = maximumYear; year >= minimumYear; year -= 1) {
+      years.push(String(year));
+    }
+    return years;
+  }, [maximumYear, minimumYear]);
+  const selectedMonth = Number(parts.month || 0);
+  const selectedYear = Number(parts.year || maximumYear);
+  const daysInSelectedMonth = selectedMonth
+    ? new Date(selectedYear, selectedMonth, 0).getDate()
+    : 31;
+  const dayOptions = useMemo(() => (
+    Array.from({ length: daysInSelectedMonth }, (_, index) => padDatePart(index + 1))
+  ), [daysInSelectedMonth]);
+
+  useEffect(() => {
+    const parsed = parseDateOnly(value);
+    if (!parsed) return;
+
+    const nextParts = datePartsFromDateOfBirth(value);
+    setParts((currentParts) => (
+      currentParts.month === nextParts.month &&
+      currentParts.day === nextParts.day &&
+      currentParts.year === nextParts.year
+        ? currentParts
+        : nextParts
+    ));
+  }, [value]);
+
+  const updatePart = (part: 'month' | 'day' | 'year', nextValue: string) => {
+    const nextParts = { ...parts, [part]: nextValue };
+    const nextMonth = Number(nextParts.month || 0);
+    const nextYear = Number(nextParts.year || maximumYear);
+    const nextDaysInMonth = nextMonth ? new Date(nextYear, nextMonth, 0).getDate() : 31;
+
+    if (Number(nextParts.day || 0) > nextDaysInMonth) {
+      nextParts.day = '';
+    }
+
+    setParts(nextParts);
+
+    if (nextParts.month && nextParts.day && nextParts.year) {
+      setValue('demographics.dateOfBirth', `${nextParts.year}-${nextParts.month}-${nextParts.day}`, {
+        shouldDirty: true,
+        shouldTouch: true,
+        shouldValidate: true
+      });
+    } else if (value) {
+      setValue('demographics.dateOfBirth', '', {
+        shouldDirty: true,
+        shouldTouch: true,
+        shouldValidate: Boolean(error)
+      });
+    }
+  };
+
+  return (
+    <Card className="border-sky-200 bg-sky-50/70 shadow-sm">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <Lock data-icon="inline-start" className="text-emerald-700" />
-          Your range is ready
+          <CalendarDays data-icon="inline-start" className="text-sky-700" />
+          Date of Birth <span className="text-amber-600">*</span>
         </CardTitle>
         <CardDescription>
-          {preview ? preview.summary : 'Prepare the secure preview to unlock your estimated range.'}
+          Confirm you are 18 or older before unlocking the estimate. Age is used only for age-related settlement assumptions.
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <div className="rounded-lg border bg-slate-50 p-3">
-          <div className="h-3 overflow-hidden rounded-full bg-gradient-to-r from-emerald-500 via-amber-400 to-red-500 shadow-inner" />
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            {['Conservative', 'Upper Range'].map((label) => (
-              <div key={label} className="rounded-lg border bg-white p-3">
-                <p className="text-xs font-medium text-muted-foreground">{label}</p>
-                <p className="mt-1 select-none text-xl font-semibold tracking-tight text-slate-950 blur-sm" aria-hidden="true">
-                  $••,•••
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="flex items-center justify-between gap-3 text-xs font-medium text-muted-foreground">
-          <span>Conservative</span>
-          <span>Upper Range</span>
-        </div>
+      <CardContent>
+        <FieldGroup>
+          <Field data-invalid={Boolean(error)}>
+            <input
+              type="hidden"
+              {...register('demographics.dateOfBirth', {
+                required: 'Date of Birth is required',
+                validate: (dateOfBirth) => (
+                  dateOfBirthIsInAllowedRange(dateOfBirth) ||
+                  'Enter a Date of Birth for someone age 18 to 100'
+                )
+              })}
+            />
+            <div className="grid gap-3 sm:grid-cols-[1.2fr_0.8fr_0.9fr]">
+              <Field>
+                <FieldLabel htmlFor="date-of-birth-month">Month</FieldLabel>
+                <NativeSelect
+                  id="date-of-birth-month"
+                  value={parts.month}
+                  onChange={(event) => updatePart('month', event.target.value)}
+                  aria-invalid={Boolean(error)}
+                  className="w-full [&_[data-slot=native-select]]:h-11 [&_[data-slot=native-select]]:text-base"
+                >
+                  <option value="">Month</option>
+                  {DOB_MONTHS.map((month) => (
+                    <option key={month.value} value={month.value}>{month.label}</option>
+                  ))}
+                </NativeSelect>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="date-of-birth-day">Day</FieldLabel>
+                <NativeSelect
+                  id="date-of-birth-day"
+                  value={parts.day}
+                  onChange={(event) => updatePart('day', event.target.value)}
+                  aria-invalid={Boolean(error)}
+                  className="w-full [&_[data-slot=native-select]]:h-11 [&_[data-slot=native-select]]:text-base"
+                >
+                  <option value="">Day</option>
+                  {dayOptions.map((day) => (
+                    <option key={day} value={day}>{Number(day)}</option>
+                  ))}
+                </NativeSelect>
+              </Field>
+              <Field>
+                <FieldLabel htmlFor="date-of-birth-year">Year</FieldLabel>
+                <NativeSelect
+                  id="date-of-birth-year"
+                  value={parts.year}
+                  onChange={(event) => updatePart('year', event.target.value)}
+                  aria-invalid={Boolean(error)}
+                  className="w-full [&_[data-slot=native-select]]:h-11 [&_[data-slot=native-select]]:text-base"
+                >
+                  <option value="">Year</option>
+                  {yearOptions.map((year) => (
+                    <option key={year} value={year}>{year}</option>
+                  ))}
+                </NativeSelect>
+              </Field>
+            </div>
+            <FieldDescription>
+              Use the standard month, day, and year picker. The exact date is not displayed in the checklist.
+            </FieldDescription>
+            <FieldError>{error}</FieldError>
+          </Field>
+        </FieldGroup>
       </CardContent>
     </Card>
   );
@@ -527,6 +817,8 @@ function UnlockActionPanel({
   const [isVerifying, setIsVerifying] = useState(false);
   const [isUnlockingEstimateOnly, setIsUnlockingEstimateOnly] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const shouldReduceMotion = Boolean(useReducedMotion());
+  const panelMotion = reducedMotionFade(shouldReduceMotion);
 
   useEffect(() => {
     setPhone('');
@@ -543,17 +835,7 @@ function UnlockActionPanel({
     setIsUnlockingEstimateOnly(true);
 
     try {
-      const response = await fetch('/api/estimate/unlock/estimate-only', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sessionId: preview.sessionId })
-      });
-      const payload: EstimateOnlyUnlockResponse & { error?: string } = await response.json();
-
-      if (!response.ok) {
-        throw new Error(payload.error || 'Unable to unlock the estimate.');
-      }
-
+      const payload = await requestEstimateOnlyUnlock(preview.sessionId);
       onUnlocked(payload.results, payload.responsibleAttorney, payload.leadDeliveryStatus);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Unable to unlock the estimate.');
@@ -624,67 +906,82 @@ function UnlockActionPanel({
 
   if (!preview) {
     return (
-      <Card className="border-slate-200 bg-slate-50/70 shadow-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Sparkles data-icon="inline-start" className="text-amber-600" />
-            Prepare preview
-          </CardTitle>
-          <CardDescription>
-            Complete the security check, then prepare the secure preview to choose the right unlock path.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <motion.div {...panelMotion}>
+        <Card className="border-slate-200 bg-slate-50/70 shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Sparkles data-icon="inline-start" className="text-amber-600" />
+              Prepare preview
+            </CardTitle>
+            <CardDescription>
+              Complete the security check, then prepare the secure preview to choose the right unlock path.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </motion.div>
     );
   }
 
   if (preview.unlockMode === 'estimate_only') {
     return (
-      <Card className="border-slate-200 bg-white shadow-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <ShieldCheck data-icon="inline-start" className="text-emerald-700" />
-            Unlock estimate
-          </CardTitle>
-          <CardDescription>{unlockStatusMessage(preview.leadDeliveryStatus)}</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          <Alert>
-            <AlertDescription>
-              No phone number is needed for this estimate-only unlock.
-            </AlertDescription>
-          </Alert>
-
-          {error && (
-            <Alert variant="destructive">
-              <AlertCircle data-icon="inline-start" />
-              <AlertDescription>{error}</AlertDescription>
+      <motion.div {...panelMotion}>
+        <Card className="border-slate-200 bg-white shadow-sm">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ShieldCheck data-icon="inline-start" className="text-emerald-700" />
+              Unlock estimate
+            </CardTitle>
+            <CardDescription>{unlockStatusMessage(preview.leadDeliveryStatus)}</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <Alert>
+              <AlertDescription>
+                No phone number is needed for this estimate-only unlock.
+              </AlertDescription>
             </Alert>
-          )}
 
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Button
-              type="button"
-              size="lg"
-              className="h-11 bg-emerald-700 text-white hover:bg-emerald-600"
-              onClick={unlockEstimateOnly}
-              disabled={isUnlockingEstimateOnly}
-            >
-              <Sparkles data-icon="inline-start" />
-              {isUnlockingEstimateOnly ? 'Unlocking...' : 'Unlock estimate'}
-            </Button>
-            <Button type="button" size="lg" variant="outline" className="h-11" onClick={onResetPreview}>
-              Edit answers
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+            <AnimatePresence initial={false}>
+              {error && (
+                <motion.div key="estimate-only-error" {...reducedMotionFade(shouldReduceMotion)}>
+                  <Alert variant="destructive">
+                    <AlertCircle data-icon="inline-start" />
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button
+                type="button"
+                size="lg"
+                className="h-11 bg-emerald-700 text-white hover:bg-emerald-600"
+                onClick={unlockEstimateOnly}
+                disabled={isUnlockingEstimateOnly}
+              >
+                {isUnlockingEstimateOnly ? (
+                  'Unlocking...'
+                ) : (
+                  <>
+                    Unlock
+                    <ArrowRight data-icon="inline-end" />
+                  </>
+                )}
+              </Button>
+              <Button type="button" size="lg" variant="outline" className="h-11" onClick={onResetPreview}>
+                Edit answers
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
     );
   }
 
   const attorney = preview.responsibleAttorney;
 
   return (
+    <motion.div {...panelMotion}>
     <Card className="border-slate-200 bg-white shadow-sm">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
@@ -750,45 +1047,53 @@ function UnlockActionPanel({
             </FieldDescription>
           </Field>
 
-          {otpSent && (
-            <Field>
-              <FieldLabel>
-                <KeyRound data-icon="inline-start" />
-                4-digit code
-              </FieldLabel>
-              <FieldDescription>
-                Code sent to {otpSent.maskedPhone}.
-                {otpSent.duplicateWithin30Days && ' This phone was already used for a recent attorney-delivery request, so any attorney lead is marked duplicate/no-charge.'}
-                {otpSent.devCode && ` Development code: ${otpSent.devCode}.`}
-              </FieldDescription>
-              <div className="grid gap-3 md:grid-cols-[1fr_auto]">
-                <InputOTP maxLength={4} value={code} onChange={setCode}>
-                  <InputOTPGroup>
-                    <InputOTPSlot index={0} />
-                    <InputOTPSlot index={1} />
-                    <InputOTPSlot index={2} />
-                    <InputOTPSlot index={3} />
-                  </InputOTPGroup>
-                </InputOTP>
-                <Button
-                  type="button"
-                  onClick={verifyCode}
-                  disabled={isVerifying || code.length !== 4}
-                  className="h-10 bg-sky-700 text-white hover:bg-sky-600"
-                >
-                  {isVerifying ? 'Verifying...' : 'Unlock estimate'}
-                </Button>
-              </div>
-            </Field>
-          )}
+          <AnimatePresence initial={false}>
+            {otpSent && (
+              <motion.div key="otp-field" {...reducedMotionFade(shouldReduceMotion)} layout>
+                <Field>
+                  <FieldLabel>
+                    <KeyRound data-icon="inline-start" />
+                    4-digit code
+                  </FieldLabel>
+                  <FieldDescription>
+                    Code sent to {otpSent.maskedPhone}.
+                    {otpSent.duplicateWithin30Days && ' This phone was already used for a recent attorney-delivery request, so any attorney lead is marked duplicate/no-charge.'}
+                    {otpSent.devCode && ` Development code: ${otpSent.devCode}.`}
+                  </FieldDescription>
+                  <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+                    <InputOTP maxLength={4} value={code} onChange={setCode}>
+                      <InputOTPGroup>
+                        <InputOTPSlot index={0} />
+                        <InputOTPSlot index={1} />
+                        <InputOTPSlot index={2} />
+                        <InputOTPSlot index={3} />
+                      </InputOTPGroup>
+                    </InputOTP>
+                    <Button
+                      type="button"
+                      onClick={verifyCode}
+                      disabled={isVerifying || code.length !== 4}
+                      className="h-10 bg-sky-700 text-white hover:bg-sky-600"
+                    >
+                      {isVerifying ? 'Verifying...' : 'Unlock estimate'}
+                    </Button>
+                  </div>
+                </Field>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </FieldGroup>
 
-        {error && (
-          <Alert variant="destructive">
-            <AlertCircle data-icon="inline-start" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
+        <AnimatePresence initial={false}>
+          {error && (
+            <motion.div key="phone-error" {...reducedMotionFade(shouldReduceMotion)}>
+              <Alert variant="destructive">
+                <AlertCircle data-icon="inline-start" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div className="flex flex-col gap-2 sm:flex-row">
           <Button type="button" size="lg" variant="outline" className="h-11" onClick={onResetPreview}>
@@ -797,6 +1102,7 @@ function UnlockActionPanel({
         </div>
       </CardContent>
     </Card>
+    </motion.div>
   );
 }
 
@@ -811,6 +1117,7 @@ function ReviewUnlockStep({ data, register, setValue, errors, turnstileToken, on
   onUnlocked: (results: SettlementResult, attorney: ResponsibleAttorney | null, leadDeliveryStatus: string) => void;
   onResetPreview: () => void;
 }) {
+  const shouldReduceMotion = Boolean(useReducedMotion());
   const items = buildProfileItems(data, turnstileToken, STEPS.length);
   const completedCount = items.filter((item) => item.complete).length;
 
@@ -820,39 +1127,48 @@ function ReviewUnlockStep({ data, register, setValue, errors, turnstileToken, on
         <Badge variant="secondary" className="w-fit">Unlock</Badge>
         <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Unlock</h2>
         <p className="max-w-2xl text-sm leading-6 text-slate-600">
-          Check the form steps, complete the security check, then unlock the educational range.
+          Confirm Date of Birth, complete the security check, then unlock the educational range.
         </p>
       </div>
 
       {!preview && (
-        <Card className="border-slate-200 bg-white shadow-sm">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <MapPin data-icon="inline-start" className="text-sky-700" />
-              Accident county <span className="text-amber-600">*</span>
-              <InfoIcon content="County is used for California-specific venue context, routing, and disclosure. It applies only a small estimate adjustment." />
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <CountyCombobox
-              id="review-accident-county"
-              value={data.accidentDetails.county}
-              error={errors.accidentDetails?.county?.message}
-              onValueChange={(county) => setValue('accidentDetails.county', county, {
-                shouldDirty: true,
-                shouldTouch: true,
-                shouldValidate: true
-              })}
-            />
-            <input
-              type="hidden"
-              {...register('accidentDetails.county', { required: 'Choose a county from the list' })}
-            />
-            {errors.accidentDetails?.county && (
-              <p className="mt-2 text-sm text-red-600">{errors.accidentDetails.county.message}</p>
-            )}
-          </CardContent>
-        </Card>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <DateOfBirthAgeCheck
+            value={data.demographics.dateOfBirth}
+            register={register}
+            setValue={setValue}
+            error={errors.demographics?.dateOfBirth?.message}
+          />
+
+          <Card className="border-slate-200 bg-white shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <MapPin data-icon="inline-start" className="text-sky-700" />
+                Accident county <span className="text-amber-600">*</span>
+                <InfoIcon content="County is used for California-specific venue context, routing, and disclosure. It applies only a small estimate adjustment." />
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CountyCombobox
+                id="review-accident-county"
+                value={data.accidentDetails.county}
+                error={errors.accidentDetails?.county?.message}
+                onValueChange={(county) => setValue('accidentDetails.county', county, {
+                  shouldDirty: true,
+                  shouldTouch: true,
+                  shouldValidate: true
+                })}
+              />
+              <input
+                type="hidden"
+                {...register('accidentDetails.county', { required: 'Choose a county from the list' })}
+              />
+              {errors.accidentDetails?.county && (
+                <p className="mt-2 text-sm text-red-600">{errors.accidentDetails.county.message}</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       )}
 
       <div className="grid gap-4 lg:grid-cols-[0.85fr_1.15fr]">
@@ -865,22 +1181,51 @@ function ReviewUnlockStep({ data, register, setValue, errors, turnstileToken, on
             <CardDescription>{completedCount} of {items.length} steps complete</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-2">
+            <motion.div
+              className="flex flex-col gap-2"
+              variants={staggerContainer}
+              initial={shouldReduceMotion ? false : 'hidden'}
+              animate="visible"
+            >
             {items.map((item) => (
-              <div key={item.label} className="flex items-center gap-3 rounded-lg border bg-slate-50 px-3 py-3">
-                <span className={cn(
+              <motion.div
+                key={item.label}
+                layout
+                variants={fadeUpItem}
+                className="flex items-center gap-3 rounded-lg border bg-slate-50 px-3 py-3"
+              >
+                <motion.span
+                  layout
+                  className={cn(
                   'flex size-6 flex-none items-center justify-center rounded-full ring-1',
                   item.complete
                     ? 'bg-emerald-700 text-white ring-emerald-700'
                     : 'bg-white text-slate-400 ring-slate-200'
-                )}>
-                  {item.complete ? <Check className="size-4" aria-hidden="true" /> : null}
-                </span>
+                  )}
+                  animate={shouldReduceMotion ? undefined : { scale: item.complete ? [1, 1.14, 1] : 1 }}
+                  transition={{ duration: 0.3, ease: premiumEase }}
+                >
+                  <AnimatePresence initial={false}>
+                    {item.complete ? (
+                      <motion.span
+                        key="complete"
+                        initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, scale: 0.7 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.7 }}
+                        transition={shouldReduceMotion ? { duration: 0.08 } : softSpring}
+                      >
+                        <Check className="size-4" aria-hidden="true" />
+                      </motion.span>
+                    ) : null}
+                  </AnimatePresence>
+                </motion.span>
                 <span className="min-w-0 flex-1 text-sm font-medium text-slate-800">{item.label}</span>
                 <Badge variant={item.complete ? 'secondary' : 'outline'}>
                   {item.complete ? 'Complete' : 'Pending'}
                 </Badge>
-              </div>
+              </motion.div>
             ))}
+            </motion.div>
           </CardContent>
         </Card>
 
@@ -1044,12 +1389,10 @@ function StepTransitionOverlay({ transition }: { transition: StepTransitionState
 }
 
 function StartCalculatorScreen({
-  savedDraft,
   onResume,
   onStart,
   onStartOver
 }: {
-  savedDraft: CalculatorDraft | null;
   onResume: () => void;
   onStart: () => void;
   onStartOver: () => void;
@@ -1061,80 +1404,110 @@ function StartCalculatorScreen({
     'No AI used to derive claim value',
     'Educational estimate, not legal or professional advice'
   ];
+  const shouldReduceMotion = Boolean(useReducedMotion());
 
   return (
-    <section
+    <motion.section
       aria-labelledby="calculator-start-heading"
-      className="mx-auto max-w-4xl overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
+      className="mx-auto max-w-6xl overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm"
+      variants={staggerContainer}
+      initial={false}
+      animate="visible"
     >
-      <div className="grid gap-0 lg:grid-cols-[1fr_280px]">
-        <div className="p-6 sm:p-8 lg:p-10">
-          <h1
-            id="calculator-start-heading"
-            className="max-w-3xl text-3xl font-semibold leading-[1.05] tracking-tight text-slate-950 sm:text-5xl"
-          >
-            Estimate Your California Auto Injury Claim
-          </h1>
-          <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
-            Answer a few guided questions to prepare an educational settlement range.
+      <motion.div className="aspect-[16/17] w-full overflow-hidden bg-slate-100" variants={fadeUpItem}>
+        <img
+          src="/marketing/settlement-hero.webp"
+          alt="Relieved California auto accident claimant holding a phone and settlement cash near a parked car"
+          width={1080}
+          height={1920}
+          fetchPriority="high"
+          decoding="async"
+          className="h-full w-full object-cover object-[center_30%]"
+        />
+      </motion.div>
+
+      <div className="p-6 sm:p-8 lg:p-10">
+        <motion.h1
+          id="calculator-start-heading"
+          className="max-w-3xl text-3xl font-semibold leading-[1.05] tracking-tight text-slate-950 sm:text-5xl"
+          variants={fadeUpItem}
+        >
+          Estimate Your California Auto Injury Claim
+        </motion.h1>
+        <motion.p className="mt-4 max-w-2xl text-base leading-7 text-slate-600 sm:text-lg" variants={fadeUpItem}>
+          Answer a few guided questions to prepare an educational settlement range.
+        </motion.p>
+
+        <motion.div className="calculator-draft-resume mt-7 rounded-lg border border-emerald-200 bg-emerald-50 p-4" variants={fadeUpItem}>
+          <p className="text-sm font-semibold text-slate-950">You have a saved estimate in progress.</p>
+          <p className="mt-1 text-sm leading-6 text-slate-600">
+            Resume where you left off, or start over and clear the saved draft.
           </p>
-
-          {savedDraft ? (
-            <div className="mt-7 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-              <p className="text-sm font-semibold text-slate-950">You have a saved estimate in progress.</p>
-              <p className="mt-1 text-sm leading-6 text-slate-600">
-                Resume where you left off, or start over and clear the saved draft.
-              </p>
-              <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                <Button
-                  type="button"
-                  onClick={onResume}
-                  size="lg"
-                  className="h-12 bg-emerald-700 px-5 text-base text-white hover:bg-emerald-600"
-                >
-                  Resume saved estimate
-                  <ArrowRight data-icon="inline-end" />
-                </Button>
-                <Button
-                  type="button"
-                  onClick={onStartOver}
-                  size="lg"
-                  variant="outline"
-                  className="h-12 px-5 text-base"
-                >
-                  Start over
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="mt-7">
-              <Button
-                type="button"
-                onClick={onStart}
-                size="lg"
-                className="h-12 w-full bg-amber-500 px-5 text-base text-slate-950 hover:bg-amber-400 sm:w-auto"
-              >
-                Start my estimate
-                <ArrowRight data-icon="inline-end" />
-              </Button>
-            </div>
-          )}
-        </div>
-
-        <aside className="border-t border-slate-200 bg-slate-50 p-5 sm:p-6 lg:border-l lg:border-t-0">
-          <div className="flex h-full flex-col justify-center gap-3">
-            {trustPoints.map((point) => (
-              <div key={point} className="flex items-center gap-3 rounded-lg bg-white px-3 py-3 ring-1 ring-slate-200">
-                <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-emerald-700 text-white">
-                  <Check className="h-4 w-4" aria-hidden="true" />
-                </span>
-                <span className="text-sm font-medium text-slate-800">{point}</span>
-              </div>
-            ))}
+          <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+            <Button
+              type="button"
+              onClick={onResume}
+              size="lg"
+              className="h-12 bg-emerald-700 px-5 text-base text-white hover:bg-emerald-600"
+            >
+              Resume
+              <ArrowRight data-icon="inline-end" />
+            </Button>
+            <Button
+              type="button"
+              onClick={onStartOver}
+              size="lg"
+              variant="outline"
+              className="h-12 px-5 text-base"
+            >
+              Start over
+            </Button>
           </div>
-        </aside>
+        </motion.div>
+
+        <motion.div className="calculator-draft-start mt-7" variants={fadeUpItem}>
+            <Button
+              type="button"
+              onClick={onStart}
+              size="lg"
+              className="h-12 w-full bg-amber-500 px-5 text-base text-slate-950 hover:bg-amber-400 sm:w-auto"
+            >
+              Start my estimate
+              <ArrowRight data-icon="inline-end" />
+            </Button>
+        </motion.div>
       </div>
-    </section>
+
+      <aside className="border-t border-slate-200 bg-slate-50">
+        <motion.div className="grid gap-3 p-5 sm:grid-cols-2 sm:p-6 xl:grid-cols-3" variants={staggerContainer}>
+          {trustPoints.map((point) => (
+            <motion.div
+              key={point}
+              className="flex items-center gap-3 rounded-lg bg-white px-3 py-3 ring-1 ring-slate-200"
+              variants={fadeUpItem}
+              whileHover={shouldReduceMotion ? undefined : { y: -2 }}
+              transition={gentleSpring}
+            >
+              <span className="flex h-7 w-7 flex-none items-center justify-center rounded-full bg-emerald-700 text-white">
+                <Check className="h-4 w-4" aria-hidden="true" />
+              </span>
+              <span className="text-sm font-medium text-slate-800">{point}</span>
+            </motion.div>
+          ))}
+        </motion.div>
+        <motion.div className="aspect-[16/17] w-full overflow-hidden border-t border-slate-200 bg-white" variants={fadeUpItem}>
+          <img
+            src="/marketing/settlement-trust.webp"
+            alt="Young woman with a neck brace reviewing her settlement on a phone at a kitchen table"
+            width={1080}
+            height={1920}
+            loading="lazy"
+            decoding="async"
+            className="h-full w-full object-cover object-center"
+          />
+        </motion.div>
+      </aside>
+    </motion.section>
   );
 }
 
@@ -1242,6 +1615,10 @@ export default function SettlementCalculator() {
   const [isAbandonDialogOpen, setIsAbandonDialogOpen] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState('');
   const [bodyModel, setBodyModel] = useState<BodyMapGender | ''>('');
+  const [bodyModelError, setBodyModelError] = useState<string | null>(null);
+  const [workLifeBooleanAnswers, setWorkLifeBooleanAnswers] = useState<WorkLifeBooleanAnswers>(() => (
+    workLifeBooleanAnswersFromData(createDefaultCalculatorData())
+  ));
   const [stepTransition, setStepTransition] = useState<StepTransitionState>({
     active: false,
     direction: 'forward',
@@ -1257,6 +1634,7 @@ export default function SettlementCalculator() {
   });
 
   const watchData = watch();
+  const shouldReduceMotion = Boolean(useReducedMotion());
 
   const scrollToTop = useCallback(() => {
     window.scrollTo({ top: 0, behavior: 'auto' });
@@ -1314,6 +1692,7 @@ export default function SettlementCalculator() {
     setIsCalculating(false);
     setCalculationError(null);
     setTurnstileToken('');
+    setBodyModelError(null);
     clearErrors();
   }, [clearErrors]);
 
@@ -1329,6 +1708,7 @@ export default function SettlementCalculator() {
     setHasStarted(false);
     setCurrentStep(1);
     setBodyModel('');
+    setWorkLifeBooleanAnswers(workLifeBooleanAnswersFromData(createDefaultCalculatorData()));
     setStepTransition({
       active: false,
       direction: 'forward',
@@ -1340,6 +1720,21 @@ export default function SettlementCalculator() {
     replaceHistoryWithLanding();
     scrollToTop();
   }, [clearTransientState, replaceHistoryWithLanding, reset, scrollToTop]);
+
+  const handleBodyModelChange = useCallback((nextBodyModel: BodyMapGender) => {
+    setBodyModel(nextBodyModel);
+    setBodyModelError(null);
+  }, []);
+
+  const handleWorkLifeBooleanAnswerChange = useCallback((field: WorkLifeBooleanField, value: boolean) => {
+    setWorkLifeBooleanAnswers((currentAnswers) => ({
+      ...currentAnswers,
+      [field]: value
+    }));
+    if (field === 'hasAttorney') {
+      clearErrors('insurance.hasAttorney');
+    }
+  }, [clearErrors]);
 
   const activeOrSavedDraftExists = useCallback(() => {
     return Boolean(
@@ -1374,13 +1769,22 @@ export default function SettlementCalculator() {
   }, []);
 
   const resumeSavedDraft = useCallback(async () => {
-    if (!savedDraft) return;
+    const draftToResume = savedDraft ?? readCalculatorDraft();
+    if (!draftToResume) {
+      setSavedDraft(null);
+      setCalculatorDraftDocumentStatus(CALCULATOR_DRAFT_NONE);
+      return;
+    }
 
-    reset(savedDraft.data);
+    reset(draftToResume.data);
     clearTransientState();
     await beginLeadQualityTimer();
-    const restoredStep = clampStep(savedDraft.currentStep);
-    setBodyModel(savedDraft.bodyModel);
+    const restoredStep = clampStep(draftToResume.currentStep);
+    setBodyModel(draftToResume.bodyModel);
+    setWorkLifeBooleanAnswers({
+      ...workLifeBooleanAnswersFromData(draftToResume.data),
+      ...draftToResume.workLifeBooleanAnswers
+    });
     setCurrentStep(restoredStep);
     setHasStarted(true);
     setSavedDraft(null);
@@ -1390,12 +1794,13 @@ export default function SettlementCalculator() {
 
   const startCalculator = useCallback(async () => {
     clearTransientState();
+    setWorkLifeBooleanAnswers(workLifeBooleanAnswersFromData(getValues()));
     await beginLeadQualityTimer();
     setHasStarted(true);
     setCurrentStep(1);
     seedStepHistory(1);
     scrollToTop();
-  }, [beginLeadQualityTimer, clearTransientState, scrollToTop, seedStepHistory]);
+  }, [beginLeadQualityTimer, clearTransientState, getValues, scrollToTop, seedStepHistory]);
 
   useEffect(() => {
     currentStepRef.current = currentStep;
@@ -1412,6 +1817,40 @@ export default function SettlementCalculator() {
   }, [currentStep, hasStarted, preview, showResults]);
 
   useEffect(() => {
+    if (hasStarted || showResults || isCalculating) return;
+
+    let firstFrame: number | undefined;
+    let secondFrame: number | undefined;
+    const scrollToLandingTop = () => window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    const queueLandingTopScroll = () => {
+      scrollToLandingTop();
+      if (firstFrame !== undefined) window.cancelAnimationFrame(firstFrame);
+      if (secondFrame !== undefined) window.cancelAnimationFrame(secondFrame);
+
+      firstFrame = window.requestAnimationFrame(() => {
+        scrollToLandingTop();
+        secondFrame = window.requestAnimationFrame(scrollToLandingTop);
+      });
+    };
+
+    const handleLandingEntry = () => queueLandingTopScroll();
+    queueLandingTopScroll();
+    window.addEventListener('pageshow', handleLandingEntry);
+    window.addEventListener('popstate', handleLandingEntry);
+
+    return () => {
+      window.removeEventListener('pageshow', handleLandingEntry);
+      window.removeEventListener('popstate', handleLandingEntry);
+      if (firstFrame !== undefined) {
+        window.cancelAnimationFrame(firstFrame);
+      }
+      if (secondFrame !== undefined) {
+        window.cancelAnimationFrame(secondFrame);
+      }
+    };
+  }, [hasStarted, isCalculating, showResults]);
+
+  useEffect(() => {
     hasStartedRef.current = hasStarted;
   }, [hasStarted]);
 
@@ -1426,14 +1865,15 @@ export default function SettlementCalculator() {
     if (!hasStarted && !hasMeaningfulCalculatorProgress(watchData, bodyModel)) return;
 
     writeCalculatorDraft({
-      version: DRAFT_VERSION,
+      version: CALCULATOR_DRAFT_VERSION,
       data: watchData,
       hasStarted,
       currentStep,
       bodyModel,
+      workLifeBooleanAnswers,
       savedAt: new Date().toISOString()
     });
-  }, [bodyModel, currentStep, hasHydratedDraft, hasStarted, watchData]);
+  }, [bodyModel, currentStep, hasHydratedDraft, hasStarted, watchData, workLifeBooleanAnswers]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -1505,9 +1945,23 @@ export default function SettlementCalculator() {
         requestPreview(),
         new Promise((resolve) => window.setTimeout(resolve, ESTIMATE_PREPARATION_MIN_MS))
       ]);
-      setPreview(previewResponse);
       setResults(null);
+      setResponsibleAttorney(null);
+      setLeadDeliveryStatus(null);
       setShowResults(false);
+
+      if (previewResponse.unlockMode === 'estimate_only') {
+        const unlocked = await requestEstimateOnlyUnlock(previewResponse.sessionId);
+        setResults(unlocked.results);
+        setResponsibleAttorney(unlocked.responsibleAttorney);
+        setLeadDeliveryStatus(unlocked.leadDeliveryStatus);
+        setPreview(null);
+        setShowResults(true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
+      setPreview(previewResponse);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
       console.error('Calculation error:', error);
@@ -1520,10 +1974,16 @@ export default function SettlementCalculator() {
   const validateCurrentStep = async () => {
     switch (currentStep) {
       case 1:
-        return trigger([
-          'accidentDetails.dateOfAccident',
-          'accidentDetails.impactSeverity'
-        ]);
+        {
+          const requiredFieldsAreValid = await trigger([
+            'accidentDetails.dateOfAccident',
+            'accidentDetails.impactSeverity'
+          ]);
+          const bodyModelIsValid = Boolean(bodyModel);
+          setBodyModelError(bodyModelIsValid ? null : 'Choose a body model');
+
+          return requiredFieldsAreValid && bodyModelIsValid;
+        }
       case 2:
         if (!watchData.injuries.bodyMap?.length) {
           setError('injuries.primaryInjury', {
@@ -1550,14 +2010,24 @@ export default function SettlementCalculator() {
         return true;
       case 4:
         {
-          const fields: Array<'demographics.dateOfBirth' | 'demographics.occupation' | 'demographics.annualIncome'> = [
-            'demographics.dateOfBirth'
-          ];
+          const fields: Array<'demographics.occupation' | 'demographics.annualIncome'> = [];
           if (watchData.impact.hasWageLoss) {
             fields.push('demographics.occupation', 'demographics.annualIncome');
           }
 
-          const stepIsValid = await trigger(fields);
+          const stepFieldsAreValid = fields.length ? await trigger(fields) : true;
+          const attorneyQuestionIsAnswered = typeof workLifeBooleanAnswers.hasAttorney === 'boolean';
+
+          if (!attorneyQuestionIsAnswered) {
+            setError('insurance.hasAttorney', {
+              type: 'manual',
+              message: 'Choose yes or no before continuing'
+            });
+          } else {
+            clearErrors('insurance.hasAttorney');
+          }
+
+          const stepIsValid = stepFieldsAreValid && attorneyQuestionIsAnswered;
           if (stepIsValid) {
             setValue('demographics.age', calculatorAgeFromDemographics(watchData.demographics), {
               shouldDirty: true,
@@ -1580,7 +2050,13 @@ export default function SettlementCalculator() {
           return stepIsValid;
         }
       case 5:
-        return Boolean(turnstileToken);
+        {
+          const unlockFieldsAreValid = await trigger([
+            'demographics.dateOfBirth',
+            'accidentDetails.county'
+          ]);
+          return unlockFieldsAreValid && Boolean(turnstileToken);
+        }
       default:
         return true;
     }
@@ -1633,7 +2109,15 @@ export default function SettlementCalculator() {
     }
   };
 
-  const handleCalculate = () => {
+  const handleCalculate = async () => {
+    const isValid = await validateCurrentStep();
+    if (!isValid) {
+      setShowValidationError(true);
+      setTimeout(() => setShowValidationError(false), 3000);
+      return;
+    }
+
+    setShowValidationError(false);
     handleSubmit(onSubmit)();
   };
 
@@ -1652,25 +2136,32 @@ export default function SettlementCalculator() {
   if (showResults && results) {
     return (
       <>
-        <SettlementResults
-          results={results}
-          medicalCosts={results.medicalCosts}
-          hasAttorney={watch('insurance.hasAttorney') || false}
-          responsibleAttorney={responsibleAttorney}
-          leadDeliveryStatus={leadDeliveryStatus}
-          onBack={() => {
-            setShowResults(false);
-            setPreview(null);
-            setCurrentStep(1);
-            pushStepHistory(1);
-          }}
-          onEdit={() => {
-            setShowResults(false);
-            setPreview(null);
-            setCurrentStep(5);
-            pushStepHistory(5);
-          }}
-        />
+        <motion.div
+          key="settlement-results"
+          initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 18 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={shouldReduceMotion ? { duration: 0.08 } : { duration: 0.38, ease: premiumEase }}
+        >
+          <SettlementResults
+            results={results}
+            medicalCosts={results.medicalCosts}
+            hasAttorney={watch('insurance.hasAttorney') || false}
+            responsibleAttorney={responsibleAttorney}
+            leadDeliveryStatus={leadDeliveryStatus}
+            onBack={() => {
+              setShowResults(false);
+              setPreview(null);
+              setCurrentStep(1);
+              pushStepHistory(1);
+            }}
+            onEdit={() => {
+              setShowResults(false);
+              setPreview(null);
+              setCurrentStep(5);
+              pushStepHistory(5);
+            }}
+          />
+        </motion.div>
         {abandonDialog}
       </>
     );
@@ -1679,7 +2170,14 @@ export default function SettlementCalculator() {
   if (isCalculating) {
     return (
       <>
-        <EstimatePreparationLoader />
+        <motion.div
+          key="estimate-loader"
+          initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={shouldReduceMotion ? { duration: 0.08 } : { duration: 0.3, ease: premiumEase }}
+        >
+          <EstimatePreparationLoader />
+        </motion.div>
         {abandonDialog}
       </>
     );
@@ -1689,7 +2187,6 @@ export default function SettlementCalculator() {
     return (
       <>
         <StartCalculatorScreen
-          savedDraft={savedDraft}
           onResume={resumeSavedDraft}
           onStart={startCalculator}
           onStartOver={requestAbandonReset}
@@ -1706,9 +2203,16 @@ export default function SettlementCalculator() {
           <ProfileStrengthCard data={watchData} turnstileToken={turnstileToken} currentStep={currentStep} />
         </div>
 
-        <div className="relative min-w-0 w-full max-w-[calc(100vw-2rem)] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm sm:max-w-none" data-form-container>
+        <motion.div
+          layout
+          className="relative min-w-0 w-full max-w-[calc(100vw-2rem)] overflow-visible rounded-lg border border-slate-200 bg-white shadow-sm sm:max-w-none"
+          data-form-container
+          initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={shouldReduceMotion ? { duration: 0.08 } : { duration: 0.34, ease: premiumEase }}
+        >
           <div className={cn(
-            'border-b border-slate-200 bg-slate-50/80 p-4 transition duration-150',
+            'rounded-t-lg border-b border-slate-200 bg-slate-50/80 p-4 transition duration-150',
             stepTransition.active && 'pointer-events-none opacity-55 blur-[1px]'
           )}>
             <div className="flex items-center justify-between gap-3">
@@ -1724,7 +2228,7 @@ export default function SettlementCalculator() {
                 {STEPS.map((step) => {
                   const Icon = step.icon;
                   return (
-                    <div
+                    <motion.div
                       key={step.id}
                       className={`flex h-8 w-8 items-center justify-center rounded-lg transition sm:h-9 sm:w-9 ${
                         currentStep >= step.id
@@ -1732,9 +2236,15 @@ export default function SettlementCalculator() {
                           : 'bg-white text-slate-400 ring-1 ring-slate-200'
                       }`}
                       title={step.name}
+                      animate={shouldReduceMotion ? undefined : {
+                        scale: currentStep === step.id ? 1.06 : 1,
+                        y: currentStep === step.id ? -1 : 0
+                      }}
+                      whileHover={shouldReduceMotion ? undefined : { y: -2 }}
+                      transition={softSpring}
                     >
                       <Icon className="h-4 w-4" />
-                    </div>
+                    </motion.div>
                   );
                 })}
               </div>
@@ -1759,58 +2269,76 @@ export default function SettlementCalculator() {
               stepTransition.active && 'pointer-events-none opacity-55 blur-[1px]'
             )}
           >
-            {currentStep === 1 && (
-              <QuickFactsStep
-                register={register}
-                watch={watch}
-                setValue={setValue}
-                errors={errors}
-                bodyModel={bodyModel}
-                onBodyModelChange={setBodyModel}
-              />
-            )}
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={`calculator-step-${currentStep}`}
+                initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
+                transition={shouldReduceMotion ? { duration: 0.08 } : { duration: 0.26, ease: premiumEase }}
+              >
+                {currentStep === 1 && (
+                  <QuickFactsStep
+                    register={register}
+                    watch={watch}
+                    setValue={setValue}
+                    errors={errors}
+                    bodyModel={bodyModel}
+                    bodyModelError={bodyModelError}
+                    onBodyModelChange={handleBodyModelChange}
+                  />
+                )}
 
-            {currentStep === 2 && (
-              <InjuriesStep
-                register={register}
-                watch={watch}
-                setValue={setValue}
-                errors={errors}
-                bodyModel={bodyModel || 'male'}
-              />
-            )}
+                {currentStep === 2 && (
+                  <InjuriesStep
+                    register={register}
+                    watch={watch}
+                    setValue={setValue}
+                    errors={errors}
+                    bodyModel={bodyModel || 'male'}
+                  />
+                )}
 
-            {currentStep === 3 && (
-              <TreatmentStep register={register} watch={watch} setValue={setValue} errors={errors} />
-            )}
+                {currentStep === 3 && (
+                  <TreatmentStep register={register} watch={watch} setValue={setValue} errors={errors} />
+                )}
 
-            {currentStep === 4 && (
-              <WorkLifeStep register={register} watch={watch} setValue={setValue} errors={errors} />
-            )}
+                {currentStep === 4 && (
+                  <WorkLifeStep
+                    register={register}
+                    watch={watch}
+                    setValue={setValue}
+                    errors={errors}
+                    booleanAnswers={workLifeBooleanAnswers}
+                    onBooleanAnswerChange={handleWorkLifeBooleanAnswerChange}
+                  />
+                )}
 
-            {currentStep === 5 && (
-              <ReviewUnlockStep
-                data={watchData}
-                register={register}
-                setValue={setValue}
-                errors={errors}
-                turnstileToken={turnstileToken}
-                onTurnstileToken={setTurnstileToken}
-                preview={preview}
-                onResetPreview={() => {
-                  setPreview(null);
-                  setCalculationError(null);
-                }}
-                onUnlocked={(unlockedResults, attorney, deliveryStatus) => {
-                  setResults(unlockedResults);
-                  setResponsibleAttorney(attorney);
-                  setLeadDeliveryStatus(deliveryStatus);
-                  setPreview(null);
-                  setShowResults(true);
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-              />
-            )}
+                {currentStep === 5 && (
+                  <ReviewUnlockStep
+                    data={watchData}
+                    register={register}
+                    setValue={setValue}
+                    errors={errors}
+                    turnstileToken={turnstileToken}
+                    onTurnstileToken={setTurnstileToken}
+                    preview={preview}
+                    onResetPreview={() => {
+                      setPreview(null);
+                      setCalculationError(null);
+                    }}
+                    onUnlocked={(unlockedResults, attorney, deliveryStatus) => {
+                      setResults(unlockedResults);
+                      setResponsibleAttorney(attorney);
+                      setLeadDeliveryStatus(deliveryStatus);
+                      setPreview(null);
+                      setShowResults(true);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                  />
+                )}
+              </motion.div>
+            </AnimatePresence>
 
             {!preview && (
             <div className="mt-8 rounded-lg border border-slate-200 bg-slate-50 p-2">
@@ -1846,31 +2374,49 @@ export default function SettlementCalculator() {
                     size="lg"
                     className="h-12 w-full min-w-0 justify-center bg-emerald-700 text-white hover:bg-emerald-600"
                   >
-                    <Sparkles data-icon="inline-start" />
-                    {isCalculating ? 'Preparing...' : 'Prepare secure preview'}
+                    {isCalculating ? (
+                      'Preparing...'
+                    ) : (
+                      <>
+                        Unlock
+                        <ArrowRight data-icon="inline-end" />
+                      </>
+                    )}
                   </Button>
                 )}
               </div>
             </div>
             )}
 
-            {showValidationError && (
-              <Alert className="mt-4" variant="destructive">
-                <AlertCircle data-icon="inline-start" />
-                <AlertDescription>{currentStep === 5 ? 'Please complete the security check before preparing your estimate.' : 'Please complete the required fields before continuing.'}</AlertDescription>
-              </Alert>
-            )}
+            <AnimatePresence initial={false}>
+              {showValidationError && (
+                <motion.div key="validation-error" {...reducedMotionFade(shouldReduceMotion)}>
+                  <Alert className="mt-4" variant="destructive">
+                    <AlertCircle data-icon="inline-start" />
+                    <AlertDescription>
+                      {currentStep === 5
+                        ? 'Please complete Date of Birth, accident county, and the security check before preparing your estimate.'
+                        : 'Please complete the required fields before continuing.'}
+                    </AlertDescription>
+                  </Alert>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-            {calculationError && (
-              <Alert className="mt-4" variant="destructive">
-                <AlertCircle data-icon="inline-start" />
-                <AlertDescription>{calculationError}</AlertDescription>
-              </Alert>
-            )}
+            <AnimatePresence initial={false}>
+              {calculationError && (
+                <motion.div key="calculation-error" {...reducedMotionFade(shouldReduceMotion)}>
+                  <Alert className="mt-4" variant="destructive">
+                    <AlertCircle data-icon="inline-start" />
+                    <AlertDescription>{calculationError}</AlertDescription>
+                  </Alert>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </form>
           <StepTransitionOverlay transition={stepTransition} />
           {abandonDialog}
-        </div>
+        </motion.div>
       </div>
 
       <div className="flex justify-center pt-6">

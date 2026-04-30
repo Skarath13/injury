@@ -1,9 +1,11 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./styles.css";
 import PrivacyChoicesManager from "@/components/CookieConsent";
 import { Geist } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { CALCULATOR_DRAFT_NONE } from "@/lib/calculatorDraft";
+import { DEFAULT_OPEN_GRAPH_IMAGE, DEFAULT_TWITTER_IMAGE } from "@/lib/seo";
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
@@ -35,20 +37,13 @@ export const metadata: Metadata = {
     siteName: 'California Auto Injury Settlement Calculator',
     title: 'California Auto Injury Settlement Calculator',
     description: 'Build a California auto injury case profile and unlock an educational insurance settlement estimate after phone verification.',
-    images: [
-      {
-        url: '/CDA92563-FA4A-4D3E-A231-F28BDAD0D4F3.png',
-        width: 1200,
-        height: 630,
-        alt: 'California Auto Injury Settlement Calculator',
-      },
-    ],
+    images: [DEFAULT_OPEN_GRAPH_IMAGE],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'California Auto Injury Settlement Calculator',
     description: 'Build a California auto injury case profile and unlock an educational insurance settlement estimate after phone verification.',
-    images: ['/CDA92563-FA4A-4D3E-A231-F28BDAD0D4F3.png'],
+    images: [DEFAULT_TWITTER_IMAGE],
     creator: '@CAInjuryCalc',
   },
   alternates: {
@@ -56,25 +51,34 @@ export const metadata: Metadata = {
   },
   category: 'Legal Services',
   metadataBase: new URL('https://californiasettlementcalculator.com'),
+  manifest: '/manifest.json',
   icons: {
     icon: [
       { url: '/favicon.svg', type: 'image/svg+xml' },
     ],
     shortcut: '/favicon.svg',
-    apple: '/apple-touch-icon.svg',
+    apple: '/apple-touch-icon.png',
+  },
+  appleWebApp: {
+    capable: true,
+    title: 'Settlement Calc',
+    statusBarStyle: 'black-translucent',
   },
   formatDetection: {
     telephone: false,
   },
   other: {
     'google-site-verification': 'google-site-verification-code', // Replace with actual verification code
+    'apple-mobile-web-app-capable': 'yes',
   },
 };
 
-export const viewport = {
+export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  themeColor: '#1e293b',
+  viewportFit: 'cover',
+  themeColor: '#0f172a',
+  colorScheme: 'light',
 }
 
 export default function RootLayout({
@@ -82,55 +86,18 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const serviceWorkerScript = process.env.NODE_ENV === 'production'
-    ? `
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function() {
-          navigator.serviceWorker.register('/sw.js')
-            .then(function(registration) {
-              console.log('SW registered: ', registration);
-            })
-            .catch(function(registrationError) {
-              console.warn('SW registration failed: ', registrationError);
-            });
-        });
-      }
-    `
-    : `
-      if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations()
-          .then(function(registrations) {
-            return Promise.all(registrations.map(function(registration) {
-              return registration.unregister();
-            }));
-          })
-          .then(function() {
-            if ('caches' in window) {
-              return caches.keys().then(function(keys) {
-                return Promise.all(keys.map(function(key) {
-                  return caches.delete(key);
-                }));
-              });
-            }
-          })
-          .catch(function(error) {
-            console.warn('Dev service worker cleanup failed: ', error);
-          });
-      }
-    `;
-
   return (
-    <html lang="en" className={cn("font-sans", geist.variable)}>
+    <html
+      lang="en"
+      className={cn("font-sans", geist.variable)}
+      data-calculator-draft={CALCULATOR_DRAFT_NONE}
+      suppressHydrationWarning
+    >
       <body className="antialiased">
         <TooltipProvider>
           {children}
           <PrivacyChoicesManager />
         </TooltipProvider>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: serviceWorkerScript,
-          }}
-        />
       </body>
     </html>
   );

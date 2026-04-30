@@ -1,6 +1,7 @@
 import SettlementCalculator from '@/components/SettlementCalculator';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import { createCalculatorDraftBootstrapScript } from '@/lib/calculatorDraft';
 
 const structuredData = {
   "@context": "https://schema.org",
@@ -84,6 +85,10 @@ const faqData = {
 export default function Home() {
   return (
     <>
+      <script
+        id="calculator-draft-bootstrap"
+        dangerouslySetInnerHTML={{ __html: createCalculatorDraftBootstrapScript() }}
+      />
       <script
         id="structured-data"
         type="application/ld+json"

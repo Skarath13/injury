@@ -45,11 +45,11 @@ export default function AccidentStep({ register, watch, errors }: Props) {
         </div>
 
         <div>
-          <label className="flex items-center text-sm font-medium text-slate-700 mb-2">
+          <div className="flex items-center text-sm font-medium text-slate-700 mb-2">
             <MapPin className="w-4 h-4 mr-2 text-slate-400" />
             Accident County <span className="text-red-500">*</span>
             <InfoIcon content="County is used for California-specific venue context, routing, and disclosure. It applies only a small estimate adjustment." />
-          </label>
+          </div>
           <select
             {...register('accidentDetails.county', { required: 'Please select the accident county' })}
             className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
@@ -65,11 +65,11 @@ export default function AccidentStep({ register, watch, errors }: Props) {
         </div>
 
         <div>
-          <label className="text-sm font-medium text-slate-700 mb-3 block">
+          <div className="text-sm font-medium text-slate-700 mb-3">
             <Car className="w-4 h-4 inline mr-2 text-slate-400" />
             How much were YOU at fault?
             <InfoIcon content="In California, your fault percentage directly reduces your settlement. For example, if you're 30% at fault and damages are $100,000, you can only recover $70,000." />
-          </label>
+          </div>
           
           <div className="bg-gradient-to-r from-green-50 to-red-50 rounded-lg p-5">
             <div className="text-center mb-4">
@@ -120,11 +120,11 @@ export default function AccidentStep({ register, watch, errors }: Props) {
         </div>
 
         <div>
-          <label className="flex items-center text-sm font-medium text-slate-700 mb-2">
+          <div className="flex items-center text-sm font-medium text-slate-700 mb-2">
             <Zap className="w-4 h-4 mr-2 text-slate-400" />
             Impact Severity <span className="text-red-500">*</span>
             <InfoIcon content="Low impact collisions often result in lower settlements due to causation disputes. Higher severity impacts typically correlate with more serious injuries and higher settlements." />
-          </label>
+          </div>
           <select
             {...register('accidentDetails.impactSeverity', { 
               required: 'Please select impact severity'
@@ -143,11 +143,11 @@ export default function AccidentStep({ register, watch, errors }: Props) {
         </div>
 
         <div>
-          <label className="flex items-center text-sm font-medium text-slate-700 mb-2">
+          <div className="flex items-center text-sm font-medium text-slate-700 mb-2">
             <AlertTriangle className="w-4 h-4 mr-2 text-slate-400" />
             Prior Accidents (Last 5 Years) <span className="text-red-500">*</span>
             <InfoIcon content="Prior accidents can affect credibility and reduce settlement values. Insurers may argue that your injuries were pre-existing from previous accidents." />
-          </label>
+          </div>
           <select
             {...register('accidentDetails.priorAccidents', { 
               required: 'Please select number of prior accidents'

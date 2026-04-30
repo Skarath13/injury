@@ -3,21 +3,24 @@
 import { useEffect, type ReactNode } from 'react';
 import { FieldErrors, UseFormRegister, UseFormSetValue, UseFormWatch } from 'react-hook-form';
 import { AlertTriangle, Briefcase, DollarSign, Gauge, Heart, Scale, User, type LucideIcon } from 'lucide-react';
-import { dateInputValueForAge, dateOfBirthIsInAllowedRange } from '@/lib/demographics';
+import { AnimatePresence, motion, useReducedMotion } from '@/components/motion/react';
 import { cn } from '@/lib/utils';
 import { InjuryCalculatorData } from '@/types/calculator';
+import type { WorkLifeBooleanAnswers, WorkLifeBooleanField } from '@/lib/calculatorDraft';
 import InfoIcon from '@/components/InfoIcon';
 import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { Slider } from '@/components/ui/slider';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { fadeUpItem, premiumEase, reducedMotionFade, softSpring, staggerContainer } from '@/components/motion/presets';
 
 interface Props {
   register: UseFormRegister<InjuryCalculatorData>;
   watch: UseFormWatch<InjuryCalculatorData>;
   setValue: UseFormSetValue<InjuryCalculatorData>;
   errors: FieldErrors<InjuryCalculatorData>;
+  booleanAnswers: WorkLifeBooleanAnswers;
+  onBooleanAnswerChange: (field: WorkLifeBooleanField, value: boolean) => void;
 }
 
 const yesNoToggleItemClass = cn(
@@ -31,16 +34,18 @@ const yesNoToggleItemClass = cn(
 function YesNoToggle({
   value,
   onChange,
-  ariaLabel
+  ariaLabel,
+  invalid
 }: {
-  value: boolean;
+  value?: boolean;
   onChange: (value: boolean) => void;
   ariaLabel: string;
+  invalid?: boolean;
 }) {
   return (
     <ToggleGroup
       type="single"
-      value={value ? 'yes' : 'no'}
+      value={typeof value === 'boolean' ? (value ? 'yes' : 'no') : ''}
       onValueChange={(nextValue) => {
         if (!nextValue) return;
         onChange(nextValue === 'yes');
@@ -48,6 +53,7 @@ function YesNoToggle({
       variant="default"
       spacing={1}
       aria-label={ariaLabel}
+      aria-invalid={invalid}
       className="grid w-full grid-cols-2 gap-1 rounded-[10px] border border-slate-200 bg-slate-100/80 p-1 shadow-inner sm:w-56"
     >
       <ToggleGroupItem value="yes" aria-label={`${ariaLabel}: yes`} className={yesNoToggleItemClass}>
@@ -75,8 +81,15 @@ function SectionPanel({
   className?: string;
   children: ReactNode;
 }) {
+  const shouldReduceMotion = Boolean(useReducedMotion());
+
   return (
-    <section className={cn('rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5', className)}>
+    <motion.section
+      className={cn('rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5', className)}
+      variants={fadeUpItem}
+      whileHover={shouldReduceMotion ? undefined : { y: -1 }}
+      transition={softSpring}
+    >
       <div className="mb-4 flex items-start gap-3">
         <span className={cn('flex h-9 w-9 flex-none items-center justify-center rounded-lg', iconClassName)}>
           <Icon className="h-4 w-4" />
@@ -87,7 +100,7 @@ function SectionPanel({
         </div>
       </div>
       {children}
-    </section>
+    </motion.section>
   );
 }
 
@@ -98,46 +111,72 @@ function ToggleQuestion({
   value,
   onChange,
   ariaLabel,
-  info
+  info,
+  invalid,
+  errorMessage
 }: {
   title: string;
   description: string;
   icon: LucideIcon;
-  value: boolean;
+  value?: boolean;
   onChange: (value: boolean) => void;
   ariaLabel: string;
   info?: string;
+  invalid?: boolean;
+  errorMessage?: string;
 }) {
+  const shouldReduceMotion = Boolean(useReducedMotion());
+
   return (
-    <div className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50/80 p-3 sm:grid-cols-[minmax(0,1fr)_14rem] sm:items-center">
-      <div className="flex min-w-0 gap-3">
-        <span className="mt-0.5 flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-white text-slate-700 shadow-sm">
-          <Icon className="h-4 w-4" />
-        </span>
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-            {title}
-            {info && <InfoIcon content={info} />}
+    <div className="flex flex-col gap-2">
+      <motion.div
+        data-invalid={invalid || undefined}
+        className={cn(
+          'grid gap-3 rounded-lg border border-slate-200 bg-slate-50/80 p-3 sm:grid-cols-[minmax(0,1fr)_14rem] sm:items-center',
+          invalid && 'border-destructive bg-destructive/5'
+        )}
+        animate={shouldReduceMotion ? undefined : {
+          borderColor: invalid
+            ? 'rgba(220, 38, 38, 0.45)'
+            : value === true
+              ? 'rgba(16, 185, 129, 0.42)'
+              : 'rgba(226, 232, 240, 1)'
+        }}
+        whileHover={shouldReduceMotion ? undefined : { y: -1 }}
+        transition={{ duration: 0.2, ease: premiumEase }}
+      >
+        <div className="flex min-w-0 gap-3">
+          <span className="mt-0.5 flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-white text-slate-700 shadow-sm">
+            <Icon className="h-4 w-4" />
+          </span>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+              {title}
+              {info && <InfoIcon content={info} />}
+            </div>
+            <p className="mt-1 text-sm leading-5 text-slate-600">{description}</p>
           </div>
-          <p className="mt-1 text-sm leading-5 text-slate-600">{description}</p>
         </div>
-      </div>
-      <YesNoToggle value={value} onChange={onChange} ariaLabel={ariaLabel} />
+        <YesNoToggle value={value} onChange={onChange} ariaLabel={ariaLabel} invalid={invalid} />
+      </motion.div>
+      {errorMessage && <FieldError>{errorMessage}</FieldError>}
     </div>
   );
 }
 
-export default function WorkLifeStep({ register, watch, setValue, errors }: Props) {
+export default function WorkLifeStep({
+  register,
+  watch,
+  setValue,
+  errors,
+  booleanAnswers,
+  onBooleanAnswerChange
+}: Props) {
   const legacyMissedWorkDays = Number(watch('impact.missedWorkDays') || 0);
-  const watchedHasWageLoss = Boolean(watch('impact.hasWageLoss'));
+  const watchedHasWageLoss = watch('impact.hasWageLoss') === true;
   const hasWageLoss = watchedHasWageLoss || legacyMissedWorkDays > 0;
-  const emotionalDistress = Boolean(watch('impact.emotionalDistress'));
-  const lossOfConsortium = Boolean(watch('impact.lossOfConsortium'));
-  const permanentImpairment = Boolean(watch('impact.permanentImpairment'));
-  const hasAttorney = Boolean(watch('insurance.hasAttorney'));
   const faultPercentage = Number(watch('accidentDetails.faultPercentage') || 0);
-  const dateInputMin = dateInputValueForAge(100);
-  const dateInputMax = dateInputValueForAge(18);
+  const shouldReduceMotion = Boolean(useReducedMotion());
 
   useEffect(() => {
     if (!watchedHasWageLoss && legacyMissedWorkDays > 0) {
@@ -146,8 +185,9 @@ export default function WorkLifeStep({ register, watch, setValue, errors }: Prop
         shouldTouch: false,
         shouldValidate: false
       });
+      onBooleanAnswerChange('hasWageLoss', true);
     }
-  }, [legacyMissedWorkDays, setValue, watchedHasWageLoss]);
+  }, [legacyMissedWorkDays, onBooleanAnswerChange, setValue, watchedHasWageLoss]);
 
   const setBooleanValue = (
     field:
@@ -158,6 +198,15 @@ export default function WorkLifeStep({ register, watch, setValue, errors }: Prop
       | 'insurance.hasAttorney',
     value: boolean
   ) => {
+    const answerFieldByFormField: Record<typeof field, WorkLifeBooleanField> = {
+      'impact.hasWageLoss': 'hasWageLoss',
+      'impact.emotionalDistress': 'emotionalDistress',
+      'impact.lossOfConsortium': 'lossOfConsortium',
+      'impact.permanentImpairment': 'permanentImpairment',
+      'insurance.hasAttorney': 'hasAttorney'
+    };
+
+    onBooleanAnswerChange(answerFieldByFormField[field], value);
     setValue(field, value, {
       shouldDirty: true,
       shouldTouch: true,
@@ -202,45 +251,18 @@ export default function WorkLifeStep({ register, watch, setValue, errors }: Prop
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <motion.div
+      className="flex flex-col gap-6"
+      variants={staggerContainer}
+      initial={shouldReduceMotion ? false : 'hidden'}
+      animate="visible"
+    >
       <div className="flex flex-col gap-2">
         <h2 className="text-2xl font-semibold tracking-tight text-slate-950">Work and daily life</h2>
         <p className="max-w-2xl text-sm leading-6 text-slate-600">
-          Add the practical details that can sharpen the range. If something does not apply, choose no and continue.
+          Answer the items that apply. Anything left unanswered is treated as no, except attorney status.
         </p>
       </div>
-
-      <SectionPanel
-        title="Basic profile"
-        description="Date of birth keeps the estimate grounded without asking for a prefilled age."
-        icon={User}
-        iconClassName="bg-slate-100 text-slate-700"
-      >
-        <FieldGroup>
-          <Field data-invalid={Boolean(errors.demographics?.dateOfBirth)}>
-            <FieldLabel htmlFor="date-of-birth">
-              Date of birth
-              <InfoIcon content="Age can affect recovery assumptions and future care estimates." />
-            </FieldLabel>
-            <Input
-              id="date-of-birth"
-              type="date"
-              min={dateInputMin}
-              max={dateInputMax}
-              {...register('demographics.dateOfBirth', {
-                required: 'Date of birth is required',
-                validate: (value) => (
-                  dateOfBirthIsInAllowedRange(value) ||
-                  'Enter a date of birth for someone age 18 to 100'
-                )
-              })}
-              aria-invalid={Boolean(errors.demographics?.dateOfBirth)}
-              className="h-11"
-            />
-            <FieldError>{errors.demographics?.dateOfBirth?.message}</FieldError>
-          </Field>
-        </FieldGroup>
-      </SectionPanel>
 
       <SectionPanel
         title="Wage loss"
@@ -253,61 +275,68 @@ export default function WorkLifeStep({ register, watch, setValue, errors }: Prop
             title="Did the injury cause wage loss?"
             description="Choose yes if accident-related treatment or symptoms affected earnings."
             icon={DollarSign}
-            value={hasWageLoss}
+            value={booleanAnswers.hasWageLoss}
             onChange={handleWageLossChange}
             ariaLabel="Wage loss"
             info="The estimate uses occupation, income range, injury severity, and treatment progression instead of asking for missed days."
           />
 
-          {hasWageLoss && (
-            <div className="grid gap-4 rounded-lg border border-emerald-200 bg-emerald-50/80 p-4 md:grid-cols-2">
-              <Field data-invalid={Boolean(errors.demographics?.occupation)}>
-                <FieldLabel htmlFor="occupation">Occupation</FieldLabel>
-                <NativeSelect
-                  id="occupation"
-                  {...register('demographics.occupation', {
-                    validate: (value) => !hasWageLoss || Boolean(value) || 'Select an occupation'
-                  })}
-                  aria-invalid={Boolean(errors.demographics?.occupation)}
-                  className="w-full"
-                >
-                  <option value="">Select occupation...</option>
-                  <option value="Professional/Office Worker">Professional/Office Worker</option>
-                  <option value="Healthcare Worker">Healthcare Worker</option>
-                  <option value="Education/Teacher">Education/Teacher</option>
-                  <option value="Construction/Manual Labor">Construction/Manual Labor</option>
-                  <option value="Transportation/Delivery">Transportation/Delivery</option>
-                  <option value="Retail/Service Industry">Retail/Service Industry</option>
-                  <option value="Self-Employed/Business Owner">Self-Employed/Business Owner</option>
-                  <option value="Retired">Retired</option>
-                  <option value="Other">Other</option>
-                </NativeSelect>
-                <FieldError>{errors.demographics?.occupation?.message}</FieldError>
-              </Field>
+          <AnimatePresence initial={false}>
+            {hasWageLoss && (
+              <motion.div
+                key="wage-loss-fields"
+                className="grid gap-4 rounded-lg border border-emerald-200 bg-emerald-50/80 p-4 md:grid-cols-2"
+                {...reducedMotionFade(shouldReduceMotion)}
+                layout
+              >
+                <Field data-invalid={Boolean(errors.demographics?.occupation)}>
+                  <FieldLabel htmlFor="occupation">Occupation</FieldLabel>
+                  <NativeSelect
+                    id="occupation"
+                    {...register('demographics.occupation', {
+                      validate: (value) => !hasWageLoss || Boolean(value) || 'Select an occupation'
+                    })}
+                    aria-invalid={Boolean(errors.demographics?.occupation)}
+                    className="w-full"
+                  >
+                    <option value="">Select occupation...</option>
+                    <option value="Professional/Office Worker">Professional/Office Worker</option>
+                    <option value="Healthcare Worker">Healthcare Worker</option>
+                    <option value="Education/Teacher">Education/Teacher</option>
+                    <option value="Construction/Manual Labor">Construction/Manual Labor</option>
+                    <option value="Transportation/Delivery">Transportation/Delivery</option>
+                    <option value="Retail/Service Industry">Retail/Service Industry</option>
+                    <option value="Self-Employed/Business Owner">Self-Employed/Business Owner</option>
+                    <option value="Retired">Retired</option>
+                    <option value="Other">Other</option>
+                  </NativeSelect>
+                  <FieldError>{errors.demographics?.occupation?.message}</FieldError>
+                </Field>
 
-              <Field data-invalid={Boolean(errors.demographics?.annualIncome)}>
-                <FieldLabel htmlFor="annual-income">Income range</FieldLabel>
-                <NativeSelect
-                  id="annual-income"
-                  {...register('demographics.annualIncome', {
-                    validate: (value) => !hasWageLoss || Number(value) > 0 || 'Select an income range'
-                  })}
-                  aria-invalid={Boolean(errors.demographics?.annualIncome)}
-                  className="w-full"
-                >
-                  <option value="">Select income range...</option>
-                  <option value="20000">Under $25,000</option>
-                  <option value="37500">$25,000 - $50,000</option>
-                  <option value="62500">$50,000 - $75,000</option>
-                  <option value="87500">$75,000 - $100,000</option>
-                  <option value="125000">$100,000 - $150,000</option>
-                  <option value="175000">$150,000 - $200,000</option>
-                  <option value="250000">Over $200,000</option>
-                </NativeSelect>
-                <FieldError>{errors.demographics?.annualIncome?.message}</FieldError>
-              </Field>
-            </div>
-          )}
+                <Field data-invalid={Boolean(errors.demographics?.annualIncome)}>
+                  <FieldLabel htmlFor="annual-income">Income range</FieldLabel>
+                  <NativeSelect
+                    id="annual-income"
+                    {...register('demographics.annualIncome', {
+                      validate: (value) => !hasWageLoss || Number(value) > 0 || 'Select an income range'
+                    })}
+                    aria-invalid={Boolean(errors.demographics?.annualIncome)}
+                    className="w-full"
+                  >
+                    <option value="">Select income range...</option>
+                    <option value="20000">Under $25,000</option>
+                    <option value="37500">$25,000 - $50,000</option>
+                    <option value="62500">$50,000 - $75,000</option>
+                    <option value="87500">$75,000 - $100,000</option>
+                    <option value="125000">$100,000 - $150,000</option>
+                    <option value="175000">$150,000 - $200,000</option>
+                    <option value="250000">Over $200,000</option>
+                  </NativeSelect>
+                  <FieldError>{errors.demographics?.annualIncome?.message}</FieldError>
+                </Field>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </FieldGroup>
       </SectionPanel>
 
@@ -322,7 +351,7 @@ export default function WorkLifeStep({ register, watch, setValue, errors }: Prop
             title="Emotional distress"
             description="Anxiety, sleep disruption, depression, PTSD symptoms, or similar distress."
             icon={Heart}
-            value={emotionalDistress}
+            value={booleanAnswers.emotionalDistress}
             onChange={(value) => setBooleanValue('impact.emotionalDistress', value)}
             ariaLabel="Emotional distress"
           />
@@ -331,7 +360,7 @@ export default function WorkLifeStep({ register, watch, setValue, errors }: Prop
             title="Relationship or household impact"
             description="Loss of household help, changes in family responsibilities, or relationship strain."
             icon={User}
-            value={lossOfConsortium}
+            value={booleanAnswers.lossOfConsortium}
             onChange={(value) => setBooleanValue('impact.lossOfConsortium', value)}
             ariaLabel="Relationship or household impact"
           />
@@ -340,7 +369,7 @@ export default function WorkLifeStep({ register, watch, setValue, errors }: Prop
             title="Permanent impairment"
             description="A doctor has described lasting impairment, disability, or permanent limitations."
             icon={AlertTriangle}
-            value={permanentImpairment}
+            value={booleanAnswers.permanentImpairment}
             onChange={handlePermanentImpairmentChange}
             ariaLabel="Permanent impairment"
           />
@@ -360,9 +389,15 @@ export default function WorkLifeStep({ register, watch, setValue, errors }: Prop
                 <FieldLabel htmlFor="fault-percentage">Your estimated fault</FieldLabel>
                 <InfoIcon content="Use your best estimate of your share of fault. A 20% fault share means the estimate is reduced by 20%." />
               </div>
-              <span className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-semibold text-slate-950">
+              <motion.span
+                key={faultPercentage}
+                className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1 text-sm font-semibold text-slate-950"
+                initial={shouldReduceMotion ? { opacity: 1 } : { opacity: 0.8, scale: 0.94 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={shouldReduceMotion ? { duration: 0.08 } : softSpring}
+              >
                 {faultPercentage}%
-              </span>
+              </motion.span>
             </div>
             <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-5">
               <Slider
@@ -373,7 +408,7 @@ export default function WorkLifeStep({ register, watch, setValue, errors }: Prop
                 step={5}
                 onValueChange={handleFaultChange}
                 aria-label="Your estimated fault percentage"
-                className="py-3 [&_[data-slot=slider-thumb]]:size-5 [&_[data-slot=slider-thumb]]:border-2 [&_[data-slot=slider-track]]:h-2"
+                className="py-3 [&_[data-slot=slider-range]]:bg-transparent [&_[data-slot=slider-thumb]]:size-6 [&_[data-slot=slider-thumb]]:border-2 [&_[data-slot=slider-thumb]]:border-background [&_[data-slot=slider-thumb]]:bg-slate-950 [&_[data-slot=slider-track]]:h-3 [&_[data-slot=slider-track]]:bg-gradient-to-r [&_[data-slot=slider-track]]:from-emerald-500 [&_[data-slot=slider-track]]:via-amber-400 [&_[data-slot=slider-track]]:to-red-500"
               />
               <div className="mt-3 grid grid-cols-3 text-xs font-medium text-slate-500">
                 <span>0%</span>
@@ -399,12 +434,14 @@ export default function WorkLifeStep({ register, watch, setValue, errors }: Prop
           title="Do you have an attorney?"
           description="Answer yes only if an attorney is already involved in this claim."
           icon={Scale}
-          value={hasAttorney}
+          value={booleanAnswers.hasAttorney}
           onChange={handleAttorneyChange}
           ariaLabel="Attorney involved"
           info="Attorney involvement, liens, and costs can affect net recovery."
+          invalid={Boolean(errors.insurance?.hasAttorney)}
+          errorMessage={errors.insurance?.hasAttorney?.message}
         />
       </SectionPanel>
-    </div>
+    </motion.div>
   );
 }

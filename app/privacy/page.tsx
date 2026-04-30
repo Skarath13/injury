@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
+import { DEFAULT_OPEN_GRAPH_IMAGE } from '@/lib/seo'
 
 export const metadata: Metadata = {
   title: 'Privacy Policy | CA Auto Injury Calculator Data Protection',
@@ -10,6 +11,7 @@ export const metadata: Metadata = {
     title: 'Privacy Policy | CA Auto Injury Calculator Data Protection',
     description: 'Privacy policy for California auto injury settlement calculator. Learn how we protect your data and comply with privacy laws.',
     url: 'https://californiasettlementcalculator.com/privacy',
+    images: [DEFAULT_OPEN_GRAPH_IMAGE],
   },
   alternates: {
     canonical: 'https://californiasettlementcalculator.com/privacy',

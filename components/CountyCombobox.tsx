@@ -1,14 +1,34 @@
 'use client';
 
-import { ChangeEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { type PointerEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { ChevronsUpDown, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList
+} from '@/components/ui/command';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger
+} from '@/components/ui/drawer';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from '@/components/ui/popover';
 import {
   CALIFORNIA_COUNTIES,
   formatCounty,
   normalizeCounty,
-  rankCaliforniaCountyMatches,
-  resolveCountyAutocompleteValue
+  rankCaliforniaCountyMatches
 } from '@/lib/californiaCounties';
 import { cn } from '@/lib/utils';
 
@@ -21,6 +41,29 @@ interface CountyComboboxProps {
   disabled?: boolean;
 }
 
+function useMediaQuery(query: string) {
+  const [matches, setMatches] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(query);
+    const updateMatches = () => setMatches(mediaQuery.matches);
+
+    updateMatches();
+    mediaQuery.addEventListener('change', updateMatches);
+    return () => mediaQuery.removeEventListener('change', updateMatches);
+  }, [query]);
+
+  return matches;
+}
+
+function countyMatches(search: string, counties: readonly string[]) {
+  const normalized = normalizeCounty(search);
+  if (normalized.length < 2) return [...counties];
+  return rankCaliforniaCountyMatches(search, counties.length, counties);
+}
+
+const TOUCH_SELECTION_MOVEMENT_LIMIT = 8;
+
 export default function CountyCombobox({
   id,
   value,
@@ -29,170 +72,139 @@ export default function CountyCombobox({
   error,
   disabled = false
 }: CountyComboboxProps) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const [inputValue, setInputValue] = useState(() => formatCounty(value));
-  const [isFocused, setIsFocused] = useState(false);
-  const hasCommittedCounty = Boolean(value);
-  const trimmedInput = normalizeCounty(inputValue);
-  const matches = useMemo(() => (
-    rankCaliforniaCountyMatches(inputValue, 8, counties)
-  ), [inputValue, counties]);
-  const exactMatch = useMemo(() => (
-    resolveCountyAutocompleteValue(inputValue, counties)
-  ), [inputValue, counties]);
-  const showSuggestions = !hasCommittedCounty && isFocused && trimmedInput.length >= 2 && matches.length > 1;
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+  const touchStartRef = useRef<{ county: string; x: number; y: number } | null>(null);
+  const isMobile = useMediaQuery('(max-width: 767px)');
+  const selectedLabel = value ? formatCounty(value) : '';
+  const visibleCounties = useMemo(() => countyMatches(search, counties), [counties, search]);
 
   useEffect(() => {
-    if (value) {
-      setInputValue(formatCounty(value));
-      return;
+    if (!open) {
+      setSearch('');
     }
+  }, [open]);
 
-    if (!isFocused) {
-      setInputValue('');
-    }
-  }, [value, isFocused]);
-
-  const commitCounty = (county: string) => {
+  const selectCounty = (county: string) => {
     onValueChange(county);
-    setInputValue(formatCounty(county));
-    setIsFocused(false);
+    setOpen(false);
   };
 
-  const clearCanonicalCounty = () => {
-    if (value) {
-      onValueChange('');
-    }
+  const handleCountyPointerDown = (county: string) => (event: PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === 'mouse') return;
+
+    touchStartRef.current = {
+      county,
+      x: event.clientX,
+      y: event.clientY
+    };
   };
 
-  const changeCounty = () => {
-    onValueChange('');
-    setInputValue('');
-    setIsFocused(true);
-    window.setTimeout(() => inputRef.current?.focus(), 0);
+  const handleCountyPointerUp = (county: string) => (event: PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType === 'mouse') return;
+
+    const touchStart = touchStartRef.current;
+    touchStartRef.current = null;
+
+    if (!touchStart || touchStart.county !== county) return;
+
+    const movedX = Math.abs(event.clientX - touchStart.x);
+    const movedY = Math.abs(event.clientY - touchStart.y);
+    if (movedX > TOUCH_SELECTION_MOVEMENT_LIMIT || movedY > TOUCH_SELECTION_MOVEMENT_LIMIT) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    selectCounty(county);
   };
 
-  const resolveAndMaybeCommit = (rawValue: string) => {
-    const resolved = resolveCountyAutocompleteValue(rawValue, counties);
-
-    if (resolved) {
-      commitCounty(resolved);
-      return true;
-    }
-
-    clearCanonicalCounty();
-    return false;
+  const clearCountyPointerSelection = () => {
+    touchStartRef.current = null;
   };
 
-  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
-    if (hasCommittedCounty) return;
+  const trigger = (
+    <Button
+      id={id}
+      type="button"
+      variant="outline"
+      size="lg"
+      disabled={disabled}
+      role="combobox"
+      aria-expanded={open}
+      aria-invalid={Boolean(error)}
+      className={cn(
+        'h-11 w-full justify-between px-3 text-left text-base font-normal',
+        !selectedLabel && 'text-muted-foreground'
+      )}
+    >
+      <span className="flex min-w-0 items-center gap-2">
+        <Search data-icon="inline-start" />
+        <span className="truncate">{selectedLabel || 'Search county'}</span>
+      </span>
+      <ChevronsUpDown data-icon="inline-end" />
+    </Button>
+  );
 
-    const nextValue = event.target.value;
-    setInputValue(nextValue);
-    setIsFocused(true);
+  const countyCommand = (
+    <Command shouldFilter={false} className="rounded-none border-0 shadow-none">
+      <CommandInput
+        value={search}
+        onValueChange={setSearch}
+        placeholder="Type county name"
+        autoFocus
+      />
+      <CommandList className="max-h-[min(58dvh,22rem)]">
+        {visibleCounties.length > 0 ? (
+          <CommandGroup heading={normalizeCounty(search).length < 2 ? 'California counties' : 'Matches'}>
+            {visibleCounties.map((county) => (
+              <CommandItem
+                key={county}
+                value={county}
+                data-checked={county === value}
+                onSelect={() => selectCounty(county)}
+                onPointerDown={handleCountyPointerDown(county)}
+                onPointerUp={handleCountyPointerUp(county)}
+                onPointerCancel={clearCountyPointerSelection}
+                className="min-h-11 text-base"
+              >
+                <span>{formatCounty(county)}</span>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        ) : (
+          <CommandEmpty>No California county found.</CommandEmpty>
+        )}
+      </CommandList>
+    </Command>
+  );
 
-    if (normalizeCounty(nextValue).length < 2) {
-      clearCanonicalCounty();
-      return;
-    }
-
-    const resolved = resolveCountyAutocompleteValue(nextValue, counties);
-    if (resolved) {
-      commitCounty(resolved);
-      return;
-    }
-
-    clearCanonicalCounty();
-  };
-
-  const handleBlur = () => {
-    window.setTimeout(() => {
-      if (hasCommittedCounty) {
-        setIsFocused(false);
-        return;
-      }
-
-      if (!resolveAndMaybeCommit(inputValue)) {
-        setIsFocused(false);
-      }
-    }, 120);
-  };
-
-  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (hasCommittedCounty) return;
-
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      resolveAndMaybeCommit(inputValue);
-    }
-
-    if (event.key === 'Escape') {
-      setIsFocused(false);
-    }
-  };
+  if (isMobile) {
+    return (
+      <Drawer open={open} onOpenChange={setOpen}>
+        <DrawerTrigger asChild>{trigger}</DrawerTrigger>
+        <DrawerContent className="max-h-[88dvh] pb-[env(safe-area-inset-bottom)]">
+          <DrawerHeader className="pb-2 text-left">
+            <DrawerTitle>Accident county</DrawerTitle>
+            <DrawerDescription className="sr-only">
+              Select the California county where the accident happened.
+            </DrawerDescription>
+          </DrawerHeader>
+          <div className="px-4 pb-4">
+            {countyCommand}
+          </div>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
 
   return (
-    <div className="relative">
-      <div className="flex gap-2">
-        <Input
-          ref={inputRef}
-          id={id}
-          type="text"
-          role="combobox"
-          autoComplete="address-level2"
-          inputMode="text"
-          value={inputValue}
-          placeholder="Type county name"
-          aria-autocomplete="list"
-          aria-expanded={showSuggestions}
-          aria-invalid={Boolean(error)}
-          aria-readonly={hasCommittedCounty}
-          readOnly={hasCommittedCounty}
-          disabled={disabled}
-          onChange={handleChange}
-          onFocus={() => !hasCommittedCounty && setIsFocused(true)}
-          onBlur={handleBlur}
-          onKeyDown={handleKeyDown}
-          className={cn('h-11 text-base', hasCommittedCounty && 'cursor-default bg-muted/40')}
-        />
-        {hasCommittedCounty && (
-          <Button
-            type="button"
-            variant="outline"
-            size="lg"
-            disabled={disabled}
-            onMouseDown={(event) => event.preventDefault()}
-            onClick={changeCounty}
-            className="h-11 px-3"
-          >
-            Change
-          </Button>
-        )}
-      </div>
-      {showSuggestions && (
-        <div
-          role="listbox"
-          className="absolute left-0 right-0 top-[calc(100%+0.35rem)] z-30 max-h-56 overflow-y-auto rounded-lg border bg-popover p-1 text-popover-foreground shadow-md"
-        >
-          {matches.map((county) => (
-            <Button
-              key={county}
-              type="button"
-              variant="ghost"
-              role="option"
-              aria-selected={county === value}
-              onMouseDown={(event) => event.preventDefault()}
-              onClick={() => commitCounty(county)}
-              className={cn(
-                'h-11 w-full justify-start px-3 text-base font-normal',
-                county === value && 'bg-muted'
-              )}
-            >
-              {formatCounty(county)}
-            </Button>
-          ))}
-        </div>
-      )}
-    </div>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className="w-[var(--radix-popover-trigger-width)] p-0"
+      >
+        {countyCommand}
+      </PopoverContent>
+    </Popover>
   );
 }

@@ -71,6 +71,7 @@ export function BodyPart({
           stroke={isHighlighted ? "#111827" : stroke}
           strokeWidth={isHighlighted ? Math.max(strokeWidth, 3) : Math.max(strokeWidth, onClick ? 0.8 : 0)}
           vectorEffect="non-scaling-stroke"
+          className="transition-[fill,stroke,stroke-width,opacity] duration-200 ease-out"
         />
       ))}
       {onClick &&
@@ -120,11 +121,11 @@ export function BodyPart({
     return (
       <Tooltip>
         <TooltipTrigger asChild>{pathGroup}</TooltipTrigger>
-        <TooltipContent side="right" className="max-w-none">
-          <div className="text-sm whitespace-nowrap">
-            <div className="font-semibold mb-1">{title}</div>
+        <TooltipContent side="top" className="max-w-[min(18rem,calc(100vw-2rem))] text-left">
+          <div className="text-sm leading-5">
+            <div className="mb-1 font-semibold">{title}</div>
             {content && (
-              <div className="text-muted-foreground whitespace-pre">{content}</div>
+              <div className="whitespace-pre-line text-background/80">{content}</div>
             )}
           </div>
         </TooltipContent>
