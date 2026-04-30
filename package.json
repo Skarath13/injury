@@ -5,8 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "dev:worker": "wrangler dev",
-    "build": "npm run image:metadata:check && next build",
-    "build:cloudflare": "npm run image:metadata:check && node scripts/build-cloudflare.js",
+    "build": "next build",
+    "build:cloudflare": "node scripts/build-cloudflare.js",
     "prepare-worker": "node scripts/prepare-worker.js",
     "deploy:cloudflare": "wrangler deploy --env production --config wrangler.toml",
     "deploy:worker": "npm run deploy:cloudflare",

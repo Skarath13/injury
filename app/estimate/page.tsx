@@ -5,6 +5,8 @@ import {
   campaignSearchParamsFromRecord
 } from '@/lib/calculatorRoutes';
 
+export const runtime = 'edge';
+
 interface EstimateIndexPageProps {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }
