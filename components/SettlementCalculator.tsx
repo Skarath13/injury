@@ -1965,14 +1965,7 @@ export default function SettlementCalculator({ initialEstimateSlug = null }: Set
   }, [activeOrSavedDraftExists, clearTransientState, replaceHistoryWithLanding, requestAbandonReset, scrollToTop]);
 
   const beginLeadQualityTimer = useCallback(async () => {
-    try {
-      await fetch('/api/estimate/start', {
-        method: 'POST',
-        cache: 'no-store'
-      });
-    } catch (error) {
-      console.warn('Unable to start lead-quality timer:', error);
-    }
+    // Missing timer state already falls back to estimate-only unlock on the server.
   }, []);
 
   const resumeSavedDraft = useCallback(async () => {
