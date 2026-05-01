@@ -651,6 +651,10 @@ async function requestUnlockedEstimateRestore(sessionId: string): Promise<Restor
 
 function LockedRangePreview({ preview }: { preview: EstimatePreviewResponse | null }) {
   const shouldReduceMotion = Boolean(useReducedMotion());
+  const title = preview ? 'Your range is ready' : 'Protected range preview';
+  const description = preview
+    ? preview.summary
+    : 'Prepare the secure preview to unlock the educational estimate.';
 
   return (
     <motion.div
@@ -663,24 +667,16 @@ function LockedRangePreview({ preview }: { preview: EstimatePreviewResponse | nu
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Lock data-icon="inline-start" className="text-emerald-700" />
-            Your range is ready
+            {title}
           </CardTitle>
-          <CardDescription>
-            {preview ? preview.summary : 'Prepare the secure preview to unlock your estimated range.'}
-          </CardDescription>
+          <CardDescription>{description}</CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <div className="rounded-lg border bg-slate-50 p-3">
-            <div className="flex flex-col gap-2">
-              <div
-                className="h-3 rounded-full bg-gradient-to-r from-emerald-500 via-amber-400 to-red-500 shadow-inner"
-                aria-hidden="true"
-              />
-              <div className="flex items-center justify-between gap-3 text-xs font-medium text-muted-foreground">
-                <span>Likely</span>
-                <span>Potential</span>
-              </div>
-            </div>
+            <div
+              className="h-3 rounded-full bg-gradient-to-r from-emerald-500 via-amber-400 to-red-500 shadow-inner"
+              aria-hidden="true"
+            />
             <div className="mt-3 grid grid-cols-2 gap-3">
               {['Likely', 'Potential'].map((label, index) => (
                 <motion.div
@@ -1322,8 +1318,8 @@ function ReviewUnlockStep({ data, register, setValue, errors, preview, onUnlocke
         </div>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-[0.85fr_1.15fr]">
-        <Card className="border-slate-200 bg-white shadow-sm">
+      <div className="grid gap-4 lg:block">
+        <Card className="border-slate-200 bg-white shadow-sm lg:hidden">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <ClipboardCheck data-icon="inline-start" className="text-emerald-700" />
