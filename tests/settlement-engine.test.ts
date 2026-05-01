@@ -3,6 +3,7 @@ import test from 'node:test';
 import { NextRequest } from 'next/server';
 import { POST as previewPost } from '../app/api/estimate/preview/route';
 import { POST as unlockStartPost } from '../app/api/estimate/unlock/start/route';
+import { POST as restoreUnlockPost } from '../app/api/estimate/unlock/restore/route';
 import {
   BODY_MAP_CLICKABLE_SLUGS,
   bodyMapHighlightSideForView,
@@ -53,6 +54,7 @@ import {
   formStartElapsedSeconds,
   getLeadSession,
   localSessionCookieName,
+  restoreUnlockedEstimate,
   startOtpUnlock,
   unlockEstimateOnly,
   verifyOtpUnlock
@@ -499,6 +501,53 @@ test('estimate-only unlock returns full results without phone hash or OTP state'
   assert.equal(updated?.phoneContactConsent, false);
   assert.equal(updated?.emailHash, null);
   assert.equal(updated?.leadContactEncrypted, null);
+});
+
+test('unlocked estimate restore returns full results without repeating unlock', async () => {
+  const session = await createTestLeadSession();
+  await unlockEstimateOnly(session.id, testLeadEnv);
+
+  const restored = await restoreUnlockedEstimate(session.id, testLeadEnv);
+
+  assert.equal(restored.session.leadDeliveryStatus, 'estimate_only_no_delivery');
+  assert.equal(restored.result.midEstimate, JSON.parse(session.resultJson).midEstimate);
+  assert.equal(restored.attorney, null);
+});
+
+test('unlocked estimate restore rejects locked preview sessions', async () => {
+  const session = await createTestLeadSession();
+
+  await assert.rejects(
+    () => restoreUnlockedEstimate(session.id, testLeadEnv),
+    /not been unlocked/i
+  );
+});
+
+test('unlocked estimate restore endpoint returns verified SMS results', async () => {
+  const session = await createTestLeadSession();
+  await startOtpUnlock(session.id, testLeadContact('(949) 555-1313'), {
+    attorneyDeliveryConsent: true,
+    phoneContactConsent: true,
+    consentCopyVersion: attorneyConsentCopyVersion(testAttorney),
+    consentText: attorneyDeliveryConsentText(testAttorney)
+  }, testLeadEnv);
+  await verifyOtpUnlock(session.id, '123456', testLeadEnv);
+
+  const response = await restoreUnlockPost(new NextRequest('http://localhost/api/estimate/unlock/restore', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId: session.id })
+  }));
+  const payload = await response.json() as {
+    results?: { midEstimate?: number };
+    responsibleAttorney?: ResponsibleAttorney | null;
+    leadDeliveryStatus?: string;
+  };
+
+  assert.equal(response.status, 200);
+  assert.equal(payload.leadDeliveryStatus, 'ready_for_delivery');
+  assert.equal(payload.results?.midEstimate, JSON.parse(session.resultJson).midEstimate);
+  assert.equal(payload.responsibleAttorney?.id, testAttorney.id);
 });
 
 test('attorney delivery start rejects missing consent', async () => {

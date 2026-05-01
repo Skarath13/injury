@@ -260,6 +260,12 @@ export interface UnlockVerifyResponse {
   leadDeliveryStatus: string;
 }
 
+export interface RestoreUnlockedEstimateResponse {
+  results: SettlementResult;
+  responsibleAttorney: ResponsibleAttorney | null;
+  leadDeliveryStatus: string;
+}
+
 export interface LeadDeliveryPayload {
   schemaVersion: 'lead-delivery-2026-04-30-v1';
   generatedAt: string;

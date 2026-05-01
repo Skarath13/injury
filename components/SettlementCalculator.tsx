@@ -32,6 +32,7 @@ import {
   EstimatePreviewResponse,
   InjuryCalculatorData,
   ResponsibleAttorney,
+  RestoreUnlockedEstimateResponse,
   SettlementResult,
   UnlockStartResponse,
   UnlockVerifyResponse
@@ -96,6 +97,11 @@ import {
   routeStateForStep,
   type CalculatorRouteState
 } from '@/lib/calculatorRoutes';
+import {
+  clearUnlockedEstimateSession,
+  readUnlockedEstimateSession,
+  writeUnlockedEstimateSession
+} from '@/lib/unlockedEstimateSession';
 
 const STEPS = [
   { id: 1, name: 'Quick Facts', shortName: 'Facts', icon: MapPin },
@@ -631,6 +637,18 @@ async function requestEstimateOnlyUnlock(sessionId: string): Promise<EstimateOnl
   return parseApiResponse<EstimateOnlyUnlockResponse>(response, 'Unable to unlock the estimate.');
 }
 
+async function requestUnlockedEstimateRestore(sessionId: string): Promise<RestoreUnlockedEstimateResponse> {
+  const response = await fetch('/api/estimate/unlock/restore', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sessionId })
+  });
+  return parseApiResponse<RestoreUnlockedEstimateResponse>(
+    response,
+    'Unable to restore the unlocked estimate.'
+  );
+}
+
 function LockedRangePreview({ preview }: { preview: EstimatePreviewResponse | null }) {
   const shouldReduceMotion = Boolean(useReducedMotion());
 
@@ -876,7 +894,12 @@ function UnlockActionPanel({
   onResetPreview
 }: {
   preview: EstimatePreviewResponse | null;
-  onUnlocked: (results: SettlementResult, attorney: ResponsibleAttorney | null, leadDeliveryStatus: string) => void;
+  onUnlocked: (
+    sessionId: string,
+    results: SettlementResult,
+    attorney: ResponsibleAttorney | null,
+    leadDeliveryStatus: string
+  ) => void;
   onResetPreview: () => void;
 }) {
   const [firstName, setFirstName] = useState('');
@@ -920,7 +943,7 @@ function UnlockActionPanel({
 
     try {
       const payload = await requestEstimateOnlyUnlock(preview.sessionId);
-      onUnlocked(payload.results, payload.responsibleAttorney, payload.leadDeliveryStatus);
+      onUnlocked(preview.sessionId, payload.results, payload.responsibleAttorney, payload.leadDeliveryStatus);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Unable to unlock the estimate.');
     } finally {
@@ -955,7 +978,7 @@ function UnlockActionPanel({
 
       if (payload.provider === 'skipped_duplicate_no_charge' || payload.otpLength === 0) {
         const unlocked = await requestEstimateOnlyUnlock(preview.sessionId);
-        onUnlocked(unlocked.results, unlocked.responsibleAttorney, unlocked.leadDeliveryStatus);
+        onUnlocked(preview.sessionId, unlocked.results, unlocked.responsibleAttorney, unlocked.leadDeliveryStatus);
         return;
       }
 
@@ -987,7 +1010,7 @@ function UnlockActionPanel({
         'Unable to verify code.'
       );
 
-      onUnlocked(payload.results, payload.responsibleAttorney, payload.leadDeliveryStatus);
+      onUnlocked(preview.sessionId, payload.results, payload.responsibleAttorney, payload.leadDeliveryStatus);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Unable to verify code.');
     } finally {
@@ -1237,7 +1260,12 @@ function ReviewUnlockStep({ data, register, setValue, errors, preview, onUnlocke
   setValue: UseFormSetValue<InjuryCalculatorData>;
   errors: FieldErrors<InjuryCalculatorData>;
   preview: EstimatePreviewResponse | null;
-  onUnlocked: (results: SettlementResult, attorney: ResponsibleAttorney | null, leadDeliveryStatus: string) => void;
+  onUnlocked: (
+    sessionId: string,
+    results: SettlementResult,
+    attorney: ResponsibleAttorney | null,
+    leadDeliveryStatus: string
+  ) => void;
   onResetPreview: () => void;
 }) {
   const shouldReduceMotion = Boolean(useReducedMotion());
@@ -1773,6 +1801,9 @@ export default function SettlementCalculator({ initialEstimateSlug = null }: Set
   const [leadDeliveryStatus, setLeadDeliveryStatus] = useState<string | null>(null);
   const [showValidationError, setShowValidationError] = useState(false);
   const [isCalculating, setIsCalculating] = useState(false);
+  const [isRestoringUnlockedEstimate, setIsRestoringUnlockedEstimate] = useState(() => (
+    initialEstimateRoute?.kind === 'success'
+  ));
   const [calculationError, setCalculationError] = useState<string | null>(null);
   const [isAbandonDialogOpen, setIsAbandonDialogOpen] = useState(false);
   const [bodyModel, setBodyModel] = useState<BodyMapGender | ''>('');
@@ -1876,6 +1907,7 @@ export default function SettlementCalculator({ initialEstimateSlug = null }: Set
     setShowResults(false);
     setShowValidationError(false);
     setIsCalculating(false);
+    setIsRestoringUnlockedEstimate(false);
     setCalculationError(null);
     setBodyModelError(null);
     clearErrors();
@@ -1892,6 +1924,7 @@ export default function SettlementCalculator({ initialEstimateSlug = null }: Set
 
   const resetCalculatorToStart = useCallback(() => {
     clearCalculatorDraft();
+    clearUnlockedEstimateSession();
     reset(createDefaultCalculatorData());
     clearTransientState();
     setSavedDraft(null);
@@ -2002,6 +2035,7 @@ export default function SettlementCalculator({ initialEstimateSlug = null }: Set
   ]);
 
   const startCalculator = useCallback(async () => {
+    clearUnlockedEstimateSession();
     clearTransientState();
     setWorkLifeBooleanAnswers(workLifeBooleanAnswersFromData(getValues()));
     await beginLeadQualityTimer();
@@ -2010,6 +2044,28 @@ export default function SettlementCalculator({ initialEstimateSlug = null }: Set
     seedStepHistory(1);
     scrollToTop();
   }, [beginLeadQualityTimer, clearTransientState, getValues, scrollToTop, seedStepHistory]);
+
+  const showUnlockedEstimate = useCallback((
+    sessionId: string,
+    unlockedResults: SettlementResult,
+    attorney: ResponsibleAttorney | null,
+    deliveryStatus: string,
+    historyMethod: 'pushState' | 'replaceState' = 'pushState'
+  ) => {
+    writeUnlockedEstimateSession(sessionId);
+    setResults(unlockedResults);
+    setResponsibleAttorney(attorney);
+    setLeadDeliveryStatus(deliveryStatus);
+    setPreview(null);
+    setShowResults(true);
+    setHasStarted(true);
+    setCurrentStep(5);
+    setCalculationError(null);
+    setIsCalculating(false);
+    setIsRestoringUnlockedEstimate(false);
+    writeCalculatorRouteHistory(historyMethod, routeStateForSlug('success'));
+    scrollToTop();
+  }, [scrollToTop, writeCalculatorRouteHistory]);
 
   useEffect(() => {
     currentStepRef.current = currentStep;
@@ -2112,34 +2168,76 @@ export default function SettlementCalculator({ initialEstimateSlug = null }: Set
       ...workLifeBooleanAnswersFromData(draftData),
       ...draft?.workLifeBooleanAnswers
     };
-    const guardedRoute = guardCalculatorRoute(
-      requestedRoute,
-      {
-        data: draftData,
-        bodyModel: draftBodyModel,
-        workLifeBooleanAnswers: draftWorkLifeAnswers
-      },
-      {
-        hasPreview: false,
-        isPreparing: false,
-        hasResults: false
+    const progressInput = {
+      data: draftData,
+      bodyModel: draftBodyModel,
+      workLifeBooleanAnswers: draftWorkLifeAnswers
+    };
+    const applyInitialRoute = (guardedRoute: CalculatorRouteState) => {
+      reset(draftData);
+      clearTransientState();
+      setBodyModel(draftBodyModel);
+      setWorkLifeBooleanAnswers(draftWorkLifeAnswers);
+      setHasStarted(true);
+      setSavedDraft(null);
+      setCurrentStep(guardedRoute.kind === 'step' ? guardedRoute.step : 1);
+      writeCalculatorRouteHistory('replaceState', guardedRoute);
+      void beginLeadQualityTimer();
+      scrollToTop();
+
+      if (!calculatorRoutesMatch(requestedRoute, guardedRoute)) {
+        showTemporaryValidationError();
       }
-    );
+    };
 
-    reset(draftData);
-    clearTransientState();
-    setBodyModel(draftBodyModel);
-    setWorkLifeBooleanAnswers(draftWorkLifeAnswers);
-    setHasStarted(true);
-    setSavedDraft(null);
-    setCurrentStep(guardedRoute.kind === 'step' ? guardedRoute.step : 1);
-    writeCalculatorRouteHistory('replaceState', guardedRoute);
-    void beginLeadQualityTimer();
-    scrollToTop();
+    if (requestedRoute.kind === 'success') {
+      const unlockedEstimateSession = readUnlockedEstimateSession();
 
-    if (!calculatorRoutesMatch(requestedRoute, guardedRoute)) {
-      showTemporaryValidationError();
+      if (unlockedEstimateSession) {
+        reset(draftData);
+        clearTransientState();
+        setBodyModel(draftBodyModel);
+        setWorkLifeBooleanAnswers(draftWorkLifeAnswers);
+        setHasStarted(true);
+        setSavedDraft(null);
+        setCurrentStep(5);
+        setIsRestoringUnlockedEstimate(true);
+        writeCalculatorRouteHistory('replaceState', requestedRoute);
+        void beginLeadQualityTimer();
+        scrollToTop();
+
+        void requestUnlockedEstimateRestore(unlockedEstimateSession.sessionId)
+          .then((restored) => {
+            showUnlockedEstimate(
+              unlockedEstimateSession.sessionId,
+              restored.results,
+              restored.responsibleAttorney,
+              restored.leadDeliveryStatus,
+              'replaceState'
+            );
+          })
+          .catch(() => {
+            clearUnlockedEstimateSession();
+            const guardedRoute = guardCalculatorRoute(requestedRoute, progressInput, {
+              hasPreview: false,
+              isPreparing: false,
+              hasResults: false
+            });
+            applyInitialRoute(guardedRoute);
+          })
+          .finally(() => {
+            setIsRestoringUnlockedEstimate(false);
+          });
+
+        return;
+      }
     }
+
+    applyInitialRoute(guardCalculatorRoute(requestedRoute, progressInput, {
+      hasPreview: false,
+      isPreparing: false,
+      hasResults: false
+    }));
   }, [
     beginLeadQualityTimer,
     clearTransientState,
@@ -2147,6 +2245,7 @@ export default function SettlementCalculator({ initialEstimateSlug = null }: Set
     replaceHistoryWithLanding,
     reset,
     scrollToTop,
+    showUnlockedEstimate,
     showTemporaryValidationError,
     writeCalculatorRouteHistory
   ]);
@@ -2277,6 +2376,7 @@ export default function SettlementCalculator({ initialEstimateSlug = null }: Set
 
   const onSubmit = async (data: InjuryCalculatorData) => {
     setCalculationError(null);
+    clearUnlockedEstimateSession();
     const calculatorData = prepareCalculatorDataForEstimate(data);
 
     try {
@@ -2311,13 +2411,13 @@ export default function SettlementCalculator({ initialEstimateSlug = null }: Set
 
       if (previewResponse.unlockMode === 'estimate_only') {
         const unlocked = await requestEstimateOnlyUnlock(previewResponse.sessionId);
-        setResults(unlocked.results);
-        setResponsibleAttorney(unlocked.responsibleAttorney);
-        setLeadDeliveryStatus(unlocked.leadDeliveryStatus);
-        setPreview(null);
-        setShowResults(true);
-        writeCalculatorRouteHistory('replaceState', routeStateForSlug('success'));
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        showUnlockedEstimate(
+          previewResponse.sessionId,
+          unlocked.results,
+          unlocked.responsibleAttorney,
+          unlocked.leadDeliveryStatus,
+          'replaceState'
+        );
         return;
       }
 
@@ -2571,12 +2671,14 @@ export default function SettlementCalculator({ initialEstimateSlug = null }: Set
             responsibleAttorney={responsibleAttorney}
             leadDeliveryStatus={leadDeliveryStatus}
             onBack={() => {
+              clearUnlockedEstimateSession();
               setShowResults(false);
               setPreview(null);
               setCurrentStep(1);
               pushStepHistory(1);
             }}
             onEdit={() => {
+              clearUnlockedEstimateSession();
               setShowResults(false);
               setPreview(null);
               setCurrentStep(5);
@@ -2589,7 +2691,7 @@ export default function SettlementCalculator({ initialEstimateSlug = null }: Set
     );
   }
 
-  if (isCalculating) {
+  if (isCalculating || isRestoringUnlockedEstimate) {
     return (
       <>
         <motion.div
@@ -2801,14 +2903,8 @@ export default function SettlementCalculator({ initialEstimateSlug = null }: Set
                       setCalculationError(null);
                       replaceStepHistory(5);
                     }}
-                    onUnlocked={(unlockedResults, attorney, deliveryStatus) => {
-                      setResults(unlockedResults);
-                      setResponsibleAttorney(attorney);
-                      setLeadDeliveryStatus(deliveryStatus);
-                      setPreview(null);
-                      setShowResults(true);
-                      writeCalculatorRouteHistory('pushState', routeStateForSlug('success'));
-                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    onUnlocked={(sessionId, unlockedResults, attorney, deliveryStatus) => {
+                      showUnlockedEstimate(sessionId, unlockedResults, attorney, deliveryStatus);
                     }}
                   />
                 )}

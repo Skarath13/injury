@@ -1051,6 +1051,11 @@ function isNoDeliveryStatus(status: string): boolean {
     status === 'duplicate_30d_no_charge';
 }
 
+function sessionHasUnlockedEstimate(session: LeadSession): boolean {
+  return isNoDeliveryStatus(session.leadDeliveryStatus) ||
+    (session.leadDeliveryStatus === 'ready_for_delivery' && session.otpStatus === 'verified');
+}
+
 function generateOtp(env: WorkerEnv): string {
   if (env.OTP_DEV_CODE && env.NODE_ENV !== 'production') {
     return env.OTP_DEV_CODE;
@@ -1414,6 +1419,30 @@ export async function unlockEstimateOnly(
   return {
     session,
     result: JSON.parse(session.resultJson) as SettlementResult
+  };
+}
+
+export async function restoreUnlockedEstimate(
+  sessionId: string,
+  env: WorkerEnv = getWorkerEnv()
+): Promise<{ session: LeadSession; result: SettlementResult; attorney: ResponsibleAttorney | null }> {
+  const session = await getLeadSession(sessionId, env);
+  if (!session) {
+    throw new Error('Estimate session was not found. Please prepare the preview again.');
+  }
+  if (isExpired(session.expiresAt)) {
+    throw new Error('This estimate preview expired. Please prepare a new preview.');
+  }
+  if (!sessionHasUnlockedEstimate(session)) {
+    throw new Error('This estimate has not been unlocked yet.');
+  }
+
+  return {
+    session,
+    result: JSON.parse(session.resultJson) as SettlementResult,
+    attorney: session.leadDeliveryStatus === 'ready_for_delivery' && session.attorneyJson
+      ? JSON.parse(session.attorneyJson) as ResponsibleAttorney
+      : null
   };
 }
 

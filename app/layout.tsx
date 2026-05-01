@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import "@/components/motion/serverLocalStorageShim";
 import "./styles.css";
 import PrivacyChoicesManager from "@/components/CookieConsent";
 import { Geist } from "next/font/google";
