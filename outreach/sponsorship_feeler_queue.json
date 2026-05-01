@@ -6,7 +6,7 @@
     "prospect_name": "Law Offices of Jacob Emrani / CallJacob",
     "email": "info@calljacob.com",
     "confidence": "High",
-    "status": "ready"
+    "status": "sent"
   },
   {
     "id": "sweet-james",
@@ -15,7 +15,7 @@
     "prospect_name": "Sweet James",
     "email": "info@sweetjames.com",
     "confidence": "High",
-    "status": "ready"
+    "status": "sent"
   },
   {
     "id": "west-coast-trial-lawyers",
@@ -24,7 +24,7 @@
     "prospect_name": "West Coast Trial Lawyers",
     "email": "info@westcoasttriallawyers.com",
     "confidence": "High",
-    "status": "ready"
+    "status": "sent"
   },
   {
     "id": "wilshire-law-firm",
@@ -33,7 +33,7 @@
     "prospect_name": "Wilshire Law Firm",
     "email": "info@wilshirelawfirm.com",
     "confidence": "High",
-    "status": "ready"
+    "status": "sent"
   },
   {
     "id": "the-barnes-firm",
@@ -42,7 +42,7 @@
     "prospect_name": "The Barnes Firm",
     "email": "info@thebarnesfirm.com",
     "confidence": "High",
-    "status": "ready"
+    "status": "sent"
   },
   {
     "id": "the-dominguez-firm",
@@ -51,7 +51,7 @@
     "prospect_name": "The Dominguez Firm",
     "email": "info@dominguezfirm.com",
     "confidence": "High",
-    "status": "ready"
+    "status": "sent"
   },
   {
     "id": "adamson-ahdoot",
@@ -60,6 +60,6 @@
     "prospect_name": "Adamson Ahdoot LLP",
     "email": "contact@aa.law",
     "confidence": "High",
-    "status": "ready"
+    "status": "sent"
   }
 ]

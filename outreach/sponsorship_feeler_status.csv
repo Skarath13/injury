@@ -1,11 +1,11 @@
 id,firm,email,confidence,status,last_action,message_id,notes
-calljacob,CallJacob,info@calljacob.com,High,ready,,,
-sweet-james,Sweet James,info@sweetjames.com,High,ready,,,
-west-coast-trial-lawyers,West Coast Trial Lawyers,info@westcoasttriallawyers.com,High,ready,,,
-wilshire-law-firm,Wilshire Law Firm,info@wilshirelawfirm.com,High,ready,,,
-the-barnes-firm,The Barnes Firm,info@thebarnesfirm.com,High,ready,,,
-the-dominguez-firm,The Dominguez Firm,info@dominguezfirm.com,High,ready,,,
-adamson-ahdoot,Adamson Ahdoot,contact@aa.law,High,ready,,,
+calljacob,CallJacob,info@calljacob.com,High,sent,2026-05-01T22:09:38Z,<202605012209.62304194975@smtp-relay.mailin.fr>,Live sponsorship feeler sent
+sweet-james,Sweet James,info@sweetjames.com,High,sent,2026-05-01T22:09:51Z,<202605012209.56599613742@smtp-relay.mailin.fr>,Live sponsorship feeler sent
+west-coast-trial-lawyers,West Coast Trial Lawyers,info@westcoasttriallawyers.com,High,sent,2026-05-01T22:10:05Z,<202605012210.33443182308@smtp-relay.mailin.fr>,Live sponsorship feeler sent
+wilshire-law-firm,Wilshire Law Firm,info@wilshirelawfirm.com,High,sent,2026-05-01T22:10:18Z,<202605012210.52924121954@smtp-relay.mailin.fr>,Live sponsorship feeler sent
+the-barnes-firm,The Barnes Firm,info@thebarnesfirm.com,High,sent,2026-05-01T22:10:29Z,<202605012210.31196480034@smtp-relay.mailin.fr>,Live sponsorship feeler sent
+the-dominguez-firm,The Dominguez Firm,info@dominguezfirm.com,High,sent,2026-05-01T22:10:43Z,<202605012210.69653631331@smtp-relay.mailin.fr>,Live sponsorship feeler sent
+adamson-ahdoot,Adamson Ahdoot,contact@aa.law,High,sent,2026-05-01T22:10:54Z,<202605012210.54288093745@smtp-relay.mailin.fr>,Live sponsorship feeler sent
 test-drburton,Dylan test,drburton369@gmail.com,Test,sent,2026-05-01T08:44:00Z,<202605010844.54923747497@smtp-relay.mailin.fr>,Test copy sent with CallJacob personalization
 test-sweet-james,Dylan test,drburton369@gmail.com,Test,sent,2026-05-01T08:49:00Z,<202605010849.41765191202@smtp-relay.mailin.fr>,Live sample test sent with Sweet James personalization
 test-west-coast-v2,Dylan test,drburton369@gmail.com,Test,sent,2026-05-01T09:02:00Z,<202605010902.47778562189@smtp-relay.mailin.fr>,Sharper live sample test sent with West Coast Trial Lawyers personalization
