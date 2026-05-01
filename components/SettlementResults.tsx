@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { ResponsibleAttorney, SettlementResult } from '@/types/calculator';
-import { AlertCircle, ArrowLeft, Edit3, Printer, ShieldCheck } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Edit3, Printer, RotateCcw, ShieldCheck } from 'lucide-react';
 
 interface Props {
   results: SettlementResult;
@@ -24,6 +24,7 @@ interface Props {
   leadDeliveryStatus?: string | null;
   onBack: () => void;
   onEdit?: () => void;
+  onStartOver?: () => void;
 }
 
 const formatCurrency = (amount: number) => (
@@ -68,6 +69,7 @@ export default function SettlementResults({
   leadDeliveryStatus,
   onBack,
   onEdit,
+  onStartOver,
 }: Props) {
   const shouldReduceMotion = Boolean(useReducedMotion());
   const noDeliveryMessage = getNoDeliveryMessage(leadDeliveryStatus);
@@ -171,10 +173,23 @@ export default function SettlementResults({
             </ul>
           </CardContent>
           <CardFooter className="flex flex-col items-stretch gap-3 rounded-b-[8px] border-t bg-muted/30 px-5 py-4 sm:flex-row sm:justify-between sm:px-7">
-            <Button type="button" variant="outline" className="h-10 rounded-[8px]" onClick={onBack}>
-              <ArrowLeft data-icon="inline-start" />
-              Back to Calculator
-            </Button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button type="button" variant="outline" className="h-10 rounded-[8px]" onClick={onBack}>
+                <ArrowLeft data-icon="inline-start" />
+                Back to Calculator
+              </Button>
+              {onStartOver && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-10 rounded-[8px] border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
+                  onClick={onStartOver}
+                >
+                  <RotateCcw data-icon="inline-start" />
+                  Start over
+                </Button>
+              )}
+            </div>
             <div className="flex flex-col gap-2 sm:flex-row">
               {onEdit && (
                 <Button type="button" variant="secondary" className="h-10 rounded-[8px]" onClick={onEdit}>

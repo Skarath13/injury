@@ -2684,6 +2684,7 @@ export default function SettlementCalculator({ initialEstimateSlug = null }: Set
               setCurrentStep(5);
               pushStepHistory(5);
             }}
+            onStartOver={requestAbandonReset}
           />
         </motion.div>
         {abandonDialog}
