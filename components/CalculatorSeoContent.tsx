@@ -4,16 +4,16 @@ import { SEO_GUIDES } from '@/lib/seoGuides';
 
 const factorCards = [
   {
-    title: 'Injury and treatment',
-    body: 'The estimate weighs selected injury areas, severity, treatment type, treatment status, and medical-specials context.'
+    title: 'Realistic injury inputs',
+    body: 'The estimate weighs selected injury areas, severity, treatment type, treatment status, and medical-specials context instead of using one generic average.'
   },
   {
     title: 'California fault and venue',
     body: 'Reported comparative fault and accident county help shape the range without overpowering the medical and liability facts.'
   },
   {
-    title: 'Work and daily life',
-    body: 'Wage-loss signals, sleep disruption, caregiving limits, and activity limits help explain the human impact of the injury.'
+    title: 'Offer and payout context',
+    body: 'Wage-loss signals, daily-life disruption, insurance context, liens, and fees help separate a gross settlement estimate from the possible final payout.'
   }
 ];
 
@@ -29,9 +29,10 @@ export default function CalculatorSeoContent() {
             California Car Accident Settlement Calculator
           </h2>
           <p className="mt-4 max-w-3xl text-base leading-7 text-slate-700">
-            This calculator helps organize the facts that commonly affect a California auto injury settlement estimate:
-            fault, injury severity, treatment, medical specials, accident county, work disruption, daily-life impact,
-            and insurance context. It is educational only and does not provide legal advice or guarantee a result.
+            This free online settlement calculator helps organize the facts that commonly affect a California auto
+            injury claim: fault, injury severity, treatment, medical specials, accident county, work disruption,
+            daily-life impact, insurance context, liens, and settlement offer posture. It is educational only and does
+            not provide legal advice or guarantee a result.
           </p>
         </div>
 

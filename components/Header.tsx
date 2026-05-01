@@ -9,7 +9,7 @@ import { premiumEase, softSpring } from '@/components/motion/presets';
 
 const navItems = [
   { href: '/', label: 'Calculator', icon: Calculator },
-  { href: '/california-car-accident-settlement-factors', label: 'Guides' },
+  { href: '/guides', label: 'Guides' },
   { href: '/about', label: 'About' },
   { href: '/privacy', label: 'Privacy' },
   { href: '/terms', label: 'Terms' },

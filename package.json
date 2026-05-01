@@ -18,6 +18,8 @@
     "image:metadata:audit": "node scripts/image-metadata.mjs audit",
     "image:metadata:strip": "node scripts/image-metadata.mjs strip",
     "image:metadata:check": "node scripts/image-metadata.mjs check",
+    "brevo": "node scripts/brevo-outreach.mjs",
+    "cloudflare:dns": "node scripts/cloudflare-dns.mjs",
     "lint": "eslint .",
     "test": "node --import tsx --test tests/*.test.ts",
     "test:lead-scenarios": "node --import tsx --test tests/lead-scenarios.test.ts",

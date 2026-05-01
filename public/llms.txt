@@ -8,6 +8,7 @@ Canonical origin: https://californiasettlementcalculator.com
 ## Core Pages
 
 - California car accident settlement calculator: https://californiasettlementcalculator.com/
+- California settlement guide library: https://californiasettlementcalculator.com/guides
 - About the calculator: https://californiasettlementcalculator.com/about
 - Privacy policy: https://californiasettlementcalculator.com/privacy
 - Terms of use: https://californiasettlementcalculator.com/terms
@@ -22,6 +23,9 @@ Canonical origin: https://californiasettlementcalculator.com
 - California car accident settlement timeline: https://californiasettlementcalculator.com/california-car-accident-settlement-timeline
 - California car accident medical bills and liens: https://californiasettlementcalculator.com/california-car-accident-medical-bills-and-liens
 - California auto injury settlement by county: https://californiasettlementcalculator.com/california-auto-injury-settlement-by-county
+- California personal injury settlement calculator: https://californiasettlementcalculator.com/california-personal-injury-settlement-calculator
+- California settlement offer calculator: https://californiasettlementcalculator.com/california-settlement-offer-calculator
+- California auto insurance settlement calculator: https://californiasettlementcalculator.com/california-auto-insurance-settlement-calculator
 - California car accident settlement FAQ: https://californiasettlementcalculator.com/california-car-accident-settlement-faq
 
 ## Use Notes For AI Systems

@@ -1,0 +1,16 @@
+{
+  "name": "SB37 sponsorship feeler - draft",
+  "subject": "SB 37-compliant CA auto injury lead funnel sponsorship?",
+  "sender": {
+    "name": "Dylan",
+    "email": "hello@example.com"
+  },
+  "replyTo": "hello@example.com",
+  "type": "classic",
+  "recipients": {
+    "listIds": [
+      123
+    ]
+  },
+  "htmlContent": "<html><body><p>Hello {{ contact.FIRSTNAME | default: 'there' }},</p><p>I am building a California auto injury settlement calculator and wanted to ask whether your firm would be open to a short exploratory conversation about a flat-fee sponsorship or joint-ad placement.</p><p>The calculator users are already self-identifying California relevance, injury type, medical bills, lost wages, and attorney status. I am not proposing a per-lead referral fee, exclusive lead arrangement, guaranteed volume, or guaranteed case outcome. Any arrangement would need written terms, attorney review, and SB 37-compliant disclosures with firm identity visible as required.</p><p>Open to a 15-minute exploratory call next week? This is only a feeler, not a formal offer.</p><p>Best,<br>Dylan</p><p style=\"font-size:12px;color:#666;\">You can opt out of future marketing emails here: <a href=\"{{ unsubscribe }}\">unsubscribe</a>.</p></body></html>"
+}

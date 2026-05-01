@@ -1,0 +1,16 @@
+id,firm,email,confidence,status,last_action,message_id,notes
+calljacob,CallJacob,info@calljacob.com,High,ready,,,
+sweet-james,Sweet James,info@sweetjames.com,High,ready,,,
+west-coast-trial-lawyers,West Coast Trial Lawyers,info@westcoasttriallawyers.com,High,ready,,,
+wilshire-law-firm,Wilshire Law Firm,info@wilshirelawfirm.com,High,ready,,,
+the-barnes-firm,The Barnes Firm,info@thebarnesfirm.com,High,ready,,,
+the-dominguez-firm,The Dominguez Firm,info@dominguezfirm.com,High,ready,,,
+adamson-ahdoot,Adamson Ahdoot,contact@aa.law,High,ready,,,
+test-drburton,Dylan test,drburton369@gmail.com,Test,sent,2026-05-01T08:44:00Z,<202605010844.54923747497@smtp-relay.mailin.fr>,Test copy sent with CallJacob personalization
+test-sweet-james,Dylan test,drburton369@gmail.com,Test,sent,2026-05-01T08:49:00Z,<202605010849.41765191202@smtp-relay.mailin.fr>,Live sample test sent with Sweet James personalization
+test-west-coast-v2,Dylan test,drburton369@gmail.com,Test,sent,2026-05-01T09:02:00Z,<202605010902.47778562189@smtp-relay.mailin.fr>,Sharper live sample test sent with West Coast Trial Lawyers personalization
+test-west-coast-v3,Dylan test,drburton369@gmail.com,Test,sent,2026-05-01T18:38:00Z,<202605011838.18485266598@smtp-relay.mailin.fr>,Corrected sample sent with pre-rebuild traffic language and micro-CTA
+test-west-coast-v4,Dylan test,drburton369@gmail.com,Test,sent,2026-05-01T18:45:00Z,<202605011845.56731028871@smtp-relay.mailin.fr>,Scarcity and verification-filter sample sent
+test-west-coast-v5,Dylan test,drburton369@gmail.com,Test,sent,2026-05-01T19:22:00Z,<202605011922.20138508834@smtp-relay.mailin.fr>,Baseline traffic framing sample sent
+test-west-coast-v6,Dylan test,drburton369@gmail.com,Test,sent,2026-05-01T19:31:00Z,<202605011931.18390926676@smtp-relay.mailin.fr>,Katelyn sender with actual-tool positioning and zero-margin HTML
+test-west-coast-v7,Dylan test,drburton369@gmail.com,Test,sent,2026-05-01T21:06:00Z,<202605012106.13110450893@smtp-relay.mailin.fr>,Katelyn sender no-phone footer sample sent

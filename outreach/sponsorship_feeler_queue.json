@@ -1,0 +1,65 @@
+[
+  {
+    "id": "calljacob",
+    "priority": 1,
+    "firm": "CallJacob",
+    "prospect_name": "Law Offices of Jacob Emrani / CallJacob",
+    "email": "info@calljacob.com",
+    "confidence": "High",
+    "status": "ready"
+  },
+  {
+    "id": "sweet-james",
+    "priority": 2,
+    "firm": "Sweet James",
+    "prospect_name": "Sweet James",
+    "email": "info@sweetjames.com",
+    "confidence": "High",
+    "status": "ready"
+  },
+  {
+    "id": "west-coast-trial-lawyers",
+    "priority": 4,
+    "firm": "West Coast Trial Lawyers",
+    "prospect_name": "West Coast Trial Lawyers",
+    "email": "info@westcoasttriallawyers.com",
+    "confidence": "High",
+    "status": "ready"
+  },
+  {
+    "id": "wilshire-law-firm",
+    "priority": 5,
+    "firm": "Wilshire Law Firm",
+    "prospect_name": "Wilshire Law Firm",
+    "email": "info@wilshirelawfirm.com",
+    "confidence": "High",
+    "status": "ready"
+  },
+  {
+    "id": "the-barnes-firm",
+    "priority": 6,
+    "firm": "The Barnes Firm",
+    "prospect_name": "The Barnes Firm",
+    "email": "info@thebarnesfirm.com",
+    "confidence": "High",
+    "status": "ready"
+  },
+  {
+    "id": "the-dominguez-firm",
+    "priority": 9,
+    "firm": "The Dominguez Firm",
+    "prospect_name": "The Dominguez Firm",
+    "email": "info@dominguezfirm.com",
+    "confidence": "High",
+    "status": "ready"
+  },
+  {
+    "id": "adamson-ahdoot",
+    "priority": 10,
+    "firm": "Adamson Ahdoot",
+    "prospect_name": "Adamson Ahdoot LLP",
+    "email": "contact@aa.law",
+    "confidence": "High",
+    "status": "ready"
+  }
+]

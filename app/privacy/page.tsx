@@ -181,7 +181,7 @@ export default function PrivacyPolicy() {
 
             <h3 className="text-lg font-semibold text-slate-700 mb-3">6.2 How to Exercise Your Rights</h3>
             <ul className="list-disc pl-6 text-slate-600 space-y-2">
-              <li>Email us at <a href="mailto:privacy@californiasettlementcalculator.com" className="font-medium text-sky-700 underline">privacy@californiasettlementcalculator.com</a> with your request</li>
+              <li>Email us at <a href="mailto:contact@californiasettlementcalculator.com" className="font-medium text-sky-700 underline">contact@californiasettlementcalculator.com</a> with your request</li>
               <li>Include "Privacy Rights Request" in the subject line</li>
               <li>Provide enough information to verify your identity</li>
               <li>Specify which rights you want to exercise</li>
@@ -240,7 +240,7 @@ export default function PrivacyPolicy() {
             </table>
             
             <p id="do-not-sell-or-share" className="text-slate-600 mb-3 scroll-mt-24">
-              <strong>Do Not Sell/Share:</strong> You may opt out of marketing-pixel sale/share activity through <a href="#privacy-choices" className="font-medium text-sky-700 underline">Your Privacy Choices</a> or by emailing <a href="mailto:privacy@californiasettlementcalculator.com" className="font-medium text-sky-700 underline">privacy@californiasettlementcalculator.com</a> with "Do Not Sell/Share" in the subject line. We honor browser Global Privacy Control signals where detected. You can view your estimate without sending results or contact information to a named sponsor.
+              <strong>Do Not Sell/Share:</strong> You may opt out of marketing-pixel sale/share activity through <a href="#privacy-choices" className="font-medium text-sky-700 underline">Your Privacy Choices</a> or by emailing <a href="mailto:contact@californiasettlementcalculator.com" className="font-medium text-sky-700 underline">contact@californiasettlementcalculator.com</a> with "Do Not Sell/Share" in the subject line. We honor browser Global Privacy Control signals where detected. You can view your estimate without sending results or contact information to a named sponsor.
             </p>
           </section>
 
@@ -269,7 +269,7 @@ export default function PrivacyPolicy() {
           <section>
             <h2 className="text-2xl font-semibold text-slate-800 mb-4">9. Children's Privacy</h2>
             <p className="text-slate-600">
-              Our service is not intended for children under 18. We do not knowingly collect personal information from children. If you are a parent and believe your child has provided us with personal information, please contact us immediately at <a href="mailto:privacy@californiasettlementcalculator.com" className="font-medium text-sky-700 underline">privacy@californiasettlementcalculator.com</a>.
+              Our service is not intended for children under 18. We do not knowingly collect personal information from children. If you are a parent and believe your child has provided us with personal information, please contact us immediately at <a href="mailto:contact@californiasettlementcalculator.com" className="font-medium text-sky-700 underline">contact@californiasettlementcalculator.com</a>.
             </p>
           </section>
 
@@ -288,7 +288,7 @@ export default function PrivacyPolicy() {
                 For privacy-related inquiries, requests, or complaints:
               </p>
               <div className="space-y-2 text-slate-700">
-                <p><strong>Email:</strong> <a href="mailto:privacy@californiasettlementcalculator.com" className="font-medium text-sky-700 underline">privacy@californiasettlementcalculator.com</a></p>
+                <p><strong>Email:</strong> <a href="mailto:contact@californiasettlementcalculator.com" className="font-medium text-sky-700 underline">contact@californiasettlementcalculator.com</a></p>
                 <p><strong>Response Time:</strong> Within 30 days</p>
                 <p><strong>Address:</strong> California, USA</p>
               </div>

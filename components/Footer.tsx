@@ -15,7 +15,7 @@ export default function Footer() {
           </div>
 
           <nav aria-label="Footer" className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-slate-300">
-            <Link href="/california-car-accident-settlement-factors" className="transition-colors hover:text-amber-300">Guides</Link>
+            <Link href="/guides" className="transition-colors hover:text-amber-300">Guides</Link>
             <Link href="/california-car-accident-settlement-faq" className="transition-colors hover:text-amber-300">FAQ</Link>
             <Link href="/privacy" className="transition-colors hover:text-amber-300">Privacy</Link>
             <Link href="/terms" className="transition-colors hover:text-amber-300">Terms</Link>

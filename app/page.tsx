@@ -8,7 +8,11 @@ export const metadata = buildPageMetadata({
   keywords: [
     'California car accident settlement calculator',
     'California auto injury settlement calculator',
+    'realistic settlement calculator',
+    'settlement calculator',
+    'online settlement calculator',
     'car accident settlement estimate California',
+    'auto accident settlement calculator free',
     'whiplash settlement calculator California',
     'pain and suffering calculator California'
   ]

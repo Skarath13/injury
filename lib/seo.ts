@@ -9,7 +9,7 @@ export const SITE_ORIGIN = (
 export const SITE_NAME = 'California Settlement Calculator';
 export const SITE_LEGAL_NAME = 'California Auto Injury Settlement Calculator';
 export const SITE_DESCRIPTION =
-  'Use a California car accident settlement calculator to build an educational auto injury claim profile and unlock a protected settlement estimate.';
+  'Use a free California car accident settlement calculator to build a realistic auto injury claim profile and unlock a protected settlement estimate.';
 export const SEO_LAST_REVIEWED = '2026-04-30';
 export const SEO_LAST_MODIFIED = new Date('2026-04-30T12:00:00.000Z');
 export const GOOGLE_SITE_VERIFICATION = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || '';
@@ -124,6 +124,16 @@ export const HOME_FAQS: FaqItem[] = [
     question: 'Is this calculator legal advice?',
     answer:
       'No. This calculator is an educational tool, not a law firm, attorney referral service, or substitute for legal advice. Deadlines can apply quickly, and case-specific questions should be reviewed by a qualified professional.'
+  },
+  {
+    question: 'Is this a California workers comp settlement calculator?',
+    answer:
+      'No. This calculator is built for California auto injury claims, not workers compensation claims. Work injury, employment, and workers comp benefit questions follow a different system.'
+  },
+  {
+    question: 'Does this calculate California settlement taxes?',
+    answer:
+      'No. The calculator focuses on auto injury settlement factors and does not provide tax advice. Tax treatment can depend on the facts of the settlement, so tax questions should be reviewed separately.'
   }
 ];
 
@@ -140,6 +150,13 @@ export const PUBLIC_INDEXABLE_ROUTES = [
     title: 'About Our California Auto Injury Calculator',
     description: 'Learn how the California auto injury settlement calculator builds educational case profiles and estimate ranges.',
     priority: 0.55,
+    changeFrequency: 'monthly' as const
+  },
+  {
+    path: '/guides',
+    title: 'California Auto Injury Settlement Guides',
+    description: 'Browse California auto injury settlement guides about calculators, offers, insurance, pain and suffering, liens, timelines, and fault.',
+    priority: 0.72,
     changeFrequency: 'monthly' as const
   },
   {

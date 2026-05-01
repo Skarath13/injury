@@ -89,7 +89,7 @@ export default function Contact() {
                   <h3 className="font-semibold text-slate-800">Calculator Support</h3>
                 </div>
                 <p className="text-slate-600">
-                  Email: <a href="mailto:support@californiasettlementcalculator.com" className="text-blue-600 hover:text-blue-700">support@californiasettlementcalculator.com</a>
+                  Email: <a href="mailto:contact@californiasettlementcalculator.com" className="text-blue-600 hover:text-blue-700">contact@californiasettlementcalculator.com</a>
                 </p>
               </div>
 
@@ -99,7 +99,7 @@ export default function Contact() {
                   <h3 className="font-semibold text-slate-800">Privacy Concerns</h3>
                 </div>
                 <p className="text-slate-600">
-                  Email: <a href="mailto:privacy@californiasettlementcalculator.com" className="text-blue-600 hover:text-blue-700">privacy@californiasettlementcalculator.com</a>
+                  Email: <a href="mailto:contact@californiasettlementcalculator.com" className="text-blue-600 hover:text-blue-700">contact@californiasettlementcalculator.com</a>
                 </p>
               </div>
               
@@ -109,7 +109,7 @@ export default function Contact() {
                   <h3 className="font-semibold text-slate-800">Legal & Terms</h3>
                 </div>
                 <p className="text-slate-600">
-                  Email: <a href="mailto:legal@californiasettlementcalculator.com" className="text-blue-600 hover:text-blue-700">legal@californiasettlementcalculator.com</a>
+                  Email: <a href="mailto:contact@californiasettlementcalculator.com" className="text-blue-600 hover:text-blue-700">contact@californiasettlementcalculator.com</a>
                 </p>
               </div>
             </div>
