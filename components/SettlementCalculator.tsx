@@ -1604,7 +1604,7 @@ function StartCalculatorScreen({
               type="button"
               onClick={onStart}
               size="lg"
-              className="h-12 w-full bg-amber-500 px-5 text-base text-slate-950 hover:bg-amber-400 sm:w-auto"
+              className="h-12 w-full bg-amber-500 px-5 text-base text-slate-950 hover:bg-amber-400 sm:w-auto lg:h-16 lg:min-w-[19rem] lg:gap-2 lg:px-9 lg:text-lg lg:[&_svg]:size-5 xl:min-w-[21rem]"
             >
               Start my estimate
               <ArrowRight data-icon="inline-end" />
