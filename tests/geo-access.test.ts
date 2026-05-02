@@ -76,8 +76,11 @@ test('trusted crawlers can reach public SEO pages but not APIs or estimate route
   const googlebot = 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)';
 
   assert.equal(isTrustedCrawlerUserAgent(googlebot), true);
+  assert.equal(isTrustedCrawlerUserAgent('Applebot/0.1'), true);
+  assert.equal(isTrustedCrawlerUserAgent('CCBot/2.0 (+https://commoncrawl.org/faq/)'), true);
   assert.equal(shouldBypassGeoAccess('/', googlebot), true);
   assert.equal(shouldBypassGeoAccess('/california-car-accident-settlement-factors', 'OAI-SearchBot'), true);
+  assert.equal(shouldBypassGeoAccess('/guides', 'Applebot-Extended'), true);
   assert.equal(shouldBypassGeoAccess('/api/estimate/preview', googlebot), false);
   assert.equal(shouldBypassGeoAccess('/estimate/start', googlebot), false);
 });

@@ -1,3 +1,7 @@
+# California Settlement Calculator robots policy
+# Goal: maximize public search and answer-engine discovery while keeping
+# private API, admin, and non-public surfaces out of crawlers.
+
 User-agent: *
 Allow: /
 Allow: /_next/static/
@@ -16,50 +20,84 @@ Disallow: /admin/
 Disallow: /wp-admin/
 Disallow: /wp-login.php
 
-# Maximum public search and answer-engine exposure.
+# Main search engines and image/search testing crawlers.
 User-agent: Googlebot
-Allow: /
-Disallow: /api/
-
 User-agent: Googlebot-Image
-Allow: /
-Disallow: /api/
-
+User-agent: Googlebot-Video
+User-agent: Googlebot-News
+User-agent: GoogleOther
+User-agent: GoogleOther-Image
+User-agent: GoogleOther-Video
+User-agent: Google-InspectionTool
 User-agent: Bingbot
+User-agent: Applebot
 Allow: /
+Allow: /_next/static/
 Disallow: /api/
+Disallow: /admin/
+Disallow: /wp-admin/
+Disallow: /wp-login.php
 
+# Google AI and AI-agent crawl controls. Google-Extended does not control
+# Google Search inclusion, but allowing it permits eligible public content
+# use for Gemini/Vertex AI model improvement and grounding.
+User-agent: Google-Extended
+User-agent: Google-CloudVertexBot
+Allow: /
+Allow: /_next/static/
+Disallow: /api/
+Disallow: /admin/
+Disallow: /wp-admin/
+Disallow: /wp-login.php
+
+# OpenAI crawlers. OAI-SearchBot is the important one for ChatGPT Search.
 User-agent: OAI-SearchBot
-Allow: /
-Disallow: /api/
-
 User-agent: ChatGPT-User
-Allow: /
-Disallow: /api/
-
 User-agent: GPTBot
 Allow: /
+Allow: /_next/static/
 Disallow: /api/
+Disallow: /admin/
+Disallow: /wp-admin/
+Disallow: /wp-login.php
 
-User-agent: Google-Extended
-Allow: /
-Disallow: /api/
-
+# Anthropic crawlers for Claude search, user-directed retrieval, and training.
 User-agent: ClaudeBot
-Allow: /
-Disallow: /api/
-
 User-agent: Claude-SearchBot
-Allow: /
-Disallow: /api/
-
 User-agent: Claude-User
 Allow: /
+Allow: /_next/static/
 Disallow: /api/
+Disallow: /admin/
+Disallow: /wp-admin/
+Disallow: /wp-login.php
 
+# Perplexity search index crawler.
 User-agent: PerplexityBot
 Allow: /
+Allow: /_next/static/
 Disallow: /api/
+Disallow: /admin/
+Disallow: /wp-admin/
+Disallow: /wp-login.php
+
+# Apple generative AI data-use control. Applebot-Extended does not crawl
+# pages itself, but allowing it signals permission for Apple AI use.
+User-agent: Applebot-Extended
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Disallow: /wp-admin/
+Disallow: /wp-login.php
+
+# Common Crawl is widely used in downstream AI and research datasets.
+User-agent: CCBot
+Allow: /
+Allow: /_next/static/
+Disallow: /api/
+Disallow: /admin/
+Disallow: /wp-admin/
+Disallow: /wp-login.php
 
 Sitemap: https://californiasettlementcalculator.com/sitemap.xml
 Sitemap: https://californiasettlementcalculator.com/image-sitemap.xml
